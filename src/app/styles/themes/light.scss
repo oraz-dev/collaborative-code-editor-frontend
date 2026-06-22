@@ -1,0 +1,50 @@
+[data-theme='light'] {
+  --color-bg:            #f5f7fb;
+  --color-bg-sunken:     #eef1f7;
+  --color-surface:       #ffffff;
+  --color-surface-2:     #f1f4f9;
+  --color-surface-3:     #f1f4f9;
+  --color-inset:         #f1f4f9;
+  --color-overlay:       #ffffff;
+  --color-border:        #dce1ea;
+  --color-border-strong: #c7cedb;
+  --color-border-subtle: #e8ecf3;
+  --color-border-focus:  rgba(58, 131, 230, 0.55);
+
+  --color-text:          #11141b;
+  --color-text-secondary: #3b4254;
+  --color-text-muted:    #4a5161;
+  --color-text-faint:    #8a92a4;
+  --color-text-disabled: #aeb6c4;
+  --color-text-link:     #3a83e6;
+
+  --color-primary:       #3a83e6;
+  --color-primary-hover: #4d9eff;
+  --color-primary-press: #2c6bc4;
+  --color-on-primary:    #ffffff;
+  --color-accent:        #9d7cff;
+  --color-success:       #22a374;
+  --color-warning:       #c98f2c;
+  --color-destructive:   #d2503e;
+  --color-info:          #3a83e6;
+
+  --fill-primary: rgba(58, 131, 230, 0.10);
+  --fill-success: rgba(34, 163, 116, 0.10);
+  --fill-warning: rgba(201, 143, 44, 0.10);
+  --fill-error:   rgba(210, 80, 62, 0.10);
+  --fill-accent:  rgba(157, 124, 255, 0.10);
+  --ring:         rgba(58, 131, 230, 0.40);
+
+  // hue palettes
+  --ink-100: #3b4254; --ink-200: #4a5161; --ink-300: #6b7488;
+  --ink-400: #8a92a4; --ink-500: #aeb6c4; --ink-600: #c7cedb;
+  --ink-700: #dce1ea; --ink-800: #e8ecf3; --ink-900: #f1f4f9;
+
+  --azure-200: #1e5bb8; --azure-300: #2a6fd4; --azure-400: #3a83e6; --azure-500: #3a83e6;
+  --violet-400: #7a5ad4; --violet-500: #6d46d0;
+  --mint-400: #1a9c66; --mint-500: #22a374;
+  --coral-400: #c94d3d; --coral-500: #d2503e; --coral-600: #a33b2e;
+  --amber-400: #b48426; --amber-500: #c98f2c;
+
+  --glow-live: 0 0 6px rgba(34, 163, 116, 0.4);
+}

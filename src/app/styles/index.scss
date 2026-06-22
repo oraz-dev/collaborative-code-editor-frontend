@@ -1,0 +1,88 @@
+@use 'sass:list';
+@use './variables/globals' as *;
+@use './reset';
+@use './themes/dark';
+@use './themes/light';
+
+:root {
+  // typography
+  --font-display: #{$font-display};
+  --font-body:    #{$font-body};
+  --font-mono:    #{$font-mono};
+
+  --text-2xs:  #{$text-2xs};
+  --text-xs:   #{$text-xs};
+  --text-sm:   #{$text-sm};
+  --text-base: #{$text-base};
+  --text-md:   #{$text-md};
+  --text-lg:   #{$text-lg};
+  --text-xl:   #{$text-xl};
+  --text-2xl:  #{$text-2xl};
+  --text-3xl:  #{$text-3xl};
+  --text-4xl:  #{$text-4xl};
+
+  --weight-light:    #{$weight-light};
+  --weight-regular:  #{$weight-regular};
+  --weight-medium:   #{$weight-medium};
+  --weight-semibold: #{$weight-semibold};
+
+  --leading-tight:  #{$leading-tight};
+  --leading-snug:   #{$leading-snug};
+  --leading-normal: #{$leading-normal};
+  --tracking-tight: #{$tracking-tight};
+  --tracking-caps:  #{$tracking-caps};
+
+  // radius
+  --radius-xs:   #{$radius-xs};
+  --radius-sm:   #{$radius-sm};
+  --radius-md:   #{$radius-md};
+  --radius-lg:   #{$radius-lg};
+  --radius-xl:   #{$radius-xl};
+  --radius-2xl:  #{$radius-2xl};
+  --radius-full: #{$radius-full};
+
+  // elevation
+  --shadow-sm: #{$shadow-sm};
+  --shadow-md: #{$shadow-md};
+  --shadow-lg: #{$shadow-lg};
+  --shadow-xl: #{$shadow-xl};
+  --edge:      #{$edge};
+
+  // motion
+  --duration-fast: #{$duration-fast};
+  --duration-base: #{$duration-base};
+  --duration-slow: #{$duration-slow};
+  --ease:     #{$ease};
+  --ease-out: #{$ease-out};
+  --transition-control: background var(--duration-fast) var(--ease),
+    border-color var(--duration-fast) var(--ease),
+    color var(--duration-fast) var(--ease);
+
+  // control heights
+  --control-sm: #{$control-sm};
+  --control-md: #{$control-md};
+  --control-lg: #{$control-lg};
+
+  // composite type
+  --type-body:    var(--weight-regular) var(--text-base)/var(--leading-normal) var(--font-body);
+  --type-body-lg: var(--weight-regular) var(--text-md)/var(--leading-normal) var(--font-body);
+  --type-code:    var(--weight-regular) var(--text-sm)/1.7 var(--font-mono);
+  --type-label:   var(--weight-medium)  var(--text-sm)/1 var(--font-body);
+  --type-caption: var(--text-xs)/var(--leading-snug) var(--font-body);
+
+  // presence
+  @for $i from 1 through list.length($presence) {
+    --presence-#{$i}: #{list.nth($presence, $i)};
+  }
+
+  // ring focus
+  --ring-focus: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--ring);
+}
+
+html, body {
+  font: var(--type-body);
+  color: var(--color-text);
+  background: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
