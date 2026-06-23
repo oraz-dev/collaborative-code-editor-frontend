@@ -1,0 +1,63 @@
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  user-select: none;
+
+  &:hover .checkbox {
+    border-color: var(--color-primary);
+  }
+}
+
+.input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  margin: 0;
+
+  &:focus-visible + .checkbox {
+    box-shadow: 0 0 0 3px var(--ring);
+  }
+}
+
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  background: var(--color-inset);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  transition: var(--duration-fast) var(--ease);
+  flex: none;
+}
+
+// Applies styles when React tells us it's checked
+.checked .checkbox {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.icon {
+  color: var(--color-on-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.label {
+  font: var(--text-sm) / var(--leading-tight) var(--font-body);
+  color: var(--color-text);
+}
+
+.disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+
+  &:hover .checkbox {
+    border-color: var(--color-border-strong);
+  }
+}

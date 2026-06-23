@@ -1,0 +1,61 @@
+.radioWrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  margin: 0;
+}
+
+.circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  background: var(--color-inset);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-full);
+  transition: border-color var(--duration-fast) var(--ease);
+  flex: none;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  background: var(--color-primary);
+  border-radius: var(--radius-full);
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity var(--duration-fast) var(--ease), transform var(--duration-fast) var(--ease);
+}
+
+.checked .circle {
+  border-color: var(--color-primary);
+}
+
+.checked .dot {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.input:focus-visible + .circle {
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.label {
+  font: var(--text-sm) / var(--leading-tight) var(--font-body);
+  color: var(--color-text);
+}
+
+.disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
