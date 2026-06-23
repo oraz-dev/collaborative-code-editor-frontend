@@ -1,0 +1,98 @@
+import { createElement, type SVGProps } from 'react';
+import { GitHubIcon, GoogleIcon } from './BrandIcons';
+
+type IC = (props: SVGProps<SVGSVGElement> & { size?: number }) => React.JSX.Element;
+
+function I(...paths: string[]): IC {
+  return function SvgIcon({ size = 18, ...props }) {
+    return createElement('svg', {
+      width: size, height: size, viewBox: '0 0 24 24', fill: 'none',
+      stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round',
+      ...props,
+    }, ...paths.map((d, i) => createElement('path', { key: i, d })));
+  };
+}
+
+const navIcons = {
+  Arrow:      I('M5 12h14', 'm13 6 6 6-6 6'),
+  ChevR:      I('m9 18 6-6-6-6'),
+  ChevD:      I('m6 9 6 6 6-6'),
+  ChevSel:    I('m8 9 4-4 4 4', 'm16 15-4 4-4-4'),
+  Return:     I('M9 10 4 15l5 5', 'M20 4v7a4 4 0 0 1-4 4H4'),
+};
+
+const fileIcons = {
+  Files:      I('M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v2H3z', 'M3 10h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'),
+  Folder:     I('M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'),
+  Box:        I('m21 8-9-5-9 5 9 5 9-5z', 'M3 8v8l9 5 9-5V8'),
+};
+
+const actionIcons = {
+  Plus:       I('M5 12h14', 'M12 5v14'),
+  Minus:      I('M5 12h14'),
+  X:          I('M18 6 6 18', 'M6 6l12 12'),
+  Check:      I('M20 6 9 17l-5-5'),
+  CheckCircle: I('M22 11.1V12a10 10 0 1 1-5.9-9.1', 'm9 11 3 3L22 4'),
+  Search:     I('M21 21l-4.3-4.3', 'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z'),
+  Replace:    I('M14 4h5v5', 'M19 4l-7 7', 'M5 20h5v-5', 'M5 20l6-6'),
+  Copy:       I('M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2', 'M8 2h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z'),
+  Link:       I('M10 13a5 5 0 0 0 7.5.5l.5-.5a5 5 0 0 0-7.1-7.1l-1 1', 'M14 11a5 5 0 0 0-7.5-.5l-.5.5a5 5 0 0 0 7.1 7.1l1-1'),
+  Upload:     I('M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4', 'M17 8l-5-5-5 5', 'M12 3v12'),
+  Grid:       I('M4 4h7v7H4z', 'M13 4h7v7h-7z', 'M4 13h7v7H4z', 'M13 13h7v7h-7z'),
+  Share:      I('M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z', 'M6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z', 'M18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z', 'm8.6 13.5 6.8 4M15.4 6.5l-6.8 4'),
+  Send:       I('M22 2 11 13', 'M22 2 15 22l-4-9-9-4z'),
+  Reply:      I('M9 17l-5-5 5-5', 'M4 12h11a5 5 0 0 1 5 5v2'),
+  Play:       I('M6 3l14 9-14 9z'),
+  LogOut:     I('M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4', 'M16 17l5-5-5-5', 'M21 12H9'),
+  Trash:      I('M3 6h18', 'M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2', 'M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6'),
+};
+
+const editorIcons = {
+  Comment:    I('M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'),
+  CaseAa:     I('M4 18 8 7l4 11', 'M5.5 14h5', 'M20 11a3 3 0 1 0 0 6 3 3 0 0 0 0-6', 'M20 11v6'),
+  Regex:      I('M12 4v8', 'M8.5 6l7 4', 'M15.5 6l-7 4', 'M6 18.5h.01'),
+  WholeWord:  I('M3 7v10h18V7', 'M7 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4', 'M9 10v4', 'M13 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4', 'M15 8v6'),
+  Term:       I('m6 9 3 3-3 3', 'M13 15h5'),
+  Fn:         I('M9 4H7a2 2 0 0 0-2 2v3a2 2 0 0 1-2 2 2 2 0 0 1 2 2v3a2 2 0 0 0 2 2h2'),
+  TypeSym:    I('M4 7V5h16v2', 'M9 5v14', 'M7 19h4'),
+  HashSym:    I('M4 9h16', 'M4 15h16', 'M10 3 8 21', 'M16 3l-2 18'),
+};
+
+const gitIcons = {
+  Branch:     I('M6 3v12', 'M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z', 'M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z', 'M18 9a9 9 0 0 1-9 9'),
+  GitCommit:  I('M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z', 'M12 3v6', 'M12 15v6'),
+  GitPull:    I('M6 9V3', 'M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z', 'M6 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z', 'M12 7l-3 3 3 3', 'M9 10h7a2 2 0 0 1 2 2v3'),
+  GitPush:    I('M12 17V3', 'M7 8l5-5 5 5', 'M5 21h14'),
+};
+
+const objectIcons = {
+  Tag:        I('M12.6 2.6 21 11a2 2 0 0 1 0 2.8l-7.2 7.2a2 2 0 0 1-2.8 0L2.6 12.6A2 2 0 0 1 2 11.2V4a2 2 0 0 1 2-2h7.2a2 2 0 0 1 1.4.6Z', 'M7.5 7.5h.01'),
+  Clock:      I('M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z', 'M12 7v5l3 2'),
+  Lock:       I('M5 11a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z', 'M8 9V7a4 4 0 0 1 8 0v2'),
+  Mail:       I('M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', 'm3 7 9 6 9-6'),
+  Star:       I('M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.9 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z'),
+  Bell:       I('M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9', 'M13.7 21a2 2 0 0 1-3.4 0'),
+  Calendar:   I('M3 6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', 'M16 2v4', 'M8 2v4', 'M3 10h18'),
+  Cloud:      I('M17.5 19a4.5 4.5 0 0 0 .5-9 6 6 0 0 0-11.6-1A4 4 0 0 0 6 19z', 'm9 13 2 2 4-4'),
+  Sparkle:    I('M12 3l1.8 4.7L18.5 9.5 13.8 11.3 12 16l-1.8-4.7L5.5 9.5l4.7-1.8z'),
+  Bolt:       I('M13 2 3 14h7l-1 8 10-12h-7z'),
+  Globe:      I('M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z', 'M3 12h18', 'M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18Z'),
+  MapPin:     I('M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z', 'M12 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z'),
+  Palette:    I('M12 21a9 9 0 1 1 0-18c4.97 0 9 3.58 9 8 0 2.5-2 3.5-3.5 3.5H15a2 2 0 0 0-1.5 3.3A1.6 1.6 0 0 1 12 21Z', 'M7.5 12.5h.01', 'M10 8h.01', 'M14 7.5h.01', 'M16.5 10h.01'),
+  User:       I('M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2', 'M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z'),
+  Users:      I('M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2', 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z', 'M22 21v-2a4 4 0 0 0-3-3.87', 'M16 3.13a4 4 0 0 1 0 7.75'),
+  Settings:   I('M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z', 'M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z'),
+};
+
+export const Icons = {
+  ...navIcons,
+  ...fileIcons,
+  ...actionIcons,
+  ...editorIcons,
+  ...gitIcons,
+  ...objectIcons,
+  GitHub: GitHubIcon,
+  Google: GoogleIcon,
+};
+
+export type SpaceIconName = keyof typeof Icons;
