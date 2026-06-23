@@ -1,0 +1,39 @@
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  transition: var(--transition-control);
+}
+
+.sm {
+  width: 28px;
+  height: 28px;
+}
+
+.md {
+  width: 34px;
+  height: 34px;
+}
+
+.default {
+  background: transparent;
+  color: var(--text-muted);
+
+  &.active {
+    background: var(--accent-soft);
+    color: var(--accent-hover);
+  }
+}
+
+.solid {
+  background: var(--surface-raised);
+  color: var(--text-muted);
+
+  &.active {
+    background: var(--accent);
+    color: var(--text-on-accent);
+  }
+}
