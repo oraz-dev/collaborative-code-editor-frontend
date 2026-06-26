@@ -1,0 +1,60 @@
+.stack {
+  display: flex;
+  align-items: center;
+
+  &.xs {
+    --avatar-size: 20px;
+    --avatar-fs: 8px;
+    --avatar-overlap: -5px;
+  }
+
+  &.sm {
+    --avatar-size: 26px;
+    --avatar-fs: 9px;
+    --avatar-overlap: -7px;
+  }
+
+  &.md {
+    --avatar-size: 32px;
+    --avatar-fs: 11px;
+    --avatar-overlap: -9px;
+  }
+}
+
+.avatar {
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  font-size: var(--avatar-fs);
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: #fff;
+  border: 2px solid var(--bg-app);
+  position: relative;
+  flex-shrink: 0;
+  background: var(--avatar-bg, var(--ink-700));
+
+  & + & {
+    margin-left: var(--avatar-overlap);
+  }
+}
+
+.extra {
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  font-size: var(--avatar-fs);
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  border: 2px solid var(--bg-app);
+  background: var(--ink-700);
+  flex-shrink: 0;
+  margin-left: var(--avatar-overlap);
+}

@@ -1,0 +1,40 @@
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font: var(--text-xs) / 1.4 var(--font-body);
+  color: var(--color-text);
+  user-select: none;
+}
+
+.icon {
+  color: var(--color-text-faint);
+  width: 12px;
+  height: 12px;
+  flex: none;
+}
+
+.closeBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  margin-left: 2px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-faint);
+  cursor: pointer;
+  transition: var(--duration-fast) var(--ease);
+
+  &:hover {
+    color: var(--color-destructive);
+    background: var(--fill-error);
+  }
+}
