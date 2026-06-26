@@ -1,0 +1,23 @@
+.progress {
+  height: 7px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface-3);
+  overflow: hidden;
+}
+
+.bar {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  transition: width var(--duration-base) var(--ease);
+}
+
+.indeterminate .bar {
+  width: 36%;
+  animation: indet 1.4s var(--ease) infinite;
+}
+
+@keyframes indet {
+  0% { margin-left: -36%; }
+  100% { margin-left: 100%; }
+}

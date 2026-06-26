@@ -1,0 +1,44 @@
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-3);
+  padding: var(--space-12) var(--space-6);
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  max-width: 420px;
+}
+
+.mark {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  height: 40px;
+  margin-bottom: var(--space-2);
+}
+
+.markPrimary {
+  width: 5px;
+  height: 40px;
+  border-radius: 2px;
+  background: var(--color-primary);
+}
+
+.markSecondary {
+  width: 5px;
+  height: 26px;
+  border-radius: 2px;
+  background: var(--color-success);
+}
+
+.title {
+  font: var(--weight-medium) var(--text-lg) / 1.2 var(--font-body);
+}
+
+.text {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  max-width: 32ch;
+}
