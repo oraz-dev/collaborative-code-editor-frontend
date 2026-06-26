@@ -1,0 +1,46 @@
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.link {
+  color: var(--color-text-muted);
+  text-decoration: none;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font: inherit;
+  padding: 0;
+
+  &:hover {
+    color: var(--color-text);
+  }
+}
+
+.separator {
+  color: var(--color-text-disabled);
+  display: flex;
+}
+
+.separatorIcon {
+  width: 14px;
+  height: 14px;
+}
+
+.item {
+  display: contents;
+}
+
+.separatorIconRotated {
+  width: 14px;
+  height: 14px;
+  transform: rotate(-90deg);
+}
+
+.current {
+  color: var(--color-text);
+  font-weight: var(--weight-medium);
+}

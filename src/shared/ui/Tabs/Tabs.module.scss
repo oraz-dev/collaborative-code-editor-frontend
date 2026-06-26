@@ -1,0 +1,73 @@
+.tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 13px;
+  color: var(--color-text-muted);
+  font: var(--weight-medium) var(--text-sm) / 1 var(--font-body);
+  cursor: pointer;
+  position: relative;
+  transition: var(--duration-fast);
+  background: none;
+  border: none;
+
+  &:hover {
+    color: var(--color-text);
+  }
+}
+
+.tabActive {
+  color: var(--color-text);
+
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    background: var(--color-primary);
+    border-radius: 1px;
+  }
+}
+
+.tabIcon {
+  width: 15px;
+  height: 15px;
+}
+
+/* Pills variant */
+.pills {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  background: var(--color-inset);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+}
+
+.pill {
+  height: 28px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font: var(--weight-medium) var(--text-sm) / 1 var(--font-body);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+}
+
+.pillActive {
+  background: var(--color-surface-3);
+  color: var(--color-text);
+  box-shadow: var(--edge);
+}
