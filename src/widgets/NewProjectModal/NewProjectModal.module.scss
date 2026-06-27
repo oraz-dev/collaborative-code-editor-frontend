@@ -1,0 +1,82 @@
+// modal
+.dlgScrim {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  background: rgba(6, 8, 12, 0.55);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dlg {
+  width: 460px;
+  max-width: 92%;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  background: var(--color-overlay);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-xl);
+}
+.dlgHead { padding: 20px 22px 0; }
+.dlgTitle { font: var(--weight-medium) var(--text-xl)/1.1 var(--font-body); letter-spacing: -0.01em; margin: 0 0 4px; }
+.dlgSub { font-size: var(--text-sm); color: var(--color-text-muted); margin: 0; }
+.dlgBody { padding: 18px 22px; display: flex; flex-direction: column; gap: 14px; }
+.dlgLangs { display: flex; gap: 8px; flex-wrap: wrap; }
+.dlgLangChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background: var(--color-inset);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: var(--transition-control);
+
+  &[data-on='true'] { border-color: var(--color-primary); background: var(--fill-primary); color: var(--color-text); }
+}
+.dlgLangDot { width: 8px; height: 8px; border-radius: 2px; background: var(--dot-color); }
+.dlgFoot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 16px 22px;
+  border-top: 1px solid var(--color-border-subtle);
+  background: rgba(11, 13, 18, 0.35);
+}
+
+.formLabel {
+  font: var(--type-label);
+  color: var(--color-text-secondary);
+  margin-bottom: 8px;
+}
+
+.fieldInput {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 40px;
+  padding: 0 8px 0 13px;
+  background: var(--color-inset);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: var(--transition-control);
+
+  &:focus-within { border-color: var(--color-border-focus); box-shadow: var(--ring-focus); }
+
+  input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--color-text);
+    font: var(--type-body);
+
+    &::placeholder { color: var(--color-text-faint); }
+  }
+}

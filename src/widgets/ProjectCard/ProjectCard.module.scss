@@ -1,0 +1,58 @@
+// project card
+.projcard {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--edge);
+  overflow: hidden;
+  cursor: pointer;
+}
+.projBody { padding: 16px 16px 14px; flex: 1; }
+.projTop { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
+.projDot { width: 9px; height: 9px; border-radius: 3px; flex: none; background: var(--dot-color, var(--ink-400)); }
+.projName {
+  font: var(--weight-medium) var(--text-base)/1 var(--font-mono);
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+}
+.projStar {
+  margin-left: auto;
+  color: var(--color-text-disabled);
+  display: flex;
+  transition: var(--transition-control);
+
+  &[data-on='true'] { color: var(--amber-400); }
+}
+.projDesc {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  margin-bottom: 14px;
+  text-wrap: pretty;
+  min-height: 38px;
+}
+.projLangs { display: flex; gap: 6px; }
+.langChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--radius-full);
+  background: var(--ink-700);
+  color: var(--color-text-secondary);
+  font: 500 11px/1 var(--font-mono);
+}
+.langDot { width: 7px; height: 7px; border-radius: 2px; background: var(--dot-color); }
+.projFoot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 16px;
+  border-top: 1px solid var(--color-border-subtle);
+  background: rgba(11, 13, 18, 0.30);
+}
+.projMeta { font: 11px/1 var(--font-mono); color: var(--color-text-faint); }
+.projFootSp { flex: 1; }
