@@ -1,0 +1,40 @@
+.logo { flex: none; }
+
+.root {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 38px;
+  padding: 0 8px 0 6px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: var(--transition-control);
+  border: none;
+  background: transparent;
+  color: inherit;
+
+  &:hover { background: rgba(255, 255, 255, 0.04); }
+}
+
+.ws {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.name {
+  font: var(--weight-medium) var(--text-sm)/1.1 var(--font-body);
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+}
+
+.sub {
+  font: 10px/1 var(--font-mono);
+  color: var(--color-text-faint);
+}
+
+.chev {
+  color: var(--color-text-faint);
+  display: flex;
+  margin-left: 1px;
+}

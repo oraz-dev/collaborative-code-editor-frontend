@@ -1,0 +1,50 @@
+.root {
+  flex: none;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 10px 0 14px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border-subtle);
+  box-shadow: var(--shadow-md), var(--edge);
+  background: rgba(18, 20, 29, 0.66);
+  backdrop-filter: blur(16px) saturate(1.15);
+  -webkit-backdrop-filter: blur(16px) saturate(1.15);
+}
+
+.div {
+  width: 1px;
+  height: 24px;
+  background: var(--color-border);
+  flex: none;
+}
+
+.cmdPill {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 34px;
+  padding: 0 7px 0 12px;
+  width: 240px;
+  background: var(--color-inset);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  color: var(--color-text-faint);
+  font-size: var(--text-sm);
+  cursor: text;
+  transition: var(--transition-control);
+
+  &:hover {
+    border-color: var(--color-border-strong);
+    color: var(--color-text-muted);
+  }
+}
+
+.sp { flex: 1; }
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
