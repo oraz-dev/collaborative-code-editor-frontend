@@ -1,0 +1,129 @@
+.root {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: linear-gradient(180deg, var(--color-surface-2), var(--color-surface) 140px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-lg), var(--edge);
+  overflow: hidden;
+}
+
+.head {
+  flex: none;
+  padding: 20px 30px 18px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.crumb {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font: 11px/1 var(--font-mono);
+  color: var(--color-text-faint);
+  margin-bottom: 11px;
+}
+
+.crumbSep { color: var(--color-text-disabled); }
+.crumbName { color: var(--color-text); }
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.title {
+  font: var(--weight-medium) var(--text-2xl)/1 var(--font-body);
+  letter-spacing: -0.02em;
+}
+
+.meta {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font: var(--text-xs)/1 var(--font-body);
+  color: var(--color-text-muted);
+}
+
+.editorWrap {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--color-text-faint);
+  font: var(--text-sm)/1 var(--font-mono);
+}
+
+// remote collaborator cursors
+.remoteCursorLine {
+  border-left: 2px solid var(--presence-2);
+}
+
+.remoteCursorLabel {
+  color: var(--presence-2);
+  font-size: 10px;
+  font-family: var(--font-body);
+  font-weight: 500;
+  opacity: 0.7;
+}
+
+// comment gutter dots
+:global {
+  .commentGutterDot {
+    width: 8px !important;
+    height: 8px !important;
+    border-radius: 50%;
+    background: var(--color-primary);
+    box-shadow: 0 0 0 2px var(--color-surface);
+    margin-top: 11px;
+    margin-left: 4px;
+  }
+}
+
+.commentGutterDot {
+  composes: commentGutterDot from global;
+}
+
+.commentLineHighlight {
+  background: rgba(77, 158, 255, 0.04) !important;
+}
+
+.foot {
+  flex: none;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 22px;
+  border-top: 1px solid var(--color-border-subtle);
+  background: rgba(11, 13, 18, 0.35);
+  font: var(--weight-medium) var(--text-2xs)/1 var(--font-mono);
+  color: var(--color-text-muted);
+}
+
+.live {
+  color: var(--mint-400);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.liveDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--mint-500);
+  box-shadow: var(--glow-live);
+}
+
+.sp { flex: 1; }
