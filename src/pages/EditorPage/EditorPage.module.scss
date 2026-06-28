@@ -1,0 +1,94 @@
+.canvas {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 16px 16px;
+  color: var(--color-text);
+  font: var(--type-body);
+  background:
+    radial-gradient(1300px 520px at 50% -240px, rgba(77, 158, 255, 0.12), transparent 68%),
+    radial-gradient(1000px 700px at 96% 120%, rgba(157, 124, 255, 0.06), transparent 72%),
+    var(--color-bg);
+}
+
+.topnav {
+  flex: none;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 10px 0 14px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border-subtle);
+  box-shadow: var(--shadow-md), var(--edge);
+  background: rgba(18, 20, 29, 0.66);
+  backdrop-filter: blur(16px) saturate(1.15);
+  -webkit-backdrop-filter: blur(16px) saturate(1.15);
+}
+
+.div { width: 1px; height: 24px; background: var(--color-border); flex: none; }
+
+.seg { display: flex; }
+
+// restyle segmented control for pill shape
+.seg :global(.sp-seg) {
+  background: rgba(11, 13, 18, 0.45);
+  border-color: var(--color-border-subtle);
+  border-radius: var(--radius-full);
+  padding: 3px;
+}
+.seg :global(.sp-seg__btn) {
+  border-radius: var(--radius-full);
+  height: 28px;
+  padding: 0 14px;
+}
+
+.cmdPill {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 34px;
+  padding: 0 7px 0 12px;
+  background: var(--color-inset);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  color: var(--color-text-faint);
+  font-size: var(--text-sm);
+  cursor: text;
+  transition: var(--transition-control);
+
+  &:hover { border-color: var(--color-border-strong); color: var(--color-text-muted); }
+}
+
+.sp { flex: 1; }
+.right { display: flex; align-items: center; gap: 10px; }
+
+.here {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 4px 4px 4px 10px;
+  border-radius: var(--radius-full);
+  background: rgba(11, 13, 18, 0.45);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.hereLbl { font: var(--weight-medium) 11px/1 var(--font-mono); color: var(--color-text-muted); }
+
+.work { flex: 1; min-height: 0; display: flex; gap: 18px; }
+
+.viewpanel {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg), var(--edge);
+}
+
