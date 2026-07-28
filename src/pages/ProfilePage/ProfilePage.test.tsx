@@ -1,9 +1,10 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithProviders } from '@/shared/lib/tests/renderWithProviders';
 import { ProfilePage } from './ProfilePage';
 
 describe('ProfilePage', () => {
   test('renders without crashing', () => {
-    render(<ProfilePage onBack={vi.fn()} />);
+    renderWithProviders(<ProfilePage />);
     expect(screen.getByText('Profile')).toBeInTheDocument();
   });
 });

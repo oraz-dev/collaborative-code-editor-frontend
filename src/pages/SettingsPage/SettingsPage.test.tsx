@@ -1,9 +1,10 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithProviders } from '@/shared/lib/tests/renderWithProviders';
 import { SettingsPage } from './SettingsPage';
 
 describe('SettingsPage', () => {
   test('renders without crashing', () => {
-    render(<SettingsPage onBack={vi.fn()} />);
+    renderWithProviders(<SettingsPage />);
     expect(screen.getByText('Settings')).toBeInTheDocument();
   });
 });

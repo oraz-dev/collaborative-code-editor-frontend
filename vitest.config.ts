@@ -14,5 +14,14 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test-setup.ts'],
     css: { modules: { classNameStrategy: 'non-scoped' } },
+    server: {
+      deps: {
+        // Monaco ships bare .css imports that Node cannot load when the
+        // package is externalised; inlining routes them through Vite instead.
+        // `@monaco-editor/react` is deliberately left external — inlining it
+        // breaks its default-export interop.
+        inline: ['monaco-editor', 'y-monaco'],
+      },
+    },
   },
 })

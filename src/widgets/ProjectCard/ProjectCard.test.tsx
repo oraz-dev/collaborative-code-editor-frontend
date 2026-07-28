@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { screen} from '@testing-library/react';
+import { renderWithProviders } from '@/shared/lib/tests/renderWithProviders';
 import { ProjectCard } from './ProjectCard';
 
 describe('ProjectCard', () => {
@@ -13,7 +14,7 @@ describe('ProjectCard', () => {
       stars: 0,
       here: [],
     };
-    render(<ProjectCard project={project as any} />);
+    renderWithProviders(<ProjectCard project={project as any} />);
     expect(screen.getByText('Test Project')).toBeInTheDocument();
   });
 });
