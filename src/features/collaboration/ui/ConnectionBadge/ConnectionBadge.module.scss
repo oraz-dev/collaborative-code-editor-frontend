@@ -1,0 +1,45 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--surface-800, #292524);
+  color: var(--ink-300, #d6d3d1);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: currentcolor;
+}
+
+.connected .dot { background: var(--mint-500, #10b981); }
+.connecting .dot { background: var(--amber-500, #f59e0b); }
+.offline .dot,
+.error .dot { background: var(--coral-500, #ef4444); }
+
+.connecting .dot,
+.offline .dot,
+.error .dot {
+  animation: blink 1.4s ease-in-out infinite;
+}
+
+.peers {
+  padding-left: 6px;
+  border-left: 1px solid var(--line-700, #44403c);
+  color: var(--ink-400, #a8a29e);
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dot { animation: none; }
+}
