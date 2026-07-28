@@ -1,0 +1,105 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding-right: 8px;
+  border-radius: 5px;
+  color: var(--ink-300, #d6d3d1);
+  cursor: pointer;
+  font-size: 12.5px;
+  user-select: none;
+}
+
+.row:hover {
+  background: var(--surface-800, #292524);
+}
+
+.row:focus-visible {
+  outline: 2px solid var(--accent-500, #6366f1);
+  outline-offset: -2px;
+}
+
+.active {
+  background: var(--surface-750, #33302c);
+  color: var(--ink-100, #fafaf9);
+}
+
+.pending {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.icon {
+  display: inline-flex;
+  width: 13px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-500, #78716c);
+}
+
+.fileDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--ink-600, #57534e);
+}
+
+.name {
+  overflow: hidden;
+  flex: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actions {
+  display: none;
+  gap: 2px;
+}
+
+.row:hover .actions,
+.row:focus-within .actions {
+  display: inline-flex;
+}
+
+.action {
+  display: inline-flex;
+  padding: 3px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink-400, #a8a29e);
+  cursor: pointer;
+}
+
+.action:hover {
+  background: var(--surface-700, #44403c);
+  color: var(--ink-100, #fafaf9);
+}
+
+.status {
+  display: flex;
+  height: 24px;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.empty {
+  color: var(--ink-600, #57534e);
+  font-style: italic;
+}
+
+.error {
+  color: var(--coral-400, #f87171);
+}
+
+.retry {
+  border: none;
+  background: none;
+  color: var(--accent-400, #818cf8);
+  cursor: pointer;
+  font-size: 12px;
+  text-decoration: underline;
+}

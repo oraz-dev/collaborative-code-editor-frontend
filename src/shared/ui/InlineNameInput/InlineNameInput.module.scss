@@ -1,0 +1,20 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding-right: 8px;
+  color: var(--ink-300, #d6d3d1);
+}
+
+.input {
+  width: 100%;
+  padding: 2px 4px;
+  border: 1px solid var(--accent-500, #6366f1);
+  border-radius: 4px;
+  background: var(--surface-900, #1c1917);
+  color: inherit;
+  font-family: inherit;
+  font-size: 12px;
+  outline: none;
+}

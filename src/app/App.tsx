@@ -1,13 +1,19 @@
-import { AppRouter } from "./providers/router";
+import { AppRouter } from './providers/router';
+import { QueryProvider } from './providers/QueryProvider/QueryProvider';
+import { SessionProvider } from './providers/SessionProvider/SessionProvider';
+import { OfflineBanner } from '@/widgets/OfflineBanner/OfflineBanner';
 
 const App = () => {
-
   return (
-    <div className="app">
-      <AppRouter />
-    </div>
-  )
-  
+    <QueryProvider>
+      <SessionProvider>
+        <div className="app">
+          <OfflineBanner />
+          <AppRouter />
+        </div>
+      </SessionProvider>
+    </QueryProvider>
+  );
 };
 
 export default App;

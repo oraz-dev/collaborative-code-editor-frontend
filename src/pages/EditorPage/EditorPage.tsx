@@ -1,13 +1,22 @@
-import { useState, useCallback, memo } from 'react';
+import { useState, useCallback, memo, useMemo } from 'react';
+import { useNavigate, useParams } from 'react-router';
 import { Icons } from '@/shared/ui/Icon/Icons';
 import { AvatarStack } from '@/shared/ui/AvatarStack/AvatarStack';
 import { SegmentedControl } from '@/shared/ui/SegmentedControl/SegmentedControl';
 import { Kbd } from '@/shared/ui/Kbd/Kbd';
 import { IconButton } from '@/shared/ui/IconButton/IconButton';
-import { FILES, COMMENTS, COLLABORATORS, type CodeSegment, type FileData } from '@/shared/data/demo';
-import { Navigator } from '@/widgets/Navigator/Navigator';
-import { CodeView } from '@/widgets/CodeView/CodeView';
-import { CommentsMargin } from '@/widgets/CommentsMargin/CommentsMargin';
+import { Spinner } from '@/shared/ui/Spinner/Spinner';
+import { Button } from '@/shared/ui/Button/Button';
+import { toEditorPath, RoutePaths } from '@/shared/config/routeConfig/routeConfig';
+import { useSession } from '@/features/auth';
+import { useDocument, type WorkspaceDocument } from '@/entities/Document';
+import {
+  CollaborativeEditor,
+  ConnectionBadge,
+  presenceColorFor,
+  useCollaborativeDocument,
+} from '@/features/collaboration';
+import { DocumentTree } from '@/widgets/DocumentTree';
 import { Terminal } from '@/widgets/Terminal/Terminal';
 import { CommandPalette } from '@/widgets/CommandPalette/CommandPalette';
 import { WorkspaceSwitcher } from '@/widgets/WorkspaceSwitcher/WorkspaceSwitcher';
@@ -24,28 +33,45 @@ interface EditorPageProps {
 
 export const EditorPage = memo((props: EditorPageProps) => {
   const { onSettings } = props;
+  const { documentId } = useParams<{ documentId?: string }>();
+  const navigate = useNavigate();
+
   const [view, setView] = useState<SubView>('code');
-  const [activeFile, setActiveFile] = useState('Editor.tsx');
-  const [termOpen, setTermOpen] = useState(true);
+  const [termOpen, setTermOpen] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
-  const [fileOverrides, setFileOverrides] = useState<Record<string, CodeSegment[][]>>({});
 
-  const baseFile = FILES[activeFile] || Object.values(FILES)[0];
-  const file: FileData = fileOverrides[activeFile]
-    ? { ...baseFile, lines: fileOverrides[activeFile] }
-    : baseFile;
-  const comments = COMMENTS[activeFile] || [];
+  const { user } = useSession();
+  const documentQuery = useDocument(documentId);
+  const activeDocument = documentQuery.data;
+  const isFolder = activeDocument?.kind === 'folder';
 
-  const handleFileChange = useCallback((lines: CodeSegment[][]) => {
-    setFileOverrides(prev => ({ ...prev, [activeFile]: lines }));
-  }, [activeFile]);
+  // Presence identity for the awareness protocol.
+  const collaborator = useMemo(() => (
+    user
+      ? { id: user.id, name: user.displayName, color: presenceColorFor(user.id) }
+      : null
+  ), [user]);
+
+  const { text, awareness, status, peers, isReady, error } = useCollaborativeDocument({
+    documentId: isFolder ? null : documentId,
+    user: collaborator,
+    initialContent: activeDocument?.content,
+    // Wait for the document itself, so a fresh file is seeded from real content.
+    enabled: Boolean(activeDocument) && !isFolder,
+  });
+
+  const others = useMemo(() => peers.filter((peer) => !peer.isSelf), [peers]);
+
+  const onSelectDocument = useCallback((document: WorkspaceDocument) => {
+    navigate(toEditorPath(document.id));
+  }, [navigate]);
 
   const handleViewChange = useCallback((v: string) => {
     setView(v as SubView);
   }, []);
 
   const handleToggleTerm = useCallback(() => {
-    setTermOpen(o => !o);
+    setTermOpen((open) => !open);
   }, []);
 
   const handleCloseTerm = useCallback(() => {
@@ -60,7 +86,75 @@ export const EditorPage = memo((props: EditorPageProps) => {
     setCmdOpen(false);
   }, []);
 
-  const here = COLLABORATORS.filter(c => c.presence !== 'offline').slice(0, 4);
+  const onBackToDashboard = useCallback(() => {
+    navigate(RoutePaths.main);
+  }, [navigate]);
+
+  const renderEditorArea = () => {
+    if (!documentId) {
+      return (
+        <div className={cls.placeholder} data-testid="editor-empty">
+          <Icons.Files size={28} />
+          <p>Pick a file to start editing.</p>
+          <span className={cls.placeholderHint}>Everything you type is shared with your team instantly.</span>
+        </div>
+      );
+    }
+
+    if (documentQuery.isPending) {
+      return <div className={cls.placeholder}><Spinner size="large" /></div>;
+    }
+
+    if (documentQuery.isError) {
+      return (
+        <div className={cls.placeholder} data-testid="editor-error">
+          <p>We couldn&apos;t open that file.</p>
+          <Button
+            size="small"
+            variant="secondary"
+            onClick={() => documentQuery.refetch()}
+            isLoading={documentQuery.isFetching}
+            aria-label="Retry opening the file"
+          >
+            Try again
+          </Button>
+        </div>
+      );
+    }
+
+    if (isFolder) {
+      return (
+        <div className={cls.placeholder} data-testid="editor-folder">
+          <Icons.Folder size={28} />
+          <p>{activeDocument?.name} is a folder.</p>
+          <span className={cls.placeholderHint}>Open a file inside it to start editing.</span>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className={cls.placeholder} data-testid="editor-sync-error">
+          <p>We couldn&apos;t load this document&apos;s history.</p>
+          <span className={cls.placeholderHint}>
+            Reload the page to try again — your saved work is safe.
+          </span>
+        </div>
+      );
+    }
+
+    if (!isReady) {
+      return <div className={cls.placeholder}><Spinner size="large" /></div>;
+    }
+
+    return (
+      <CollaborativeEditor
+        text={text}
+        awareness={awareness}
+        fileName={activeDocument?.name ?? 'untitled'}
+      />
+    );
+  };
 
   return (
     <div className={cls.canvas}>
@@ -84,24 +178,52 @@ export const EditorPage = memo((props: EditorPageProps) => {
         </div>
         <div className={cls.sp} />
         <div className={cls.right}>
-          <IconButton size="sm" onClick={handleToggleTerm} aria-label="Toggle terminal"><Icons.Term size={16} /></IconButton>
-          <IconButton size="sm" onClick={onSettings} aria-label="Settings"><Icons.Settings size={16} /></IconButton>
-          <div className={cls.div} />
-          <div className={cls.here}>
-            <span className={cls.hereLbl}>{here.length} here</span>
-            <AvatarStack people={here.map(c => ({ id: c.id, name: c.name, presence: c.presence }))} max={4} size="xs" />
-          </div>
+          {activeDocument && !isFolder && (
+            <ConnectionBadge status={status} peerCount={others.length} />
+          )}
+          <IconButton size="sm" onClick={onBackToDashboard} aria-label="Back to dashboard">
+            <Icons.Grid size={16} />
+          </IconButton>
+          <IconButton size="sm" onClick={handleToggleTerm} aria-label="Toggle terminal">
+            <Icons.Term size={16} />
+          </IconButton>
+          <IconButton size="sm" onClick={onSettings} aria-label="Settings">
+            <Icons.Settings size={16} />
+          </IconButton>
+          {others.length > 0 && (
+            <>
+              <div className={cls.div} />
+              <div className={cls.here}>
+                <span className={cls.hereLbl}>{others.length} here</span>
+                <AvatarStack
+                  people={others.map((peer) => ({
+                    id: String(peer.clientId),
+                    name: peer.name,
+                    presence: 'online',
+                  }))}
+                  max={4}
+                  size="xs"
+                />
+              </div>
+            </>
+          )}
         </div>
       </div>
+
       <div className={cls.work}>
         {view === 'code' && (
           <>
-            <Navigator activeFile={activeFile} onSelectFile={setActiveFile} />
+            {user && (
+              <DocumentTree
+                ownerId={user.id}
+                activeDocumentId={documentId ?? null}
+                onSelectDocument={onSelectDocument}
+              />
+            )}
             <div className={cls.viewpanel}>
-              <CodeView file={file} activeLine={4} onFileChange={handleFileChange} />
+              {renderEditorArea()}
               <Terminal open={termOpen} onClose={handleCloseTerm} />
             </div>
-            <CommentsMargin comments={comments} />
           </>
         )}
         {view === 'search' && (
@@ -115,6 +237,7 @@ export const EditorPage = memo((props: EditorPageProps) => {
           </div>
         )}
       </div>
+
       <CommandPalette open={cmdOpen} onClose={handleCloseCmd} />
     </div>
   );
