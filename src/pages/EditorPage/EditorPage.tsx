@@ -8,6 +8,7 @@ import { IconButton } from '@/shared/ui/IconButton/IconButton';
 import { Spinner } from '@/shared/ui/Spinner/Spinner';
 import { Button } from '@/shared/ui/Button/Button';
 import { toEditorPath, RoutePaths } from '@/shared/config/routeConfig/routeConfig';
+import { useCommandPaletteHotkey } from '@/shared/lib/hotkey/useCommandPaletteHotkey';
 import { useSession } from '@/features/auth';
 import { useDocument, type WorkspaceDocument } from '@/entities/Document';
 import {
@@ -85,6 +86,8 @@ export const EditorPage = memo((props: EditorPageProps) => {
   const handleCloseCmd = useCallback(() => {
     setCmdOpen(false);
   }, []);
+
+  useCommandPaletteHotkey(handleOpenCmd);
 
   const onBackToDashboard = useCallback(() => {
     navigate(RoutePaths.main);

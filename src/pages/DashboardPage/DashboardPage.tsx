@@ -14,7 +14,9 @@ import {
   type DocumentKind,
   type WorkspaceDocument,
 } from '@/entities/Document';
+import { useCommandPaletteHotkey } from '@/shared/lib/hotkey/useCommandPaletteHotkey';
 import { AppBar } from '@/widgets/AppBar/AppBar';
+import { CommandPalette } from '@/widgets/CommandPalette/CommandPalette';
 import { DocumentCard } from '@/widgets/DocumentCard/DocumentCard';
 import cls from './DashboardPage.module.scss';
 
@@ -34,6 +36,17 @@ export const DashboardPage = memo(() => {
   const deleteMutation = useDeleteDocument();
 
   const [creatingKind, setCreatingKind] = useState<DocumentKind | null>(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  const onOpenPalette = useCallback(() => {
+    setPaletteOpen(true);
+  }, []);
+
+  const onClosePalette = useCallback(() => {
+    setPaletteOpen(false);
+  }, []);
+
+  useCommandPaletteHotkey(onOpenPalette);
 
   const documents = rootsQuery.data ?? [];
 
@@ -80,7 +93,7 @@ export const DashboardPage = memo(() => {
 
   return (
     <div className={cls.canvas}>
-      <AppBar showNew onNew={onStartFolder} />
+      <AppBar showNew onNew={onStartFolder} onCmdk={onOpenPalette} />
       <div className={cls.dash}>
         <div className={cls.wrap}>
           <div className={cls.hero}>
@@ -192,6 +205,8 @@ export const DashboardPage = memo(() => {
           </div>
         </div>
       </div>
+
+      <CommandPalette open={paletteOpen} onClose={onClosePalette} />
     </div>
   );
 });
