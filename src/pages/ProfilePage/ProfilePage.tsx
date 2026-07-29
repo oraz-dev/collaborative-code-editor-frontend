@@ -7,6 +7,8 @@ import { ACCOUNT } from '@/shared/data/demo';
 import { AppBar } from '@/widgets/AppBar/AppBar';
 import cls from './ProfilePage.module.scss';
 import { useNavigate } from 'react-router';
+import { initials } from '@/shared/lib/initials/initials';
+import { useSession } from '@/features/auth';
 
 // interface ProfilePageProps {
 //   className?: string;
@@ -14,6 +16,13 @@ import { useNavigate } from 'react-router';
 
 export const ProfilePage = memo(() => {
   const router = useNavigate();
+  const { user } = useSession();
+
+  // The auth service exposes no profile-update endpoint, so these fields show
+  // the real account but are read-only rather than silently dropping edits.
+  const displayName = user?.displayName ?? '';
+  const email = user?.email ?? '';
+  const username = user?.username ?? '';
 
   return (
     <div className={cls.canvas}>
@@ -23,12 +32,12 @@ export const ProfilePage = memo(() => {
           <div className={cls.back} onClick={() => router(-1)}><Icons.Arrow size={14} /> Back</div>
           <div className={cls.hero}>
             <div className={cls.avatarUpload}>
-              <Avatar size="xl" initials={ACCOUNT.name.split(' ').map(w => w[0]).join('').slice(0, 2)} color="var(--presence-1)" />
+              <Avatar size="xl" initials={initials(displayName || 'Unknown')} color="var(--presence-1)" />
               <div className={cls.avatarOverlay}><Icons.Upload size={18} /></div>
             </div>
             <div className={cls.heroTxt}>
-              <div className={cls.heroName}>{ACCOUNT.name}</div>
-              <div className={cls.heroEmail}>{ACCOUNT.email}</div>
+              <div className={cls.heroName} data-testid="profile-name">{displayName}</div>
+              <div className={cls.heroEmail}>{email}</div>
             </div>
           </div>
           <div className={cls.section}>
@@ -36,15 +45,15 @@ export const ProfilePage = memo(() => {
             <div className={cls.secBody}>
               <div className={cls.row}>
                 <div className={cls.rowLabel}><div className={cls.rowTitle}>Display name</div></div>
-                <div className={cls.fieldInput}><input defaultValue={ACCOUNT.name} aria-label="Display name" /></div>
+                <div className={cls.fieldInput}><input value={displayName} readOnly aria-label="Display name" /></div>
               </div>
               <div className={cls.row}>
                 <div className={cls.rowLabel}><div className={cls.rowTitle}>Email</div></div>
-                <div className={cls.fieldInput}><input defaultValue={ACCOUNT.email} aria-label="Email" /></div>
+                <div className={cls.fieldInput}><input value={email} readOnly aria-label="Email" /></div>
               </div>
               <div className={cls.row}>
                 <div className={cls.rowLabel}><div className={cls.rowTitle}>Username</div></div>
-                <div className={cls.fieldInput}><input defaultValue={ACCOUNT.name.toLowerCase().replace(' ', '.')} aria-label="Username" /></div>
+                <div className={cls.fieldInput}><input value={username} readOnly aria-label="Username" /></div>
               </div>
             </div>
           </div>
