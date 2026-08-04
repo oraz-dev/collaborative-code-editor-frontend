@@ -16,6 +16,7 @@ document routes under `/api/v1`.
 | --- | --- |
 | **Collaborator profiles come back empty** | `GET /documents/{id}/collaborators` returns `username` and `display_name` as `""`, even though auth resolves those exact ids fine via `GET /users?ids=`. The share dialog batch-resolves them client-side; once fixed, that fallback becomes a no-op. |
 | **Create returns zero-value timestamps** | `POST /documents` still answers `0001-01-01T00:00:00Z` for `created_at`/`updated_at`, so the client refetches after every create purely to learn when things happened. |
+| **Unrecognised `Origin` returns a bodyless 403** | Both services allowlist `Origin` and reject anything else with 403 and an *empty body* — only `http://localhost:3000` and `http://localhost:5173` are accepted. Any other dev port makes the whole app fail with an unexplainable error. The proxy now strips `Origin` so requests land in the accepted "no origin" case, but the allowlist should either cover local dev properly or return a body saying why. |
 | **`doc_type` is still unvalidated** | An unknown value (`"banana"`) returns `500 internal server error` rather than 400. The client restricts it to `file`/`folder` to avoid tripping this. |
 
 ## Still missing

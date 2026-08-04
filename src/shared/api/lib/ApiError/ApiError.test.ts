@@ -20,6 +20,42 @@ describe('ApiError.fromResponse', () => {
     const error = await ApiError.fromResponse(new Response('gateway down', { status: 502 }));
     expect(error.message).toBe('gateway down');
   });
+
+  test('turns a field/rule map into a readable sentence', async () => {
+    // The auth service answers validation failures with a nested object, which
+    // would otherwise stringify to "[object Object]".
+    const response = new Response(JSON.stringify({ error: { Email: 'email' } }), { status: 400 });
+    const error = await ApiError.fromResponse(response);
+
+    expect(error.message).toBe('Email must be a valid email address.');
+    expect(error.fieldErrors).toEqual({ Email: 'email' });
+  });
+
+  test('describes several failed fields at once', async () => {
+    const response = new Response(
+      JSON.stringify({ error: { Email: 'required', Password: 'min' } }),
+      { status: 400 },
+    );
+    const error = await ApiError.fromResponse(response);
+
+    expect(error.message).toBe('Email is required. Password is too short.');
+  });
+
+  test('names an unfamiliar rule rather than hiding it', async () => {
+    const response = new Response(JSON.stringify({ error: { Username: 'alphanum' } }), { status: 400 });
+    const error = await ApiError.fromResponse(response);
+
+    expect(error.message).toBe('Username is invalid (alphanum).');
+  });
+
+  test('falls back to the status for a bodyless response', async () => {
+    // Both services reject an unrecognised Origin with exactly this.
+    const error = await ApiError.fromResponse(new Response(null, { status: 403 }));
+
+    expect(error.message).toBe('Request failed with status 403');
+    expect(error.fieldErrors).toBeNull();
+    expect(error.isForbidden).toBe(true);
+  });
 });
 
 describe('ApiError.isRetryable', () => {

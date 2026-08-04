@@ -18,6 +18,16 @@ function describeError(error: unknown, mode: AuthMode): string {
   if (error.kind === 'timeout') return 'The server took too long to respond. Please try again.';
   if (error.status === 401) return 'That email and password do not match.';
   if (error.status === 409) return 'An account with that email or username already exists.';
+
+  // The server rejects unrecognised origins with a bodyless 403, which happens
+  // when the dev server is on a port the backend does not allowlist.
+  if (error.status === 403) {
+    return 'The server refused the request from this address. If you are running locally, try port 3000.';
+  }
+
+  // Field-level validation, e.g. { Email: "email" } or { Password: "min" }.
+  if (error.fieldErrors) return error.message;
+
   if (error.status === 400) {
     return mode === 'signup'
       ? 'Please check your details — all fields are required.'
