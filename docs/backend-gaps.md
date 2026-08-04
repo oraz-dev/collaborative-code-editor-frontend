@@ -1,5 +1,10 @@
 # What the backend still needs
 
+> **Status — Tier 0 is done.** Sharing, CORS and rename all shipped and are
+> wired up on the client. What remains unverified is listed under
+> "Still to confirm" at the bottom, because the **auth service is returning 502**
+> and no bearer token can be obtained while it is down.
+
 Conventions assumed throughout: `Bearer` auth, snake_case bodies, `{ "error": "..." }`
 on failure, document routes under `/api/v1`.
 
@@ -141,6 +146,28 @@ The largest and riskiest item here by a wide margin; treat as its own project.
 invoices, almost certainly a payment provider rather than something hand-rolled.
 
 ---
+
+## Still to confirm
+
+The auth service is down (502 on every route, including `/swagger`), so none of
+the following could be exercised end to end. All of it is implemented against
+the documented contract and needs a pass once auth is back:
+
+- **Role values and `can_edit`.** The ws-ticket response is typed as a plain
+  string map, so `can_edit` is read defensively as either a boolean or
+  `"true"`/`"false"`, falling back to what the role implies.
+- **`GET /users?query=`** on the auth service. Referenced by the sharing docs
+  but absent from the auth spec (which is unreachable). The client accepts both
+  a bare array and `{ users: [...] }`.
+- **Subtree inheritance** — that access granted on a folder really does reach
+  files inside it, including for `children` and `ws-ticket`.
+- **Whether the relay now sends binary frames.** If it does, the base64 layer in
+  `RelayProvider` can be deleted for ~33% less traffic. The endpoint description
+  still says messages are relayed "verbatim", which is ambiguous.
+- **CORS on the auth service**, and specifically
+  `Access-Control-Allow-Credentials: true` — the documents service sets CORS
+  correctly but does not need credentials, whereas auth does for its refresh
+  cookie. Without it, cross-origin refresh silently fails.
 
 ## Suggested order
 
