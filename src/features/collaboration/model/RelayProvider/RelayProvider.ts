@@ -34,6 +34,8 @@ export interface RelayProviderOptions {
   /** Tickets expire in ~15s, so one is minted per connection attempt. */
   mintTicket: (documentId: string) => Promise<WsTicket>;
   onStatusChange?: (status: ConnectionStatus) => void;
+  /** Fires when the ticket reveals the caller's access level. */
+  onAccessChange?: (access: { role: WsTicket['role']; canEdit: boolean }) => void;
 }
 
 /**
@@ -56,6 +58,13 @@ export class RelayProvider {
 
   private readonly mintTicket: (documentId: string) => Promise<WsTicket>;
   private readonly onStatusChange?: (status: ConnectionStatus) => void;
+  private readonly onAccessChange?: (access: { role: WsTicket['role']; canEdit: boolean }) => void;
+
+  /**
+   * A viewer's socket is receive-only — the relay drops anything it sends — so
+   * we stop transmitting rather than pushing updates into a void.
+   */
+  private canEdit = true;
 
   private ws: WebSocket | null = null;
   private status: ConnectionStatus = 'offline';
@@ -72,6 +81,7 @@ export class RelayProvider {
     this.awareness = options.awareness;
     this.mintTicket = options.mintTicket;
     this.onStatusChange = options.onStatusChange;
+    this.onAccessChange = options.onAccessChange;
 
     this.doc.on('update', this.handleDocUpdate);
     this.awareness.on('update', this.handleAwarenessUpdate);
@@ -128,6 +138,9 @@ export class RelayProvider {
 
     // A newer attempt started (or we were torn down) while minting.
     if (this.destroyed || epoch !== this.connectionEpoch) return;
+
+    this.canEdit = ticket.canEdit;
+    this.onAccessChange?.({ role: ticket.role, canEdit: ticket.canEdit });
 
     try {
       const socket = new WebSocket(resolveWebSocketUrl(this.documentId, ticket.ticket));
@@ -240,6 +253,11 @@ export class RelayProvider {
   private send(payload: Uint8Array): void {
     const socket = this.ws;
     if (socket?.readyState !== WebSocket.OPEN) return;
+
+    // The relay discards everything a viewer sends, so transmitting would only
+    // burn bandwidth. A viewer still receives fine: their starting point is the
+    // persisted state fetched over HTTP, and live edits arrive as broadcasts.
+    if (!this.canEdit) return;
 
     try {
       // base64, because the relay stringifies frames and any byte that is not

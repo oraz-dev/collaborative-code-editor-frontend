@@ -42,7 +42,8 @@ class FakeWebSocket {
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-function setup() {
+function setup(options: { canEdit?: boolean } = {}) {
+  const { canEdit = true } = options;
   const doc = new Y.Doc();
   const awareness = new Awareness(doc);
   const statuses: ConnectionStatus[] = [];
@@ -51,7 +52,12 @@ function setup() {
     documentId: 'doc-1',
     doc,
     awareness,
-    mintTicket: vi.fn(async () => ({ ticket: 'ticket-xyz', expiresInMs: 15_000 })),
+    mintTicket: vi.fn(async () => ({
+      ticket: 'ticket-xyz',
+      expiresInMs: 15_000,
+      role: canEdit ? ('editor' as const) : ('viewer' as const),
+      canEdit,
+    })),
     onStatusChange: (status) => statuses.push(status),
   });
 
@@ -146,6 +152,40 @@ describe('RelayProvider', () => {
     expect(() => socket.onmessage?.({ data: '' })).not.toThrow();
     // binary frames are not part of this protocol and must be skipped
     expect(() => socket.onmessage?.({ data: new ArrayBuffer(4) })).not.toThrow();
+
+    provider.destroy();
+  });
+
+  test('a viewer transmits nothing, since the relay drops it anyway', async () => {
+    const { doc, provider } = setup({ canEdit: false });
+    provider.connect();
+    await flush();
+
+    const socket = FakeWebSocket.instances[0];
+    socket.open();
+    await flush();
+
+    doc.getText('monaco').insert(0, 'a viewer typing locally');
+    await flush();
+
+    expect(socket.sent).toHaveLength(0);
+
+    provider.destroy();
+  });
+
+  test('an editor still transmits normally', async () => {
+    const { doc, provider } = setup({ canEdit: true });
+    provider.connect();
+    await flush();
+
+    const socket = FakeWebSocket.instances[0];
+    socket.open();
+    await flush();
+
+    doc.getText('monaco').insert(0, 'an editor typing');
+    await flush();
+
+    expect(socket.sent.length).toBeGreaterThan(0);
 
     provider.destroy();
   });

@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import * as Y from 'yjs';
 import { Awareness } from 'y-protocols/awareness';
-import { fetchYjsState, mintWsTicket, saveYjsState, updateDocumentContent } from '@/entities/Document';
+import {
+  fetchYjsState,
+  mintWsTicket,
+  saveYjsState,
+  updateDocumentContent,
+  type DocumentRole,
+} from '@/entities/Document';
 import { logger } from '@/shared/lib/logger/logger';
 import { RelayProvider, type ConnectionStatus } from '../RelayProvider/RelayProvider';
 import { readPeers, type AwarenessUser, type PresencePeer } from '../presence/presence';
@@ -42,6 +48,9 @@ export interface CollaborativeDocument {
   peers: PresencePeer[];
   isReady: boolean;
   error: Error | null;
+  /** The caller's access level, learned from the ws-ticket. */
+  role: DocumentRole;
+  canEdit: boolean;
 }
 
 export function useCollaborativeDocument(
@@ -54,6 +63,12 @@ export function useCollaborativeDocument(
   const [peers, setPeers] = useState<PresencePeer[]>(NO_PEERS);
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  // Assume write access until the ticket says otherwise, so the common case
+  // never flickers into a read-only state on open.
+  const [access, setAccess] = useState<{ role: DocumentRole; canEdit: boolean }>({
+    role: 'editor',
+    canEdit: true,
+  });
 
   // Read once during bootstrap; kept in refs so a changing identity or a
   // late-arriving content string never tears the live document down.
@@ -74,6 +89,10 @@ export function useCollaborativeDocument(
     if (!documentId || !enabled) return;
 
     let disposed = false;
+    // Mirrors the state below so the persistence closures can read the latest
+    // value without being rebuilt when access resolves.
+    let canPersist = true;
+
     const ydoc = new Y.Doc();
     const ytext = ydoc.getText(SHARED_TEXT_KEY);
     const yawareness = new Awareness(ydoc);
@@ -85,6 +104,10 @@ export function useCollaborativeDocument(
       mintTicket: mintWsTicket,
       onStatusChange: (next) => {
         if (!disposed) setStatus(next);
+      },
+      onAccessChange: (next) => {
+        canPersist = next.canEdit;
+        if (!disposed) setAccess(next);
       },
     });
 
@@ -107,6 +130,9 @@ export function useCollaborativeDocument(
         clearTimeout(persistTimer);
         persistTimer = null;
       }
+
+      // A viewer has no write access; both of these would come back 403.
+      if (!canPersist) return;
 
       try {
         await Promise.all([
@@ -171,7 +197,9 @@ export function useCollaborativeDocument(
         (clientId) => clientId !== ydoc.clientID,
       );
 
-      if (ytext.length === 0 && seed.length > 0 && !hasRemotePeers) {
+      // Seeding is a write, so a viewer must never do it — otherwise opening a
+      // shared empty file would try to author its first revision.
+      if (canPersist && ytext.length === 0 && seed.length > 0 && !hasRemotePeers) {
         ytext.insert(0, seed);
         void persistNow();
       }
@@ -227,5 +255,7 @@ export function useCollaborativeDocument(
     peers: isActive ? peers : NO_PEERS,
     isReady: isActive && isReady,
     error: isActive ? error : null,
+    role: access.role,
+    canEdit: access.canEdit,
   };
 }
