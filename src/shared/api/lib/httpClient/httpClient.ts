@@ -16,7 +16,7 @@ let refreshPromise: Promise<string | null> | null = null;
 
 async function requestNewAccessToken(): Promise<string | null> {
   try {
-    const response = await fetch(`${AUTH_BASE_URL}/refresh`, {
+    const response = await fetch(`${AUTH_BASE_URL}/auth/refresh`, {
       method: 'POST',
       // the refresh token is an HttpOnly cookie; it only travels with this
       credentials: 'include',

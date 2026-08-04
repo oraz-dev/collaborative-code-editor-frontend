@@ -7,6 +7,13 @@ Two services back this app:
 | Auth      | `http://31.57.26.155:8080`   | `/api/auth`  |
 | Documents | `http://31.57.26.155/api/v1` | `/api/v1`    |
 
+**`/api/auth` maps to the auth service root, not to `/auth`.** Its swagger
+`basePath` is `/`, and it mounts sessions under `/auth/…` but user lookup at
+`/users` — so the proxy strips the prefix entirely and call sites pass the full
+upstream path (`/auth/login`, `/auth/me`, `/users?query=`). Rewriting the prefix
+to `/auth` instead would 404 every `/users` request.
+`VITE_AUTH_BASE_URL` therefore also points at the service root.
+
 Swagger: [auth](http://31.57.26.155:8080/swagger/index.html) · [documents](http://31.57.26.155/swagger/index.html)
 
 ## CORS and the proxy

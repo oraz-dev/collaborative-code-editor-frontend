@@ -24,7 +24,7 @@ interface TokenResponseDto {
  * session and triggering a pointless refresh round-trip.
  */
 export async function login(credentials: LoginCredentials): Promise<string> {
-  const data = await authHttp<TokenResponseDto>('/login', {
+  const data = await authHttp<TokenResponseDto>('/auth/login', {
     method: 'POST',
     body: credentials,
     auth: false,
@@ -40,7 +40,7 @@ export async function login(credentials: LoginCredentials): Promise<string> {
 
 /** Creates the account. The service does not return tokens, so callers sign in after. */
 export async function register(payload: RegisterPayload): Promise<User> {
-  const dto = await authHttp<UserResponseDto>('/register', {
+  const dto = await authHttp<UserResponseDto>('/auth/register', {
     method: 'POST',
     body: {
       email: payload.email,
@@ -57,7 +57,7 @@ export async function register(payload: RegisterPayload): Promise<User> {
 /** Best-effort: the local session is dropped even if the server call fails. */
 export async function logout(): Promise<void> {
   try {
-    await authHttp<void>('/logout', { method: 'POST' });
+    await authHttp<void>('/auth/logout', { method: 'POST' });
   } finally {
     tokenStore.clear();
   }
@@ -65,7 +65,7 @@ export async function logout(): Promise<void> {
 
 export async function logoutAllDevices(): Promise<void> {
   try {
-    await authHttp<void>('/logout-all', { method: 'POST' });
+    await authHttp<void>('/auth/logout-all', { method: 'POST' });
   } finally {
     tokenStore.clear();
   }

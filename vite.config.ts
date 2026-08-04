@@ -10,7 +10,10 @@ import svgr from 'vite-plugin-svgr';
  * `Secure` refresh cookie be stored — localhost counts as a trustworthy
  * origin, so the cookie survives even though the upstream is http://.
  *
- * /api/auth/* -> auth service     (:8080/auth/*)
+ * /api/auth/* -> auth service ROOT (:8080/*), not :8080/auth/*. The service
+ *                mounts sessions under /auth/… but user lookup at /users, so
+ *                the prefix is stripped entirely and callers pass the full
+ *                upstream path.
  * /api/v1/*   -> document service (:80/api/v1/*), including the ws upgrade
  */
 const AUTH_TARGET = process.env.VITE_AUTH_TARGET ?? 'http://31.57.26.155:8080';
@@ -33,7 +36,7 @@ export default defineConfig({
       '/api/auth': {
         target: AUTH_TARGET,
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/auth/, '/auth'),
+        rewrite: (path) => path.replace(/^\/api\/auth/, ''),
       },
       '/api/v1': {
         target: DOCS_TARGET,

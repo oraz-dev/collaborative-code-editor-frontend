@@ -4,6 +4,10 @@
  * cross-origin from the browser is not possible — in production these must
  * point at a same-origin gateway (or the services must start sending CORS).
  */
+/**
+ * The auth service ROOT, not its `/auth` prefix — sessions live under
+ * `/auth/…` but user lookup is at `/users`, so call sites pass the full path.
+ */
 export const AUTH_BASE_URL = import.meta.env.VITE_AUTH_BASE_URL ?? '/api/auth';
 export const DOCS_BASE_URL = import.meta.env.VITE_DOCS_BASE_URL ?? '/api/v1';
 
