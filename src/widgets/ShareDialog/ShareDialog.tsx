@@ -8,7 +8,7 @@ import { Spinner } from '@/shared/ui/Spinner/Spinner';
 import { Icons } from '@/shared/ui/Icon/Icons';
 import { initials } from '@/shared/lib/initials/initials';
 import { isApiError } from '@/shared/api';
-import { useUserSearch, type User } from '@/entities/User';
+import { useUserSearch, useUsersByIds, type User } from '@/entities/User';
 import {
   useCollaborators,
   useRemoveCollaborator,
@@ -58,7 +58,33 @@ export const ShareDialog = memo((props: ShareDialogProps) => {
   const roleMutation = useUpdateCollaboratorRole();
   const removeMutation = useRemoveCollaborator();
 
-  const collaborators = collaboratorsQuery.data ?? [];
+  const rawCollaborators = collaboratorsQuery.data ?? [];
+
+  // The document service returns collaborators with empty username and
+  // display_name, so anyone unresolved is looked up in a single batch against
+  // the auth service rather than being rendered as a bare uuid.
+  const unresolvedIds = useMemo(
+    () => rawCollaborators.filter((entry) => !entry.username).map((entry) => entry.userId),
+    [rawCollaborators],
+  );
+  const profilesQuery = useUsersByIds(unresolvedIds, open);
+
+  const collaborators = useMemo(() => {
+    const profiles = new Map((profilesQuery.data ?? []).map((user) => [user.id, user]));
+    if (profiles.size === 0) return rawCollaborators;
+
+    return rawCollaborators.map((entry) => {
+      const profile = profiles.get(entry.userId);
+      if (!profile) return entry;
+      return {
+        ...entry,
+        username: entry.username || profile.username,
+        displayName: profile.displayName || entry.displayName,
+        avatarUrl: entry.avatarUrl ?? profile.avatarUrl,
+      };
+    });
+  }, [profilesQuery.data, rawCollaborators]);
+
   const existingIds = useMemo(
     () => new Set(collaborators.map((entry) => entry.userId)),
     [collaborators],
