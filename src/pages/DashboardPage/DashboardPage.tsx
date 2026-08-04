@@ -11,6 +11,7 @@ import {
   useCreateDocument,
   useDeleteDocument,
   useDocumentRoots,
+  useSharedDocuments,
   type DocumentKind,
   type WorkspaceDocument,
 } from '@/entities/Document';
@@ -32,6 +33,7 @@ export const DashboardPage = memo(() => {
   const { user } = useSession();
 
   const rootsQuery = useDocumentRoots();
+  const sharedQuery = useSharedDocuments();
   const createMutation = useCreateDocument();
   const deleteMutation = useDeleteDocument();
 
@@ -175,6 +177,30 @@ export const DashboardPage = memo(() => {
             </div>
 
             <div className={cls.side}>
+              {(sharedQuery.data?.length ?? 0) > 0 && (
+                <div className={cls.cardSoft} data-testid="shared-with-me">
+                  <div className={cls.cardHead}>
+                    <span className={cls.cardTitle}>Shared with me</span>
+                  </div>
+                  {sharedQuery.data?.map((document) => (
+                    <div
+                      className={cls.actrow}
+                      key={document.id}
+                      onClick={() => onOpenDocument(document)}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Open ${document.name}`}
+                    >
+                      <span className={cls.sideIcon} aria-hidden="true">
+                        {document.kind === 'folder' ? <Icons.Folder size={14} /> : <Icons.Files size={14} />}
+                      </span>
+                      <div className={cls.actTxt}><b>{document.name}</b></div>
+                      <span className={cls.actTime}>{relativeTime(document.updatedAt)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div className={cls.cardSoft}>
                 <div className={cls.cardHead}>
                   <span className={cls.cardTitle}>Recently updated</span>

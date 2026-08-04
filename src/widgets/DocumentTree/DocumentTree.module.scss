@@ -68,3 +68,13 @@
   color: var(--ink-500, #78716c);
   font-size: 12.5px;
 }
+
+.sectionHead {
+  margin: 12px 0 4px;
+  padding: 0 8px;
+  color: var(--ink-500, #78716c);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}

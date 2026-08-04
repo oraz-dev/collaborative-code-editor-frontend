@@ -18,6 +18,7 @@ import {
   useCollaborativeDocument,
 } from '@/features/collaboration';
 import { DocumentTree } from '@/widgets/DocumentTree';
+import { ShareDialog } from '@/widgets/ShareDialog';
 import { Terminal } from '@/widgets/Terminal/Terminal';
 import { CommandPalette } from '@/widgets/CommandPalette/CommandPalette';
 import { WorkspaceSwitcher } from '@/widgets/WorkspaceSwitcher/WorkspaceSwitcher';
@@ -40,6 +41,7 @@ export const EditorPage = memo((props: EditorPageProps) => {
   const [view, setView] = useState<SubView>('code');
   const [termOpen, setTermOpen] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const { user } = useSession();
   const documentQuery = useDocument(documentId);
@@ -53,7 +55,7 @@ export const EditorPage = memo((props: EditorPageProps) => {
       : null
   ), [user]);
 
-  const { text, awareness, status, peers, isReady, error } = useCollaborativeDocument({
+  const { text, awareness, status, peers, isReady, error, canEdit } = useCollaborativeDocument({
     documentId: isFolder ? null : documentId,
     user: collaborator,
     initialContent: activeDocument?.content,
@@ -85,6 +87,14 @@ export const EditorPage = memo((props: EditorPageProps) => {
 
   const handleCloseCmd = useCallback(() => {
     setCmdOpen(false);
+  }, []);
+
+  const onOpenShare = useCallback(() => {
+    setShareOpen(true);
+  }, []);
+
+  const onCloseShare = useCallback(() => {
+    setShareOpen(false);
   }, []);
 
   useCommandPaletteHotkey(handleOpenCmd);
@@ -155,6 +165,7 @@ export const EditorPage = memo((props: EditorPageProps) => {
         text={text}
         awareness={awareness}
         fileName={activeDocument?.name ?? 'untitled'}
+        readOnly={!canEdit}
       />
     );
   };
@@ -182,7 +193,19 @@ export const EditorPage = memo((props: EditorPageProps) => {
         <div className={cls.sp} />
         <div className={cls.right}>
           {activeDocument && !isFolder && (
-            <ConnectionBadge status={status} peerCount={others.length} />
+            <>
+              <ConnectionBadge status={status} peerCount={others.length} />
+              {!canEdit && (
+                <span className={cls.viewOnly} title="You have view-only access to this document">
+                  View only
+                </span>
+              )}
+            </>
+          )}
+          {activeDocument && (
+            <IconButton size="sm" onClick={onOpenShare} aria-label="Share this document">
+              <Icons.Share size={16} />
+            </IconButton>
           )}
           <IconButton size="sm" onClick={onBackToDashboard} aria-label="Back to dashboard">
             <Icons.Grid size={16} />
@@ -242,6 +265,14 @@ export const EditorPage = memo((props: EditorPageProps) => {
       </div>
 
       <CommandPalette open={cmdOpen} onClose={handleCloseCmd} />
+
+      <ShareDialog
+        open={shareOpen}
+        onClose={onCloseShare}
+        document={activeDocument ?? null}
+        isOwner={Boolean(user && activeDocument && activeDocument.ownerId === user.id)}
+        currentUserId={user?.id ?? null}
+      />
     </div>
   );
 });

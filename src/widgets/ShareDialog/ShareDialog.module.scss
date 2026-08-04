@@ -1,0 +1,161 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.note {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--surface-800, #292524);
+  color: var(--ink-400, #a8a29e);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.invite {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.inviteRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.inviteInput {
+  flex: 1;
+  min-width: 0;
+}
+
+.roleSelect {
+  width: 128px;
+  flex-shrink: 0;
+}
+
+.searchState {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 2px;
+  font-size: 12.5px;
+}
+
+.results {
+  display: flex;
+  max-height: 180px;
+  flex-direction: column;
+  overflow-y: auto;
+  border: 1px solid var(--line-800, #292524);
+  border-radius: 8px;
+}
+
+.result,
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  min-width: 0;
+}
+
+.result + .result {
+  border-top: 1px solid var(--line-800, #292524);
+}
+
+.resultText,
+.rowText {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.resultName,
+.rowName {
+  overflow: hidden;
+  color: var(--ink-100, #fafaf9);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resultSub,
+.rowSub {
+  overflow: hidden;
+  color: var(--ink-500, #78716c);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.you {
+  color: var(--ink-500, #78716c);
+}
+
+.listHead {
+  color: var(--ink-500, #78716c);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.list {
+  display: flex;
+  max-height: 240px;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.ownerTag,
+.roleTag {
+  flex-shrink: 0;
+  color: var(--ink-500, #78716c);
+  font-size: 12px;
+}
+
+.revoke {
+  display: inline-flex;
+  flex-shrink: 0;
+  padding: 5px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ink-500, #78716c);
+  cursor: pointer;
+}
+
+.revoke:hover {
+  background: var(--surface-800, #292524);
+  color: var(--coral-400, #f87171);
+}
+
+.muted {
+  margin: 0;
+  color: var(--ink-500, #78716c);
+  font-size: 12.5px;
+}
+
+.error {
+  color: var(--coral-400, #f87171);
+}
+
+.errorBox {
+  padding: 8px 10px;
+  border: 1px solid var(--coral-500, #ef4444);
+  border-radius: 8px;
+  color: var(--coral-300, #fca5a5);
+  font-size: 12.5px;
+}
+
+.leave {
+  display: flex;
+  justify-content: flex-start;
+  padding-top: 4px;
+  border-top: 1px solid var(--line-800, #292524);
+}

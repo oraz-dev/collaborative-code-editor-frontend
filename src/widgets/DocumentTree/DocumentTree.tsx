@@ -3,13 +3,16 @@ import { Icons } from '@/shared/ui/Icon/Icons';
 import { Spinner } from '@/shared/ui/Spinner/Spinner';
 import { Button } from '@/shared/ui/Button/Button';
 import { classNames } from '@/shared/lib/classNames/classNames';
+import { InlineNameInput } from '@/shared/ui/InlineNameInput/InlineNameInput';
 import {
   useCreateDocument,
   useDeleteDocument,
   useDocumentRoots,
+  useRenameDocument,
+  useSharedDocuments,
   type WorkspaceDocument,
 } from '@/entities/Document';
-import { InlineNameInput } from '@/shared/ui/InlineNameInput/InlineNameInput';
+import { ShareDialog } from '@/widgets/ShareDialog';
 import { DocumentTreeNode, type TreeCreationTarget } from './ui/DocumentTreeNode/DocumentTreeNode';
 import cls from './DocumentTree.module.scss';
 
@@ -24,15 +27,22 @@ interface DocumentTreeProps {
  * The workspace file tree. Roots load up front and each folder fetches its own
  * children when opened, so a large workspace never blocks the first paint and
  * a failed branch can retry without touching the rest of the tree.
+ *
+ * Documents other people shared are listed separately — they live inside the
+ * owner's tree, so they would never appear among this user's roots.
  */
 export const DocumentTree = memo((props: DocumentTreeProps) => {
   const { className, ownerId, activeDocumentId, onSelectDocument } = props;
 
   const rootsQuery = useDocumentRoots();
+  const sharedQuery = useSharedDocuments();
   const createMutation = useCreateDocument();
   const deleteMutation = useDeleteDocument();
+  const renameMutation = useRenameDocument();
 
   const [creating, setCreating] = useState<TreeCreationTarget | null>(null);
+  const [renaming, setRenaming] = useState<WorkspaceDocument | null>(null);
+  const [sharing, setSharing] = useState<WorkspaceDocument | null>(null);
 
   const onStartCreate = useCallback((target: TreeCreationTarget) => {
     setCreating(target);
@@ -50,11 +60,34 @@ export const DocumentTree = memo((props: DocumentTreeProps) => {
       kind: creating.kind,
       ownerId,
       parentId: creating.parentId,
-      // A brand-new file starts empty; the editor seeds CRDT state on open.
       content: '',
     });
     setCreating(null);
   }, [creating, createMutation, ownerId]);
+
+  const onStartRename = useCallback((document: WorkspaceDocument) => {
+    setRenaming(document);
+  }, []);
+
+  const onCancelRename = useCallback(() => {
+    setRenaming(null);
+  }, []);
+
+  const onSubmitRename = useCallback((name: string) => {
+    if (!renaming) return;
+    if (name !== renaming.name) {
+      renameMutation.mutate({ document: renaming, name });
+    }
+    setRenaming(null);
+  }, [renameMutation, renaming]);
+
+  const onShare = useCallback((document: WorkspaceDocument) => {
+    setSharing(document);
+  }, []);
+
+  const onCloseShare = useCallback(() => {
+    setSharing(null);
+  }, []);
 
   const onDelete = useCallback((document: WorkspaceDocument) => {
     deleteMutation.mutate({ documentId: document.id, parentId: document.parentId });
@@ -69,25 +102,31 @@ export const DocumentTree = memo((props: DocumentTreeProps) => {
   }, []);
 
   const isCreatingAtRoot = creating?.parentId === null;
+  const shared = sharedQuery.data ?? [];
+
+  const nodeHandlers = {
+    currentUserId: ownerId,
+    creating,
+    renamingId: renaming?.id ?? null,
+    onSelect: onSelectDocument,
+    onDelete,
+    onShare,
+    onStartCreate,
+    onSubmitCreate,
+    onCancelCreate,
+    onStartRename,
+    onSubmitRename,
+    onCancelRename,
+  };
 
   return (
     <div className={classNames(cls.root, {}, [className])} data-testid="document-tree">
       <div className={cls.head}>
         <span className={cls.title}>Files</span>
-        <button
-          type="button"
-          className={cls.action}
-          onClick={onNewRootFile}
-          aria-label="New file"
-        >
+        <button type="button" className={cls.action} onClick={onNewRootFile} aria-label="New file">
           <Icons.Plus size={13} />
         </button>
-        <button
-          type="button"
-          className={cls.action}
-          onClick={onNewRootFolder}
-          aria-label="New folder"
-        >
+        <button type="button" className={cls.action} onClick={onNewRootFolder} aria-label="New folder">
           <Icons.Folder size={13} />
         </button>
       </div>
@@ -118,12 +157,7 @@ export const DocumentTree = memo((props: DocumentTreeProps) => {
             document={document}
             depth={0}
             activeDocumentId={activeDocumentId}
-            creating={creating}
-            onSelect={onSelectDocument}
-            onDelete={onDelete}
-            onStartCreate={onStartCreate}
-            onSubmitCreate={onSubmitCreate}
-            onCancelCreate={onCancelCreate}
+            {...nodeHandlers}
           />
         ))}
 
@@ -146,7 +180,30 @@ export const DocumentTree = memo((props: DocumentTreeProps) => {
             </Button>
           </div>
         )}
+
+        {shared.length > 0 && (
+          <>
+            <div className={cls.sectionHead}>Shared with me</div>
+            {shared.map((document) => (
+              <DocumentTreeNode
+                key={document.id}
+                document={document}
+                depth={0}
+                activeDocumentId={activeDocumentId}
+                {...nodeHandlers}
+              />
+            ))}
+          </>
+        )}
       </div>
+
+      <ShareDialog
+        open={Boolean(sharing)}
+        onClose={onCloseShare}
+        document={sharing}
+        isOwner={sharing?.ownerId === ownerId}
+        currentUserId={ownerId}
+      />
     </div>
   );
 });
