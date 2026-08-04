@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import * as Y from 'yjs';
 import { Awareness } from 'y-protocols/awareness';
-import { base64ToBytes } from '@/shared/lib/base64/base64';
+import { bytesToBase64 } from '@/shared/lib/base64/base64';
 import { RelayProvider, type ConnectionStatus } from './RelayProvider';
 
 /** Minimal stand-in for the browser WebSocket, capturing what gets sent. */
@@ -13,7 +13,7 @@ class FakeWebSocket {
 
   url: string;
   readyState = 0;
-  sent: string[] = [];
+  sent: ArrayBuffer[] = [];
   binaryType = 'blob';
 
   onopen: (() => void) | null = null;
@@ -26,7 +26,7 @@ class FakeWebSocket {
     FakeWebSocket.instances.push(this);
   }
 
-  send(data: string) {
+  send(data: ArrayBuffer) {
     this.sent.push(data);
   }
 
@@ -86,9 +86,8 @@ describe('RelayProvider', () => {
     provider.destroy();
   });
 
-  test('sends only base64 text, never raw binary', async () => {
-    // The relay re-emits frames as text and drops peers on non-UTF-8 bytes,
-    // so every outgoing protocol message has to be base64.
+  test('sends raw binary frames', async () => {
+    // The relay forwards binary byte-exact now, so no base64 round trip.
     const { doc, provider } = setup();
     provider.connect();
     await flush();
@@ -101,11 +100,18 @@ describe('RelayProvider', () => {
 
     expect(socket.sent.length).toBeGreaterThan(0);
     socket.sent.forEach((frame) => {
-      expect(typeof frame).toBe('string');
-      expect(frame).toMatch(/^[A-Za-z0-9+/]*={0,2}$/);
-      // and it must decode back to bytes
-      expect(() => base64ToBytes(frame)).not.toThrow();
+      expect(frame).toBeInstanceOf(ArrayBuffer);
     });
+
+    provider.destroy();
+  });
+
+  test('requests arraybuffer frames so they can be read synchronously', async () => {
+    const { provider } = setup();
+    provider.connect();
+    await flush();
+
+    expect(FakeWebSocket.instances[0].binaryType).toBe('arraybuffer');
 
     provider.destroy();
   });
@@ -120,9 +126,27 @@ describe('RelayProvider', () => {
     await flush();
 
     // message type is the first varint: 0 = sync, 1 = awareness
-    const messageTypes = socket.sent.map((frame) => base64ToBytes(frame)[0]);
+    const messageTypes = socket.sent.map((frame) => new Uint8Array(frame)[0]);
     expect(messageTypes).toContain(0);
     expect(messageTypes).toContain(1);
+
+    provider.destroy();
+  });
+
+  test('still understands a base64 text frame from an older client', async () => {
+    // Kept so a rollout does not need a flag day.
+    const { doc, provider } = setup();
+    provider.connect();
+    await flush();
+
+    const socket = FakeWebSocket.instances[0];
+    socket.open();
+    await flush();
+
+    // A sync-step-1 from a peer, base64-encoded the old way.
+    const legacy = bytesToBase64(new Uint8Array([0, 0, 1, 0]));
+    expect(() => socket.onmessage?.({ data: legacy })).not.toThrow();
+    expect(doc.getText('monaco').toString()).toBe('');
 
     provider.destroy();
   });
@@ -150,7 +174,7 @@ describe('RelayProvider', () => {
 
     expect(() => socket.onmessage?.({ data: '!!!not base64!!!' })).not.toThrow();
     expect(() => socket.onmessage?.({ data: '' })).not.toThrow();
-    // binary frames are not part of this protocol and must be skipped
+    // a truncated/garbage binary frame must not take the connection down
     expect(() => socket.onmessage?.({ data: new ArrayBuffer(4) })).not.toThrow();
 
     provider.destroy();

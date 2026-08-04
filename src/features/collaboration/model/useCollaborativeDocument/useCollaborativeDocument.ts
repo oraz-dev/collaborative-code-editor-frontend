@@ -24,6 +24,17 @@ const SEED_GRACE_PERIOD_MS = 1_200;
 /** Persistence is debounced; typing should not mean a request per keystroke. */
 const PERSIST_DEBOUNCE_MS = 2_000;
 
+/**
+ * How often a viewer re-pulls the saved state.
+ *
+ * A viewer's socket is send-blocked by the relay, so they cannot ask peers for
+ * a sync. If they joined against a snapshot older than the edits now arriving,
+ * Yjs holds those updates pending and the text would quietly stop moving.
+ * Re-reading the snapshot supplies the missing base and the pending updates
+ * integrate themselves.
+ */
+const VIEWER_RESYNC_INTERVAL_MS = 15_000;
+
 const NO_PEERS: PresencePeer[] = [];
 
 interface DocumentSession {
@@ -124,6 +135,7 @@ export function useCollaborativeDocument(
     // --- durable state -----------------------------------------------------
 
     let persistTimer: ReturnType<typeof setTimeout> | null = null;
+    let resyncTimer: ReturnType<typeof setInterval> | null = null;
 
     const persistNow = async () => {
       if (persistTimer) {
@@ -208,6 +220,21 @@ export function useCollaborativeDocument(
       window.addEventListener('beforeunload', flushPending);
       document.addEventListener('visibilitychange', flushOnHide);
 
+      resyncTimer = setInterval(() => {
+        // Editors keep up through the socket; only a send-blocked viewer needs this.
+        if (canPersist || document.visibilityState === 'hidden') return;
+
+        fetchYjsState(documentId)
+          .then((state) => {
+            if (!disposed && state && state.length > 0) {
+              Y.applyUpdate(ydoc, state, 'persisted');
+            }
+          })
+          .catch((resyncError) => {
+            logger.warn('Viewer resync failed', resyncError);
+          });
+      }, VIEWER_RESYNC_INTERVAL_MS);
+
       setIsReady(true);
       syncPeers();
     };
@@ -226,6 +253,8 @@ export function useCollaborativeDocument(
       yawareness.off('change', syncPeers);
       window.removeEventListener('beforeunload', flushPending);
       document.removeEventListener('visibilitychange', flushOnHide);
+
+      if (resyncTimer) clearInterval(resyncTimer);
 
       // Write out anything still sitting in the debounce window.
       if (persistTimer) {

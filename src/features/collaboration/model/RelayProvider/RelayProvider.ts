@@ -8,7 +8,7 @@ import {
   type Awareness,
 } from 'y-protocols/awareness';
 import { messageYjsSyncStep1, readSyncMessage, writeSyncStep1, writeUpdate } from 'y-protocols/sync';
-import { bytesToBase64, base64ToBytes } from '@/shared/lib/base64/base64';
+import { base64ToBytes } from '@/shared/lib/base64/base64';
 import { logger } from '@/shared/lib/logger/logger';
 import { resolveWebSocketUrl } from '@/shared/api';
 import type { WsTicket } from '@/entities/Document';
@@ -144,6 +144,8 @@ export class RelayProvider {
 
     try {
       const socket = new WebSocket(resolveWebSocketUrl(this.documentId, ticket.ticket));
+      // Without this the browser hands us Blobs, which cannot be read synchronously.
+      socket.binaryType = 'arraybuffer';
       this.ws = socket;
 
       socket.onopen = () => {
@@ -260,9 +262,17 @@ export class RelayProvider {
     if (!this.canEdit) return;
 
     try {
-      // base64, because the relay stringifies frames and any byte that is not
-      // valid UTF-8 disconnects the peers receiving it.
-      socket.send(bytesToBase64(payload));
+      // The relay forwards binary frames byte-exact, so protocol messages go
+      // out as bytes. (It used to stringify every frame, which corrupted any
+      // non-UTF-8 byte and dropped the receiving peer — hence the base64
+      // decoding still accepted in handleMessage.)
+      //
+      // Yjs types its output as Uint8Array<ArrayBufferLike>, which is not a
+      // valid BufferSource, so the bytes are copied into a plain buffer —
+      // negligible at protocol-message sizes.
+      const frame = new Uint8Array(payload.byteLength);
+      frame.set(payload);
+      socket.send(frame.buffer);
     } catch (error) {
       logger.warn('Failed to send a collaboration message', error);
     }
@@ -285,16 +295,34 @@ export class RelayProvider {
     this.send(encoding.toUint8Array(encoder));
   }
 
-  private handleMessage(data: unknown): void {
-    if (typeof data !== 'string' || data.length === 0) return;
-
-    let payload: Uint8Array;
-    try {
-      payload = base64ToBytes(data);
-    } catch {
-      logger.warn('Discarded a malformed collaboration frame');
-      return;
+  /**
+   * Accepts either frame encoding. Binary is what the relay sends now; the
+   * base64 text path stays so a client still running the previous build stays
+   * interoperable during a rollout, and can be dropped once none are left.
+   */
+  private decodeFrame(data: unknown): Uint8Array | null {
+    if (data instanceof ArrayBuffer) return new Uint8Array(data);
+    if (ArrayBuffer.isView(data)) {
+      const view = data as ArrayBufferView;
+      return new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
     }
+
+    if (typeof data === 'string') {
+      if (data.length === 0) return null;
+      try {
+        return base64ToBytes(data);
+      } catch {
+        logger.warn('Discarded a malformed collaboration frame');
+        return null;
+      }
+    }
+
+    return null;
+  }
+
+  private handleMessage(data: unknown): void {
+    const payload = this.decodeFrame(data);
+    if (!payload || payload.length === 0) return;
 
     try {
       const decoder = decoding.createDecoder(payload);
