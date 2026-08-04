@@ -1,5 +1,6 @@
 import { docsHttp } from '@/shared/api';
 import { base64ToBytes } from '@/shared/lib/base64/base64';
+import { canEditWithRole, toDocumentRole, type DocumentRole } from '../model/types/collaborator';
 import {
   mapDocument,
   mapDocuments,
@@ -19,10 +20,27 @@ export interface CreateDocumentInput {
 export interface WsTicket {
   ticket: string;
   expiresInMs: number;
+  /** The caller's access level on this document. */
+  role: DocumentRole;
+  /** False for a viewer: the relay drops anything their connection sends. */
+  canEdit: boolean;
 }
 
 export async function fetchRootDocuments(signal?: AbortSignal): Promise<WorkspaceDocument[]> {
   const dtos = await docsHttp<DocumentDto[]>('/documents/roots', { method: 'GET', signal });
+  return mapDocuments(dtos);
+}
+
+/**
+ * Documents someone else shared with you. The counterpart to /roots: a shared
+ * document usually sits inside the owner's folder, so it has a parent and would
+ * never show up as a root of yours.
+ */
+export async function fetchSharedDocuments(signal?: AbortSignal): Promise<WorkspaceDocument[]> {
+  const dtos = await docsHttp<DocumentDto[]>('/documents/shared-with-me', {
+    method: 'GET',
+    signal,
+  });
   return mapDocuments(dtos);
 }
 
@@ -66,6 +84,14 @@ export async function createDocument(input: CreateDocumentInput): Promise<Worksp
   });
 
   return mapDocument(dto);
+}
+
+/** Renames a file or folder. Owner only. */
+export async function renameDocument(documentId: string, name: string): Promise<void> {
+  await docsHttp<unknown>(`/documents/${documentId}`, {
+    method: 'PATCH',
+    body: { doc_name: name },
+  });
 }
 
 export async function updateDocumentContent(documentId: string, content: string): Promise<void> {
@@ -124,14 +150,31 @@ export async function saveYjsState(documentId: string, state: Uint8Array): Promi
  * ticket is minted per connection attempt rather than cached.
  */
 export async function mintWsTicket(documentId: string): Promise<WsTicket> {
-  const data = await docsHttp<{ ticket?: string; expires_in_ms?: number }>(
-    `/documents/${documentId}/ws-ticket`,
-    { method: 'POST' },
-  );
+  const data = await docsHttp<{
+    ticket?: string;
+    expires_in_ms?: number | string;
+    role?: string;
+    can_edit?: boolean | string;
+  }>(`/documents/${documentId}/ws-ticket`, { method: 'POST' });
 
   if (!data?.ticket) {
     throw new Error('The server did not return a collaboration ticket.');
   }
 
-  return { ticket: data.ticket, expiresInMs: data.expires_in_ms ?? 15_000 };
+  const role = toDocumentRole(data.role);
+
+  // The response is typed as a string map, so `can_edit` may arrive either as
+  // a real boolean or as "true"/"false". Fall back to what the role implies.
+  const canEdit = typeof data.can_edit === 'boolean'
+    ? data.can_edit
+    : typeof data.can_edit === 'string'
+      ? data.can_edit === 'true'
+      : canEditWithRole(role);
+
+  return {
+    ticket: data.ticket,
+    expiresInMs: Number(data.expires_in_ms) || 15_000,
+    role,
+    canEdit,
+  };
 }

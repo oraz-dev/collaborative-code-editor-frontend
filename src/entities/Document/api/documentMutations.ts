@@ -5,6 +5,7 @@ import {
   createDocument,
   deleteDocument,
   moveDocument,
+  renameDocument,
   updateDocumentContent,
   type CreateDocumentInput,
 } from './documentApi';
@@ -152,6 +153,52 @@ export function useMoveDocument() {
     onSettled: (_data, _error, { document, newParentId }) => {
       queryClient.invalidateQueries({ queryKey: siblingListKey(document.parentId) });
       queryClient.invalidateQueries({ queryKey: siblingListKey(newParentId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.document(document.id) });
+    },
+  });
+}
+
+export interface RenameDocumentInput {
+  document: WorkspaceDocument;
+  name: string;
+}
+
+/** Renames in place, showing the new name before the server confirms it. */
+export function useRenameDocument() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ document, name }: RenameDocumentInput) => renameDocument(document.id, name),
+
+    onMutate: async ({ document, name }) => {
+      const key = siblingListKey(document.parentId);
+      await queryClient.cancelQueries({ queryKey: key });
+
+      const previous = readList(queryClient, document.parentId);
+      writeList(
+        queryClient,
+        document.parentId,
+        previous?.map((item) => (item.id === document.id ? { ...item, name } : item)),
+      );
+
+      const previousDetail = queryClient.getQueryData<WorkspaceDocument>(
+        queryKeys.document(document.id),
+      );
+      queryClient.setQueryData<WorkspaceDocument>(queryKeys.document(document.id), (current) =>
+        current ? { ...current, name } : current,
+      );
+
+      return { previous, previousDetail, parentId: document.parentId, documentId: document.id };
+    },
+
+    onError: (_error, _input, context) => {
+      if (!context) return;
+      writeList(queryClient, context.parentId, context.previous);
+      queryClient.setQueryData(queryKeys.document(context.documentId), context.previousDetail);
+    },
+
+    onSettled: (_data, _error, { document }) => {
+      queryClient.invalidateQueries({ queryKey: siblingListKey(document.parentId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.document(document.id) });
     },
   });

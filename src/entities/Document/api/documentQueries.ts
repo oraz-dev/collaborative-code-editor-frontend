@@ -1,7 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/shared/api';
+import { sortCollaborators } from '../model/types/collaborator';
 import { sortDocuments, type WorkspaceDocument } from '../model/types/document';
-import { fetchChildDocuments, fetchDocument, fetchRootDocuments } from './documentApi';
+import { fetchCollaborators } from './collaboratorApi';
+import {
+  fetchChildDocuments,
+  fetchDocument,
+  fetchRootDocuments,
+  fetchSharedDocuments,
+} from './documentApi';
 
 /** Top level of the workspace tree. */
 export function useDocumentRoots() {
@@ -23,6 +30,25 @@ export function useDocumentChildren(parentId: string | null, enabled = true) {
     queryFn: ({ signal }) => fetchChildDocuments(parentId as string, signal),
     enabled: Boolean(parentId) && enabled,
     select: sortDocuments,
+  });
+}
+
+/** Documents other people have shared with the signed-in user. */
+export function useSharedDocuments() {
+  return useQuery({
+    queryKey: queryKeys.documentsSharedWithMe(),
+    queryFn: ({ signal }) => fetchSharedDocuments(signal),
+    select: sortDocuments,
+  });
+}
+
+/** Direct grants on a document — used by the share dialog. */
+export function useCollaborators(documentId: string | null | undefined, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.collaborators(documentId ?? ''),
+    queryFn: ({ signal }) => fetchCollaborators(documentId as string, signal),
+    enabled: Boolean(documentId) && enabled,
+    select: sortCollaborators,
   });
 }
 
