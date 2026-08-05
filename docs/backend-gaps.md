@@ -65,9 +65,15 @@ data. What went, and what it would take to bring back:
 | Profile → Presence toggles | Would work today as local preferences, but they belonged with an account-level setting that has no endpoint. |
 | Profile → Delete account | `DELETE /auth/me`. |
 | Editor → Inline comments | The comments API below. |
+| Editor → Terminal panel | Sandboxed execution over a streaming socket. |
+| Editor → Git view (commit graph, branch status, Push) | Repo linking, provider OAuth, status/diff/commit/push. |
+| Editor → Search view | `GET /documents/search?q=` — ⌘K covers the cached case today. |
+| Workspace switcher subtitle ("Studio · Team") and its chevron | The workspace API above. |
+| Auth page Privacy / Terms links | Real legal pages to link to. |
+| Profile → avatar upload overlay | `POST /auth/me/avatar`. |
 
-Still present and still demo-only: the editor's **Terminal**, **Git** and
-**Search** views.
+No demo fixtures remain: `src/shared/data/demo.ts` was deleted along with its
+last three consumers, so every screen now renders real data or nothing.
 
 **Comments** remain the most valuable thing to add — closest to the existing
 model, and the editor already has a gutter to hang them on:

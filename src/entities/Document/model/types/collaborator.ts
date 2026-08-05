@@ -8,7 +8,19 @@
 export type DocumentRole = 'owner' | 'editor' | 'viewer';
 
 /** The roles the API will actually accept in a share request. */
-export const GRANTABLE_ROLES: DocumentRole[] = ['editor', 'viewer'];
+export type GrantableRole = Exclude<DocumentRole, 'owner'>;
+
+export const GRANTABLE_ROLES: GrantableRole[] = ['editor', 'viewer'];
+
+export const GRANTABLE_ROLE_LABELS: Record<GrantableRole, string> = {
+  editor: 'Can edit',
+  viewer: 'Can view',
+};
+
+/** Narrows a raw select value, defaulting to the safer of the two. */
+export function toGrantableRole(value: string): GrantableRole {
+  return value === 'viewer' ? 'viewer' : 'editor';
+}
 
 export interface CollaboratorDto {
   user_id?: string;

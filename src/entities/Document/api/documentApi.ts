@@ -101,13 +101,6 @@ export async function updateDocumentContent(documentId: string, content: string)
   });
 }
 
-export async function moveDocument(documentId: string, newParentId: string): Promise<void> {
-  await docsHttp<unknown>(`/documents/${documentId}/move`, {
-    method: 'PATCH',
-    body: { new_parent_id: newParentId },
-  });
-}
-
 /** Soft-delete: the record is retained server-side but disappears from listings. */
 export async function deleteDocument(documentId: string): Promise<void> {
   await docsHttp<unknown>(`/documents/${documentId}`, { method: 'DELETE' });

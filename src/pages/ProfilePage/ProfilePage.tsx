@@ -1,13 +1,27 @@
-import { memo } from 'react';
+import { useState, useCallback, memo } from 'react';
 import { Icons } from '@/shared/ui/Icon/Icons';
 import { Avatar } from '@/shared/ui/Avatar/Avatar';
 import { AppBar } from '@/widgets/AppBar/AppBar';
+import { CommandPalette } from '@/widgets/CommandPalette/CommandPalette';
+import { useCommandPaletteHotkey } from '@/shared/lib/hotkey/useCommandPaletteHotkey';
 import cls from './ProfilePage.module.scss';
 import { useNavigate } from 'react-router';
 import { initials } from '@/shared/lib/initials/initials';
 import { useSession } from '@/features/auth';
 
 export const ProfilePage = memo(() => {
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  const onOpenPalette = useCallback(() => {
+    setPaletteOpen(true);
+  }, []);
+
+  const onClosePalette = useCallback(() => {
+    setPaletteOpen(false);
+  }, []);
+
+  useCommandPaletteHotkey(onOpenPalette);
+
   const router = useNavigate();
   const { user } = useSession();
 
@@ -19,7 +33,7 @@ export const ProfilePage = memo(() => {
 
   return (
     <div className={cls.canvas}>
-      <AppBar />
+      <AppBar onCmdk={onOpenPalette} />
       <div className={cls.body}>
         <div className={cls.wrap}>
           <div className={cls.back} onClick={() => router(-1)}><Icons.Arrow size={14} /> Back</div>
@@ -49,6 +63,8 @@ export const ProfilePage = memo(() => {
           </div>
         </div>
       </div>
+
+      <CommandPalette open={paletteOpen} onClose={onClosePalette} />
     </div>
   );
 });

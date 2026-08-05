@@ -30,20 +30,8 @@
 
 .div { width: 1px; height: 24px; background: var(--color-border); flex: none; }
 
-.seg { display: flex; }
 
 // restyle segmented control for pill shape
-.seg :global(.sp-seg) {
-  background: rgba(11, 13, 18, 0.45);
-  border-color: var(--color-border-subtle);
-  border-radius: var(--radius-full);
-  padding: 3px;
-}
-.seg :global(.sp-seg__btn) {
-  border-radius: var(--radius-full);
-  height: 28px;
-  padding: 0 14px;
-}
 
 .cmdPill {
   display: flex;

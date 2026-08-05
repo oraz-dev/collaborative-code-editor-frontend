@@ -11,7 +11,22 @@ vi.mock('@monaco-editor/react', () => ({
 describe('EditorPage', () => {
   test('renders the workspace chrome', () => {
     renderWithProviders(<EditorPage />);
-    expect(screen.getByText('Code')).toBeInTheDocument();
+    // The Code/Search/Git tabs are gone — Search and Git had no backend, which
+    // left a one-option control, so the whole thing went.
+    expect(screen.getByText('Space')).toBeInTheDocument();
+    expect(screen.getByLabelText('Search files')).toBeInTheDocument();
+  });
+
+  test('no longer offers the terminal, git or search views', () => {
+    renderWithProviders(<EditorPage />);
+    expect(screen.queryByLabelText('Toggle terminal')).not.toBeInTheDocument();
+    expect(screen.queryByText('Git')).not.toBeInTheDocument();
+  });
+
+  test('the settings button navigates instead of doing nothing', () => {
+    renderWithProviders(<EditorPage />);
+    // It used to take an onSettings prop the router never passed.
+    expect(screen.getByLabelText('Settings')).toBeEnabled();
   });
 
   test('invites the user to pick a file when no document is open', () => {

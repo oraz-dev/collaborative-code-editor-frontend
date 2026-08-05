@@ -20,11 +20,13 @@ export const AppBar = memo((props: AppBarProps) => {
     <div className={cls.root}>
       <WorkspaceSwitcher />
       <div className={cls.div} />
-      <div className={cls.cmdPill} onClick={onCmdk}>
-        <Icons.Search size={15} />
-        <span className={cls.sp}>Search projects…</span>
-        <Kbd keys={['⌘', 'K']} />
-      </div>
+      {onCmdk && (
+        <button type="button" className={cls.cmdPill} onClick={onCmdk} aria-label="Search projects">
+          <Icons.Search size={15} />
+          <span className={cls.sp}>Search projects…</span>
+          <Kbd keys={['⌘', 'K']} />
+        </button>
+      )}
       <div className={cls.sp} />
       <div className={cls.right}>
         {showNew && <Button variant="primary" size="small" icon="plus" onClick={onNew}>New project</Button>}

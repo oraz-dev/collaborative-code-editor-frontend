@@ -10,11 +10,15 @@ import { initials } from '@/shared/lib/initials/initials';
 import { isApiError } from '@/shared/api';
 import { useUserSearch, useUsersByIds, type User } from '@/entities/User';
 import {
+  GRANTABLE_ROLES,
+  GRANTABLE_ROLE_LABELS,
+  toGrantableRole,
   useCollaborators,
   useRemoveCollaborator,
   useShareDocument,
   useUpdateCollaboratorRole,
   type Collaborator,
+  type GrantableRole,
   type WorkspaceDocument,
 } from '@/entities/Document';
 import cls from './ShareDialog.module.scss';
@@ -29,12 +33,10 @@ interface ShareDialogProps {
   currentUserId: string | null;
 }
 
-const ROLE_OPTIONS = [
-  { value: 'editor', label: 'Can edit' },
-  { value: 'viewer', label: 'Can view' },
-];
-
-type GrantableRole = 'editor' | 'viewer';
+const ROLE_OPTIONS = GRANTABLE_ROLES.map((role) => ({
+  value: role,
+  label: GRANTABLE_ROLE_LABELS[role],
+}));
 
 function describeError(error: unknown): string {
   if (!isApiError(error)) return 'Something went wrong. Please try again.';
@@ -91,7 +93,7 @@ export const ShareDialog = memo((props: ShareDialogProps) => {
   );
 
   const handleRoleChange = useCallback((value: string) => {
-    setRole(value === 'viewer' ? 'viewer' : 'editor');
+    setRole(toGrantableRole(value));
   }, []);
 
   const onInvite = useCallback((user: User) => {
@@ -105,7 +107,7 @@ export const ShareDialog = memo((props: ShareDialogProps) => {
     roleMutation.mutate({
       documentId,
       userId: collaborator.userId,
-      role: value === 'viewer' ? 'viewer' : 'editor',
+      role: toGrantableRole(value),
     });
   }, [documentId, roleMutation]);
 

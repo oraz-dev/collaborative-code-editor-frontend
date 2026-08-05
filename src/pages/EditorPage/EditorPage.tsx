@@ -2,11 +2,11 @@ import { useState, useCallback, memo, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { Icons } from '@/shared/ui/Icon/Icons';
 import { AvatarStack } from '@/shared/ui/AvatarStack/AvatarStack';
-import { SegmentedControl } from '@/shared/ui/SegmentedControl/SegmentedControl';
 import { Kbd } from '@/shared/ui/Kbd/Kbd';
 import { IconButton } from '@/shared/ui/IconButton/IconButton';
 import { Spinner } from '@/shared/ui/Spinner/Spinner';
 import { Button } from '@/shared/ui/Button/Button';
+import { classNames } from '@/shared/lib/classNames/classNames';
 import { toEditorPath, RoutePaths } from '@/shared/config/routeConfig/routeConfig';
 import { useCommandPaletteHotkey } from '@/shared/lib/hotkey/useCommandPaletteHotkey';
 import { useSession } from '@/features/auth';
@@ -19,27 +19,19 @@ import {
 } from '@/features/collaboration';
 import { DocumentTree } from '@/widgets/DocumentTree';
 import { ShareDialog } from '@/widgets/ShareDialog';
-import { Terminal } from '@/widgets/Terminal/Terminal';
 import { CommandPalette } from '@/widgets/CommandPalette/CommandPalette';
 import { WorkspaceSwitcher } from '@/widgets/WorkspaceSwitcher/WorkspaceSwitcher';
-import { SearchView } from '@/widgets/SearchView/SearchView';
-import { GitView } from '@/widgets/GitView/GitView';
 import cls from './EditorPage.module.scss';
-
-type SubView = 'code' | 'search' | 'git';
 
 interface EditorPageProps {
   className?: string;
-  onSettings?: () => void;
 }
 
 export const EditorPage = memo((props: EditorPageProps) => {
-  const { onSettings } = props;
+  const { className } = props;
   const { documentId } = useParams<{ documentId?: string }>();
   const navigate = useNavigate();
 
-  const [view, setView] = useState<SubView>('code');
-  const [termOpen, setTermOpen] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
 
@@ -69,18 +61,6 @@ export const EditorPage = memo((props: EditorPageProps) => {
     navigate(toEditorPath(document.id));
   }, [navigate]);
 
-  const handleViewChange = useCallback((v: string) => {
-    setView(v as SubView);
-  }, []);
-
-  const handleToggleTerm = useCallback(() => {
-    setTermOpen((open) => !open);
-  }, []);
-
-  const handleCloseTerm = useCallback(() => {
-    setTermOpen(false);
-  }, []);
-
   const handleOpenCmd = useCallback(() => {
     setCmdOpen(true);
   }, []);
@@ -101,6 +81,10 @@ export const EditorPage = memo((props: EditorPageProps) => {
 
   const onBackToDashboard = useCallback(() => {
     navigate(RoutePaths.main);
+  }, [navigate]);
+
+  const onOpenSettings = useCallback(() => {
+    navigate(RoutePaths.settings);
   }, [navigate]);
 
   const renderEditorArea = () => {
@@ -172,25 +156,13 @@ export const EditorPage = memo((props: EditorPageProps) => {
   };
 
   return (
-    <div className={cls.canvas}>
+    <div className={classNames(cls.canvas, {}, [className])}>
       <div className={cls.topnav}>
         <WorkspaceSwitcher />
         <div className={cls.div} />
-        <div className={cls.seg}>
-          <SegmentedControl
-            value={view}
-            onChange={handleViewChange}
-            options={[
-              { value: 'code', label: 'Code' },
-              { value: 'search', label: 'Search' },
-              { value: 'git', label: 'Git' },
-            ]}
-          />
-        </div>
-        <div className={cls.div} />
-        <div className={cls.cmdPill} onClick={handleOpenCmd}>
+        <button type="button" className={cls.cmdPill} onClick={handleOpenCmd} aria-label="Search files">
           <Icons.Search size={14} /> Search files… <Kbd keys={['⌘', 'K']} />
-        </div>
+        </button>
         <div className={cls.sp} />
         <div className={cls.right}>
           {activeDocument && !isFolder && (
@@ -211,10 +183,7 @@ export const EditorPage = memo((props: EditorPageProps) => {
           <IconButton size="sm" onClick={onBackToDashboard} aria-label="Back to dashboard">
             <Icons.Grid size={16} />
           </IconButton>
-          <IconButton size="sm" onClick={handleToggleTerm} aria-label="Toggle terminal">
-            <Icons.Term size={16} />
-          </IconButton>
-          <IconButton size="sm" onClick={onSettings} aria-label="Settings">
+          <IconButton size="sm" onClick={onOpenSettings} aria-label="Settings">
             <Icons.Settings size={16} />
           </IconButton>
           {others.length > 0 && (
@@ -238,31 +207,16 @@ export const EditorPage = memo((props: EditorPageProps) => {
       </div>
 
       <div className={cls.work}>
-        {view === 'code' && (
-          <>
-            {user && (
-              <DocumentTree
-                ownerId={user.id}
-                activeDocumentId={documentId ?? null}
-                onSelectDocument={onSelectDocument}
-              />
-            )}
-            <div className={cls.viewpanel}>
-              {renderEditorArea()}
-              <Terminal open={termOpen} onClose={handleCloseTerm} />
-            </div>
-          </>
+        {user && (
+          <DocumentTree
+            ownerId={user.id}
+            activeDocumentId={documentId ?? null}
+            onSelectDocument={onSelectDocument}
+          />
         )}
-        {view === 'search' && (
-          <div className={cls.viewpanel}>
-            <SearchView />
-          </div>
-        )}
-        {view === 'git' && (
-          <div className={cls.viewpanel}>
-            <GitView />
-          </div>
-        )}
+        <div className={cls.viewpanel}>
+          {renderEditorArea()}
+        </div>
       </div>
 
       <CommandPalette open={cmdOpen} onClose={handleCloseCmd} />

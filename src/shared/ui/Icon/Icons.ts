@@ -1,5 +1,4 @@
 import { createElement, type SVGProps } from 'react';
-import { GitHubIcon, GoogleIcon } from './BrandIcons';
 
 type IC = (props: SVGProps<SVGSVGElement> & { size?: number }) => React.JSX.Element;
 
@@ -91,8 +90,6 @@ export const Icons = {
   ...editorIcons,
   ...gitIcons,
   ...objectIcons,
-  GitHub: GitHubIcon,
-  Google: GoogleIcon,
 };
 
 export type SpaceIconName = keyof typeof Icons;

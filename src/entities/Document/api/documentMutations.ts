@@ -4,9 +4,7 @@ import type { WorkspaceDocument } from '../model/types/document';
 import {
   createDocument,
   deleteDocument,
-  moveDocument,
   renameDocument,
-  updateDocumentContent,
   type CreateDocumentInput,
 } from './documentApi';
 
@@ -107,57 +105,6 @@ export function useDeleteDocument() {
   });
 }
 
-export interface MoveDocumentInput {
-  document: WorkspaceDocument;
-  newParentId: string;
-}
-
-/** Moves a node between folders, updating both the source and target lists. */
-export function useMoveDocument() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ document, newParentId }: MoveDocumentInput) =>
-      moveDocument(document.id, newParentId),
-
-    onMutate: async ({ document, newParentId }) => {
-      const fromKey = siblingListKey(document.parentId);
-      const toKey = siblingListKey(newParentId);
-      await Promise.all([
-        queryClient.cancelQueries({ queryKey: fromKey }),
-        queryClient.cancelQueries({ queryKey: toKey }),
-      ]);
-
-      const previousFrom = readList(queryClient, document.parentId);
-      const previousTo = readList(queryClient, newParentId);
-
-      writeList(
-        queryClient,
-        document.parentId,
-        previousFrom?.filter((item) => item.id !== document.id),
-      );
-      writeList(queryClient, newParentId, [
-        ...(previousTo ?? []),
-        { ...document, parentId: newParentId },
-      ]);
-
-      return { previousFrom, previousTo, fromParentId: document.parentId, newParentId };
-    },
-
-    onError: (_error, _input, context) => {
-      if (!context) return;
-      writeList(queryClient, context.fromParentId, context.previousFrom);
-      writeList(queryClient, context.newParentId, context.previousTo);
-    },
-
-    onSettled: (_data, _error, { document, newParentId }) => {
-      queryClient.invalidateQueries({ queryKey: siblingListKey(document.parentId) });
-      queryClient.invalidateQueries({ queryKey: siblingListKey(newParentId) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.document(document.id) });
-    },
-  });
-}
-
 export interface RenameDocumentInput {
   document: WorkspaceDocument;
   name: string;
@@ -200,31 +147,6 @@ export function useRenameDocument() {
     onSettled: (_data, _error, { document }) => {
       queryClient.invalidateQueries({ queryKey: siblingListKey(document.parentId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.document(document.id) });
-    },
-  });
-}
-
-export interface UpdateContentInput {
-  documentId: string;
-  content: string;
-}
-
-/**
- * Plain-text mirror of a document's body. The collaborative editor writes CRDT
- * state separately; this keeps `content` readable for anything that just wants
- * the text (previews, a fresh client with no Yjs state yet).
- */
-export function useUpdateDocumentContent() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ documentId, content }: UpdateContentInput) =>
-      updateDocumentContent(documentId, content),
-
-    onSuccess: (_data, { documentId, content }) => {
-      queryClient.setQueryData<WorkspaceDocument>(queryKeys.document(documentId), (current) =>
-        current ? { ...current, content } : current,
-      );
     },
   });
 }

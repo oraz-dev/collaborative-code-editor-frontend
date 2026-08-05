@@ -7,7 +7,6 @@ export {
   fetchSharedDocuments,
   fetchYjsState,
   mintWsTicket,
-  moveDocument,
   renameDocument,
   saveYjsState,
   updateDocumentContent,
@@ -40,15 +39,11 @@ export {
   isOptimisticDocument,
   useCreateDocument,
   useDeleteDocument,
-  useMoveDocument,
   useRenameDocument,
-  useUpdateDocumentContent,
 } from './api/documentMutations';
 export type {
   DeleteDocumentInput,
-  MoveDocumentInput,
   RenameDocumentInput,
-  UpdateContentInput,
 } from './api/documentMutations';
 
 export {
@@ -63,9 +58,11 @@ export type { DocumentDto, DocumentKind, WorkspaceDocument } from './model/types
 export {
   canEditWithRole,
   GRANTABLE_ROLES,
+  GRANTABLE_ROLE_LABELS,
+  toGrantableRole,
   mapCollaborator,
   mapCollaborators,
   sortCollaborators,
   toDocumentRole,
 } from './model/types/collaborator';
-export type { Collaborator, CollaboratorDto, DocumentRole } from './model/types/collaborator';
+export type { Collaborator, CollaboratorDto, DocumentRole, GrantableRole } from './model/types/collaborator';

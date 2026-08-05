@@ -127,7 +127,7 @@ export const AuthPage = memo(() => {
           </div>
         </div>
         <div className={cls.foot}>
-          <span>&copy; 2026 Space</span><a href="#">Privacy</a><a href="#">Terms</a>
+          <span>&copy; 2026 Space</span>
         </div>
       </div>
       <div className={cls.form}>
@@ -221,12 +221,9 @@ export const AuthPage = memo(() => {
             isLoading={isPending}
             aria-label={isSignup ? 'Create account' : 'Sign in'}
           >
-            {isSignup ? 'Create account' : 'Continue with email'}
+            {isSignup ? 'Create account' : 'Sign in'}
           </Button>
 
-          <p className={cls.legal}>
-            By continuing you agree to Space&apos;s <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.
-          </p>
           <div className={cls.switch}>
             {isSignup ? 'Already have an account? ' : 'New to Space? '}
             <a onClick={onToggleMode} role="button" tabIndex={0} data-testid="auth-toggle">

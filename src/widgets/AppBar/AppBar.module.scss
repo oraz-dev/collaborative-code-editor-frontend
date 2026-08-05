@@ -21,6 +21,9 @@
 }
 
 .cmdPill {
+  border: none;
+  font: inherit;
+  text-align: left;
   display: flex;
   align-items: center;
   gap: 9px;

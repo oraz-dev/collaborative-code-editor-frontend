@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router';
 import { Icons } from '@/shared/ui/Icon/Icons';
 import { Button } from '@/shared/ui/Button/Button';
 import { AppBar } from '@/widgets/AppBar/AppBar';
+import { CommandPalette } from '@/widgets/CommandPalette/CommandPalette';
+import { useCommandPaletteHotkey } from '@/shared/lib/hotkey/useCommandPaletteHotkey';
 import { GeneralSection } from './ui/GeneralSection';
 import { EditorSection } from './ui/EditorSection';
 import cls from './SettingsPage.module.scss';
@@ -15,6 +17,18 @@ const NAV: { value: Section; label: string; icon: typeof Icons.Settings }[] = [
 ];
 
 export const SettingsPage = memo(() => {
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  const onOpenPalette = useCallback(() => {
+    setPaletteOpen(true);
+  }, []);
+
+  const onClosePalette = useCallback(() => {
+    setPaletteOpen(false);
+  }, []);
+
+  useCommandPaletteHotkey(onOpenPalette);
+
   const [section, setSection] = useState<Section>('general');
   const navigate = useNavigate();
 
@@ -28,7 +42,7 @@ export const SettingsPage = memo(() => {
 
   return (
     <div className={cls.canvas}>
-      <AppBar />
+      <AppBar onCmdk={onOpenPalette} />
       <div className={cls.body}>
         <div className={cls.wrap}>
           <div className={cls.sidebar}>
@@ -57,6 +71,8 @@ export const SettingsPage = memo(() => {
           </div>
         </div>
       </div>
+
+      <CommandPalette open={paletteOpen} onClose={onClosePalette} />
     </div>
   );
 });
