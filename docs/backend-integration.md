@@ -7,6 +7,13 @@ Two services back this app:
 | Auth      | `http://31.57.26.155:8080`   | `/api/auth`  |
 | Documents | `http://31.57.26.155/api/v1` | `/api/v1`    |
 
+Both services also **allowlist the `Origin` header**, rejecting anything else
+with a bodyless 403 — only `http://localhost:3000` and `http://localhost:5173`
+are accepted. The proxy therefore strips `Origin` on both the HTTP path
+(`proxyReq`) and the **websocket upgrade** (`proxyReqWs`). The upgrade needs its
+own hook: it does not pass through `proxyReq`, and missing it leaves the editor
+permanently "Reconnecting…" on any other dev port while HTTP still works.
+
 **`/api/auth` maps to the auth service root, not to `/auth`.** Its swagger
 `basePath` is `/`, and it mounts sessions under `/auth/…` but user lookup at
 `/users` — so the proxy strips the prefix entirely and call sites pass the full

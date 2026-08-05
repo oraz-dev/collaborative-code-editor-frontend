@@ -32,6 +32,14 @@ const stripOrigin: ProxyOptions['configure'] = (proxy) => {
   proxy.on('proxyReq', (proxyReq) => {
     proxyReq.removeHeader('origin');
   });
+
+  // A websocket upgrade does NOT go through 'proxyReq' — it has its own event.
+  // Without this the collaboration socket still leaks the browser's Origin and
+  // the handshake is refused with 403, which the editor shows as a permanent
+  // "Reconnecting…".
+  proxy.on('proxyReqWs', (proxyReq) => {
+    proxyReq.removeHeader('origin');
+  });
 };
 
 // https://vite.dev/config/
