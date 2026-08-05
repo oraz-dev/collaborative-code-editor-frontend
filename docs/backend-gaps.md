@@ -52,10 +52,25 @@ Once every client ships binary frames, the base64 branch in
 
 ## The remaining demo UI
 
-These screens still render fixed data, listed roughly by value.
+Most unbacked screens have now been removed rather than left rendering invented
+data. What went, and what it would take to bring back:
 
-**Comments** (`CommentsMargin`) — the most valuable of these for a collaborative
-editor and closest to the existing model:
+| Removed | Needs |
+| --- | --- |
+| Notification bell + popover, and the notification toggles in Settings | `GET /notifications`, `POST /notifications/read-all`, plus an event feed. Unblocked by sharing now existing. |
+| Settings → Team | `GET/POST /workspaces`, `/workspaces/{id}/members`, `/invites`. Documents would need a `workspace_id`. |
+| Settings → Billing, and the Upgrade page | Plans, subscription state and invoices — realistically a payment provider. |
+| Settings → General → Workspace name & URL | The same workspace API as above. |
+| Profile → Connected accounts | Provider OAuth linking on the auth service. |
+| Profile → Presence toggles | Would work today as local preferences, but they belonged with an account-level setting that has no endpoint. |
+| Profile → Delete account | `DELETE /auth/me`. |
+| Editor → Inline comments | The comments API below. |
+
+Still present and still demo-only: the editor's **Terminal**, **Git** and
+**Search** views.
+
+**Comments** remain the most valuable thing to add — closest to the existing
+model, and the editor already has a gutter to hang them on:
 ```
 GET    /documents/{id}/comments          -> [{ id, author, line, body, created_at, resolved }]
 POST   /documents/{id}/comments          { "line": 6, "body": "..." }
@@ -63,42 +78,15 @@ PATCH  /documents/{id}/comments/{cid}    { "resolved": true }
 DELETE /documents/{id}/comments/{cid}
 ```
 
-**Notifications** (bell + popover) — an event feed plus unread state, and a
-socket or poll to stay live:
-```
-GET   /notifications?unread=            -> [{ id, actor, kind, target, created_at, read }]
-POST  /notifications/read-all
-```
-Now unblocked: every notification in the mock ("invited you to…", "requested
-your review") presupposes sharing, which exists.
+**Git integration** (`GitView`) — repo linking, provider OAuth, status/diff/commit/push.
+**Terminal** — sandboxed execution over a streaming socket; its own project.
 
-**Teams / workspaces** (`WorkspaceSwitcher`, Settings → Team) — the "Studio ·
-Team" label and the members/invites lists:
-```
-GET/POST  /workspaces
-GET       /workspaces/{id}/members
-POST      /workspaces/{id}/invites       { "email": "...", "role": "..." }
-DELETE    /workspaces/{id}/members/{user_id}
-```
-Documents would need a `workspace_id` to belong to one.
+### Preferences are local on purpose
 
-**Activity feed** (dashboard side rail) — `GET /activity` over documents you can
-see. Cheap once an event table exists.
-
-**User preferences** (Settings → General/Editor) — `GET`/`PATCH /auth/me/preferences`
-with a free-form JSON blob. Could equally live in `localStorage`; it only needs a
-backend if settings should follow you across devices.
-
-**Git integration** (`GitView`) — a genuine subsystem: repo linking, provider
-OAuth, status/diff/commit/push. Large and independent of everything above.
-
-**Terminal** (`Terminal`) — sandboxed execution with a streaming socket. The
-largest and riskiest item here; treat as its own project.
-
-**Billing** (`UpgradePage`, Settings → Billing) — plans, subscription state and
-invoices, almost certainly a payment provider rather than something hand-rolled.
-
----
+Theme, accent, editor and collaboration preferences live in `localStorage`
+under `space:preferences`. They only need a backend if they should follow a
+user across devices, which would be `GET`/`PATCH /auth/me/preferences` with a
+free-form JSON blob.
 
 ## Suggested order
 

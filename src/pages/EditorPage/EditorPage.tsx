@@ -166,6 +166,7 @@ export const EditorPage = memo((props: EditorPageProps) => {
         awareness={awareness}
         fileName={activeDocument?.name ?? 'untitled'}
         readOnly={!canEdit}
+        peers={peers}
       />
     );
   };

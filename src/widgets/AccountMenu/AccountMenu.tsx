@@ -90,15 +90,6 @@ export const AccountMenu = memo(() => {
               <span className={cls.ico}><Icons.Settings size={16} /></span>Settings
               <span className={cls.kbd}><Kbd keys={['⌘', ',']} /></span>
             </div>
-            <div
-              className={cls.item}
-              onClick={() => handleNavigate(RoutePaths.upgrade)}
-              role="menuitem"
-              tabIndex={0}
-            >
-              <span className={cls.ico}><Icons.Bolt size={16} /></span>Upgrade plan
-            </div>
-
             <div className={cls.div} />
 
             <div

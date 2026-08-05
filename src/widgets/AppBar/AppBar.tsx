@@ -3,7 +3,6 @@ import { Icons } from '@/shared/ui/Icon/Icons';
 import { Button } from '@/shared/ui/Button/Button';
 import { Kbd } from '@/shared/ui/Kbd/Kbd';
 import { WorkspaceSwitcher } from '@/widgets/WorkspaceSwitcher/WorkspaceSwitcher';
-import { NotificationPopover } from '@/widgets/NotificationPopover/NotificationPopover';
 import { AccountMenu } from '@/widgets/AccountMenu/AccountMenu';
 import cls from './AppBar.module.scss';
 
@@ -29,7 +28,6 @@ export const AppBar = memo((props: AppBarProps) => {
       <div className={cls.sp} />
       <div className={cls.right}>
         {showNew && <Button variant="primary" size="small" icon="plus" onClick={onNew}>New project</Button>}
-        <NotificationPopover />
         <AccountMenu />
       </div>
     </div>

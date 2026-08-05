@@ -4,7 +4,6 @@ import { DashboardPage } from '@/pages/DashboardPage/DashboardPage';
 import { EditorPage } from '@/pages/EditorPage/EditorPage';
 import { SettingsPage } from '@/pages/SettingsPage/SettingsPage';
 import { ProfilePage } from '@/pages/ProfilePage/ProfilePage';
-import { UpgradePage } from '@/pages/UpgradePage/UpgradePage';
 import { NotFoundPage } from '@/pages/NotFoundPage/NotFoundPage';
 
 /**
@@ -17,7 +16,6 @@ export const AppRoutes = {
   EDITOR: 'editor',
   SETTINGS: 'settings',
   PROFILE: 'profile',
-  UPGRADE: 'upgrade',
   NOT_FOUND: 'not_found',
 } as const;
 
@@ -29,7 +27,6 @@ export const RoutePaths: Record<AppRoute, string> = {
   [AppRoutes.EDITOR]: '/editor',
   [AppRoutes.SETTINGS]: '/settings',
   [AppRoutes.PROFILE]: '/profile',
-  [AppRoutes.UPGRADE]: '/upgrade',
   [AppRoutes.NOT_FOUND]: '*',
 };
 
@@ -72,11 +69,6 @@ export const routeConfig: Record<AppRoute, AppRouteProps> = {
   [AppRoutes.SETTINGS]: {
     path: RoutePaths.settings,
     element: <SettingsPage />,
-    authOnly: true,
-  },
-  [AppRoutes.UPGRADE]: {
-    path: RoutePaths.upgrade,
-    element: <UpgradePage />,
     authOnly: true,
   },
   [AppRoutes.NOT_FOUND]: {
