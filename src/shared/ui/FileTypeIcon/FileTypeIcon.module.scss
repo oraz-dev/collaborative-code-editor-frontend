@@ -1,0 +1,10 @@
+.icon {
+  flex: none;
+  display: block;
+}
+
+// Folders stay monochrome so the coloured language glyphs are what the eye
+// lands on when scanning a tree.
+.folder {
+  color: var(--color-text-faint);
+}

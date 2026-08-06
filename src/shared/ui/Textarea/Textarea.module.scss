@@ -1,8 +1,8 @@
 .inputWrapper {
   display: flex;
+  min-width: 0;
   flex-direction: column;
   gap: 6px;
-  max-width: 300px;
 }
 
 .label {
@@ -26,10 +26,38 @@
     transition: var(--duration-fast);
   }
 
+  textarea::placeholder {
+    color: var(--color-text-faint);
+  }
+
+  textarea:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--ring);
+  }
+
   &.readonly {
     textarea {
       opacity: 0.5;
       pointer-events: none;
     }
   }
+
+  /* Referenced by the component but never declared, so an invalid textarea
+     looked identical to a valid one and the message rendered unstyled. */
+  &.isError textarea {
+    border-color: var(--color-destructive);
+  }
+}
+
+.icon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--color-text-faint);
+}
+
+.error {
+  font: var(--text-xs) / 1.4 var(--font-body);
+  color: var(--color-destructive);
 }

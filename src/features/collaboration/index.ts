@@ -11,5 +11,6 @@ export type {
 export { presenceColorFor, readPeers } from './model/presence/presence';
 export type { AwarenessUser, PresencePeer } from './model/presence/presence';
 export { CollaborativeEditor } from './ui/CollaborativeEditor/CollaborativeEditor';
+export type { EditorCursor } from './ui/CollaborativeEditor/CollaborativeEditor';
 export { RemoteCursorStyles } from './ui/RemoteCursorStyles/RemoteCursorStyles';
 export { ConnectionBadge } from './ui/ConnectionBadge/ConnectionBadge';

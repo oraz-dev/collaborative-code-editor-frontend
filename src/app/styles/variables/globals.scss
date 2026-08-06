@@ -1,7 +1,10 @@
 // ---------- Typography ----------
-$font-display: 'Newsreader', Georgia, 'Times New Roman', serif;
-$font-body:    'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-$font-mono:    'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+// The `… Variable` names are what the bundled woff2 files actually register
+// (see app/styles/fonts.ts); the bare names stay as a fallback for anyone who
+// has the static cuts installed locally.
+$font-display: 'Newsreader Variable', 'Newsreader', Georgia, 'Times New Roman', serif;
+$font-body:    'Geist Variable', 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+$font-mono:    'Geist Mono Variable', 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
 $text-2xs: 11px;
 $text-xs: 12px;

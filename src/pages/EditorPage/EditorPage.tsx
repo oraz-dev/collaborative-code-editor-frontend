@@ -1,4 +1,4 @@
-import { useState, useCallback, memo, useMemo } from 'react';
+import { useState, useCallback, memo, useMemo, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { Icons } from '@/shared/ui/Icon/Icons';
 import { AvatarStack } from '@/shared/ui/AvatarStack/AvatarStack';
@@ -10,13 +10,24 @@ import { classNames } from '@/shared/lib/classNames/classNames';
 import { toEditorPath, RoutePaths } from '@/shared/config/routeConfig/routeConfig';
 import { useCommandPaletteHotkey } from '@/shared/lib/hotkey/useCommandPaletteHotkey';
 import { useSession } from '@/features/auth';
+import { useEditorPreferences } from '@/features/preferences';
 import { useDocument, type WorkspaceDocument } from '@/entities/Document';
 import {
   CollaborativeEditor,
   ConnectionBadge,
   presenceColorFor,
   useCollaborativeDocument,
+  type EditorCursor,
 } from '@/features/collaboration';
+import {
+  EditorBreadcrumbs,
+  EditorStatusBar,
+  EditorTabs,
+  openTab,
+  tabAfterClosing,
+  type BreadcrumbSegment,
+  type EditorTab,
+} from '@/widgets/EditorChrome';
 import { DocumentTree } from '@/widgets/DocumentTree';
 import { ShareDialog } from '@/widgets/ShareDialog';
 import { CommandPalette } from '@/widgets/CommandPalette/CommandPalette';
@@ -40,6 +51,14 @@ export const EditorPage = memo((props: EditorPageProps) => {
   const activeDocument = documentQuery.data;
   const isFolder = activeDocument?.kind === 'folder';
 
+  const editorPreferences = useEditorPreferences();
+  const [tabs, setTabs] = useState<EditorTab[]>([]);
+  const [cursor, setCursor] = useState<EditorCursor | null>(null);
+
+  // One level of ancestry is enough for a useful trail; anything above it is
+  // shown as an ellipsis rather than firing a request per level on open.
+  const parentQuery = useDocument(activeDocument?.parentId);
+
   // Presence identity for the awareness protocol.
   const collaborator = useMemo(() => (
     user
@@ -57,8 +76,62 @@ export const EditorPage = memo((props: EditorPageProps) => {
 
   const others = useMemo(() => peers.filter((peer) => !peer.isSelf), [peers]);
 
+  // Only files get a tab — a folder is a place, not something you edit.
+  useEffect(() => {
+    if (!activeDocument || activeDocument.kind === 'folder') return;
+    setTabs((current) => openTab(current, { id: activeDocument.id, name: activeDocument.name }));
+  }, [activeDocument]);
+
+  // A file that was deleted or revoked while open should not linger in the strip.
+  useEffect(() => {
+    if (!documentId || !documentQuery.isError) return;
+    setTabs((current) => current.filter((tab) => tab.id !== documentId));
+  }, [documentId, documentQuery.isError]);
+
+  useEffect(() => {
+    setCursor(null);
+  }, [documentId]);
+
   const onSelectDocument = useCallback((document: WorkspaceDocument) => {
     navigate(toEditorPath(document.id));
+  }, [navigate]);
+
+  const onSelectTab = useCallback((id: string) => {
+    navigate(toEditorPath(id));
+  }, [navigate]);
+
+  const onCloseTab = useCallback((id: string) => {
+    const next = tabAfterClosing(tabs, id);
+    setTabs((current) => current.filter((tab) => tab.id !== id));
+
+    // Closing the file you are looking at has to move you somewhere real.
+    if (id !== documentId) return;
+    navigate(next ? toEditorPath(next.id) : RoutePaths.editor);
+  }, [documentId, navigate, tabs]);
+
+  const breadcrumbs = useMemo((): BreadcrumbSegment[] => {
+    if (!activeDocument) return [];
+
+    const trail: BreadcrumbSegment[] = [];
+    const parent = parentQuery.data;
+
+    if (parent) {
+      if (parent.parentId) {
+        trail.push({ id: 'elided', name: '…', kind: 'folder', elided: true });
+      }
+      trail.push({ id: parent.id, name: parent.name, kind: 'folder' });
+    }
+
+    trail.push({
+      id: activeDocument.id,
+      name: activeDocument.name,
+      kind: activeDocument.kind === 'folder' ? 'folder' : 'file',
+    });
+    return trail;
+  }, [activeDocument, parentQuery.data]);
+
+  const onSelectCrumb = useCallback((segment: BreadcrumbSegment) => {
+    navigate(toEditorPath(segment.id));
   }, [navigate]);
 
   const handleOpenCmd = useCallback(() => {
@@ -151,9 +224,12 @@ export const EditorPage = memo((props: EditorPageProps) => {
         fileName={activeDocument?.name ?? 'untitled'}
         readOnly={!canEdit}
         peers={peers}
+        onCursorChange={setCursor}
       />
     );
   };
+
+  const showsEditorChrome = Boolean(activeDocument) && !isFolder;
 
   return (
     <div className={classNames(cls.canvas, {}, [className])}>
@@ -215,7 +291,29 @@ export const EditorPage = memo((props: EditorPageProps) => {
           />
         )}
         <div className={cls.viewpanel}>
-          {renderEditorArea()}
+          <EditorTabs
+            tabs={tabs}
+            activeId={documentId ?? null}
+            onSelect={onSelectTab}
+            onClose={onCloseTab}
+          />
+          {showsEditorChrome && (
+            <EditorBreadcrumbs segments={breadcrumbs} onSelect={onSelectCrumb} />
+          )}
+
+          <div className={cls.editorArea}>
+            {renderEditorArea()}
+          </div>
+
+          {showsEditorChrome && (
+            <EditorStatusBar
+              fileName={activeDocument?.name ?? ''}
+              cursor={cursor}
+              tabSize={editorPreferences.tabSize}
+              readOnly={!canEdit}
+              peerCount={others.length}
+            />
+          )}
         </div>
       </div>
 

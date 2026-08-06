@@ -1,20 +1,45 @@
 .row {
   display: flex;
+  min-width: 0;
   align-items: center;
-  gap: 6px;
-  height: 26px;
-  padding-right: 8px;
-  color: var(--ink-300, #d6d3d1);
+  gap: 7px;
+  padding-right: 6px;
+  color: var(--color-text-secondary);
 }
 
 .input {
   width: 100%;
-  padding: 2px 4px;
-  border: 1px solid var(--accent-500, #6366f1);
-  border-radius: 4px;
-  background: var(--surface-900, #1c1917);
-  color: inherit;
-  font-family: inherit;
-  font-size: 12px;
+  min-width: 0;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  background: var(--color-inset);
+  box-shadow: 0 0 0 3px var(--ring);
+  color: var(--color-text);
+  font-family: var(--font-body);
   outline: none;
+}
+
+.input::placeholder {
+  color: var(--color-text-faint);
+}
+
+/* Sits in a file-tree row, so it has to match that row's height exactly. */
+.sm {
+  height: 24px;
+
+  .input {
+    height: 22px;
+    // Horizontal padding, not the 2px it had: the first character was rendering
+    // underneath the caret and looked clipped.
+    padding: 0 7px;
+    font-size: var(--text-xs);
+  }
+}
+
+/* Stands alone in a card, where a tree-sized field looks lost. */
+.md .input {
+  height: var(--control-md);
+  padding: 0 11px;
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
 }

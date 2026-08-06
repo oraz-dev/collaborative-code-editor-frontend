@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import Editor, { type OnMount } from '@monaco-editor/react';
+import Editor, { type BeforeMount, type OnMount } from '@monaco-editor/react';
 import type { editor } from 'monaco-editor';
 import { MonacoBinding } from 'y-monaco';
 import type * as Y from 'yjs';
@@ -15,7 +15,19 @@ import {
 } from '@/features/preferences';
 import { RemoteCursorStyles } from '../RemoteCursorStyles/RemoteCursorStyles';
 import type { PresencePeer } from '../../model/presence/presence';
+import {
+  defineEditorThemes,
+  EDITOR_THEME_DARK,
+  EDITOR_THEME_LIGHT,
+} from '../../model/editorTheme/editorTheme';
 import cls from './CollaborativeEditor.module.scss';
+
+export interface EditorCursor {
+  line: number;
+  column: number;
+  /** Characters currently selected, 0 when the selection is empty. */
+  selected: number;
+}
 
 interface CollaborativeEditorProps {
   className?: string;
@@ -24,6 +36,7 @@ interface CollaborativeEditorProps {
   fileName: string;
   readOnly?: boolean;
   peers?: PresencePeer[];
+  onCursorChange?: (cursor: EditorCursor) => void;
 }
 
 const loading = (
@@ -39,32 +52,98 @@ const NO_PEERS: PresencePeer[] = [];
  * controlled value would fight the CRDT binding for ownership of the buffer.
  */
 export const CollaborativeEditor = memo((props: CollaborativeEditorProps) => {
-  const { className, text, awareness, fileName, readOnly = false, peers = NO_PEERS } = props;
+  const {
+    className,
+    text,
+    awareness,
+    fileName,
+    readOnly = false,
+    peers = NO_PEERS,
+    onCursorChange,
+  } = props;
   const [editorInstance, setEditorInstance] = useState<editor.IStandaloneCodeEditor | null>(null);
 
   const preferences = useEditorPreferences();
   const collaboration = useCollaborationPreferences();
   const theme = useResolvedTheme();
 
-  const handleMount: OnMount = useCallback((instance) => {
-    setEditorInstance(instance);
+  const handleBeforeMount: BeforeMount = useCallback((monaco) => {
+    defineEditorThemes(monaco);
   }, []);
 
+  const [monacoApi, setMonacoApi] = useState<Parameters<OnMount>[1] | null>(null);
+
+  const handleMount: OnMount = useCallback((instance, monaco) => {
+    setEditorInstance(instance);
+    setMonacoApi(monaco);
+  }, []);
+
+  /**
+   * Monaco caches the width of a character when it lays out. A webfont that
+   * finishes loading afterwards — or simply picking a different one — leaves
+   * that cache describing the previous face, so the caret and selections drift
+   * further out of line the further along a row you go.
+   */
+  useEffect(() => {
+    if (!monacoApi) return;
+
+    monacoApi.editor.remeasureFonts();
+    let cancelled = false;
+    document.fonts?.ready.then(() => {
+      if (!cancelled) monacoApi.editor.remeasureFonts();
+    });
+
+    return () => { cancelled = true; };
+  }, [monacoApi, preferences.fontFamily, preferences.fontSize, preferences.ligatures]);
+
   const options = useMemo((): editor.IStandaloneEditorConstructionOptions => ({
-    minimap: { enabled: preferences.minimap },
+    minimap: { enabled: preferences.minimap, renderCharacters: false },
     fontSize: preferences.fontSize,
     fontFamily: EDITOR_FONT_STACKS[preferences.fontFamily],
     fontLigatures: preferences.ligatures,
     tabSize: preferences.tabSize,
     wordWrap: preferences.wordWrap ? 'on' : 'off',
     lineNumbersMinChars: 3,
+    lineHeight: 1.6,
     scrollBeyondLastLine: false,
     smoothScrolling: true,
     automaticLayout: true,
-    padding: { top: 12, bottom: 12 },
+    padding: { top: 14, bottom: 14 },
     renderWhitespace: 'selection',
+    renderLineHighlight: 'all',
+    cursorBlinking: 'smooth',
+    cursorSmoothCaretAnimation: 'on',
+    bracketPairColorization: { enabled: true },
+    guides: { indentation: true, bracketPairs: 'active' },
+    stickyScroll: { enabled: true },
+    scrollbar: { verticalScrollbarSize: 11, horizontalScrollbarSize: 11, useShadows: false },
+    overviewRulerBorder: false,
+    roundedSelection: false,
     readOnly,
   }), [preferences, readOnly]);
+
+  // Feeds the status bar. Monaco owns the selection, so it is read from the
+  // editor rather than mirrored into React state on every keystroke.
+  useEffect(() => {
+    if (!editorInstance || !onCursorChange) return;
+
+    const report = () => {
+      const position = editorInstance.getPosition();
+      if (!position) return;
+
+      const selection = editorInstance.getSelection();
+      const model = editorInstance.getModel();
+      const selected = selection && model && !selection.isEmpty()
+        ? model.getValueInRange(selection).length
+        : 0;
+
+      onCursorChange({ line: position.lineNumber, column: position.column, selected });
+    };
+
+    report();
+    const subscription = editorInstance.onDidChangeCursorSelection(report);
+    return () => subscription.dispose();
+  }, [editorInstance, onCursorChange]);
 
   useEffect(() => {
     if (!editorInstance || !text) return;
@@ -96,8 +175,9 @@ export const CollaborativeEditor = memo((props: CollaborativeEditorProps) => {
         // leak undo history or bindings between them.
         path={fileName}
         defaultLanguage={languageFromFileName(fileName)}
-        theme={theme === 'light' ? 'light' : 'vs-dark'}
+        theme={theme === 'light' ? EDITOR_THEME_LIGHT : EDITOR_THEME_DARK}
         loading={loading}
+        beforeMount={handleBeforeMount}
         onMount={handleMount}
         options={options}
       />

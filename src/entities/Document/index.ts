@@ -32,6 +32,7 @@ export {
   useDocumentRoots,
   useSharedDocuments,
 } from './api/documentQueries';
+export { useSharedAt } from './api/useSharedAt';
 export { useDocumentSearch } from './api/useDocumentSearch';
 export { dedupeDocuments, searchDocuments } from './model/lib/searchDocuments';
 

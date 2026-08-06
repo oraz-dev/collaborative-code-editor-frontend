@@ -103,6 +103,38 @@ describe('ShareDialog', () => {
     expect(screen.getByRole('button', { name: 'Leave this document' })).toBeInTheDocument();
   });
 
+  test('falls back to the username when a collaborator has no display name', async () => {
+    // The document service returns grants with display_name empty, which left
+    // an invited person showing as a blank row.
+    mockApi({
+      collaborators: [
+        { user_id: 'me', username: 'ork', display_name: 'Ork', role: 'owner' },
+        { user_id: 'u2', username: 'mekan', display_name: '', role: 'editor' },
+      ],
+    });
+    renderWithProviders(
+      <ShareDialog open onClose={vi.fn()} document={ownedDocument} isOwner currentUserId="me" />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('collaborator-u2')).toHaveTextContent('mekan');
+    });
+  });
+
+  test('keeps the role control from crowding out the person it belongs to', async () => {
+    mockApi();
+    renderWithProviders(
+      <ShareDialog open onClose={vi.fn()} document={ownedDocument} isOwner currentUserId="me" />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('collaborator-u2')).toHaveTextContent('Ada Lovelace');
+    });
+    // The control is labelled by who it applies to, so the two can never be
+    // confused once several people are listed.
+    expect(screen.getByLabelText('Access level for Ada Lovelace')).toBeInTheDocument();
+  });
+
   test('does not offer a leave button to the owner', async () => {
     mockApi();
     renderWithProviders(

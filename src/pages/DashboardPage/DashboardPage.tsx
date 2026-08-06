@@ -11,10 +11,13 @@ import {
   useCreateDocument,
   useDeleteDocument,
   useDocumentRoots,
+  useSharedAt,
   useSharedDocuments,
   type DocumentKind,
   type WorkspaceDocument,
 } from '@/entities/Document';
+import { useSharedDocumentAlerts } from '@/features/notifications';
+import { FileTypeIcon } from '@/shared/ui/FileTypeIcon/FileTypeIcon';
 import { useCommandPaletteHotkey } from '@/shared/lib/hotkey/useCommandPaletteHotkey';
 import { AppBar } from '@/widgets/AppBar/AppBar';
 import { CommandPalette } from '@/widgets/CommandPalette/CommandPalette';
@@ -49,6 +52,11 @@ export const DashboardPage = memo(() => {
   }, []);
 
   useCommandPaletteHotkey(onOpenPalette);
+
+  // Nothing pushes a share to the client, so arrival is noticed from the list
+  // itself and surfaced as a toast rather than appearing silently in the rail.
+  useSharedDocumentAlerts(sharedQuery.data);
+  const sharedAt = useSharedAt(sharedQuery.data, user?.id);
 
   const documents = rootsQuery.data ?? [];
 
@@ -151,9 +159,16 @@ export const DashboardPage = memo(() => {
                   {creatingKind && (
                     <InlineNameInput
                       className={cls.createCard}
+                      size="md"
                       ariaLabel={creatingKind === 'folder' ? 'New project name' : 'New file name'}
                       placeholder={creatingKind === 'folder' ? 'project name' : 'file name'}
-                      icon={creatingKind === 'folder' ? <Icons.Folder size={14} /> : <Icons.Files size={14} />}
+                      icon={(
+                        <FileTypeIcon
+                          name=""
+                          variant={creatingKind === 'folder' ? 'folder' : 'file'}
+                          size={17}
+                        />
+                      )}
                       onSubmit={onSubmitCreate}
                       onCancel={onCancelCreate}
                     />
@@ -182,22 +197,32 @@ export const DashboardPage = memo(() => {
                   <div className={cls.cardHead}>
                     <span className={cls.cardTitle}>Shared with me</span>
                   </div>
-                  {sharedQuery.data?.map((document) => (
-                    <div
-                      className={cls.actrow}
-                      key={document.id}
-                      onClick={() => onOpenDocument(document)}
-                      role="button"
-                      tabIndex={0}
-                      aria-label={`Open ${document.name}`}
-                    >
-                      <span className={cls.sideIcon} aria-hidden="true">
-                        {document.kind === 'folder' ? <Icons.Folder size={14} /> : <Icons.Files size={14} />}
-                      </span>
-                      <div className={cls.actTxt}><b>{document.name}</b></div>
-                      <span className={cls.actTime}>{relativeTime(document.updatedAt)}</span>
-                    </div>
-                  ))}
+                  {sharedQuery.data?.map((document) => {
+                    // The grant time, not the document's last edit — a file
+                    // shared a minute ago was reading as "yesterday".
+                    const shared = relativeTime(sharedAt.get(document.id));
+
+                    return (
+                      <button
+                        type="button"
+                        className={cls.actrow}
+                        key={document.id}
+                        onClick={() => onOpenDocument(document)}
+                        aria-label={`Open ${document.name}`}
+                      >
+                        <FileTypeIcon
+                          className={cls.sideIcon}
+                          name={document.name}
+                          variant={document.kind === 'folder' ? 'folder' : 'file'}
+                          size={15}
+                        />
+                        <div className={cls.actTxt}>
+                          <b>{document.name}</b>
+                          {shared && <span className={cls.actSub}>Shared {shared}</span>}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
 
@@ -211,20 +236,22 @@ export const DashboardPage = memo(() => {
                 )}
 
                 {recentlyUpdated.map((document) => (
-                  <div
+                  <button
+                    type="button"
                     className={cls.actrow}
                     key={document.id}
                     onClick={() => onOpenDocument(document)}
-                    role="button"
-                    tabIndex={0}
                     aria-label={`Open ${document.name}`}
                   >
-                    <span className={cls.sideIcon} aria-hidden="true">
-                      {document.kind === 'folder' ? <Icons.Folder size={14} /> : <Icons.Files size={14} />}
-                    </span>
+                    <FileTypeIcon
+                      className={cls.sideIcon}
+                      name={document.name}
+                      variant={document.kind === 'folder' ? 'folder' : 'file'}
+                      size={15}
+                    />
                     <div className={cls.actTxt}><b>{document.name}</b></div>
                     <span className={cls.actTime}>{relativeTime(document.updatedAt)}</span>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>

@@ -1,0 +1,100 @@
+.strip {
+  display: flex;
+  flex: none;
+  align-items: stretch;
+  height: 36px;
+  background: var(--color-bg-sunken);
+  border-bottom: 1px solid var(--color-border);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.strip::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  max-width: 220px;
+  flex: none;
+  align-items: center;
+  gap: 7px;
+  padding: 0 8px 0 12px;
+  border-right: 1px solid var(--color-border-subtle);
+  color: var(--color-text-faint);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  user-select: none;
+  transition: background var(--duration-fast) var(--ease), color var(--duration-fast) var(--ease);
+}
+
+.tab:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text-secondary);
+}
+
+.tab:focus-visible {
+  outline: 1px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+/* The active tab lifts into the editor surface and carries the accent rail on
+   top, which is the thing that reads unmistakably as an editor tab strip. */
+.active {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 2px;
+  background: var(--color-primary);
+}
+
+.active::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 1px;
+  background: var(--color-surface);
+}
+
+.label {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.close {
+  display: inline-flex;
+  flex: none;
+  padding: 3px;
+  border: none;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--color-text-faint);
+  cursor: pointer;
+  opacity: 0;
+  transition: var(--transition-control), opacity var(--duration-fast) var(--ease);
+}
+
+.tab:hover .close,
+.active .close,
+.close:focus-visible {
+  opacity: 1;
+}
+
+.close:hover {
+  background: var(--color-surface-3);
+  color: var(--color-text);
+}

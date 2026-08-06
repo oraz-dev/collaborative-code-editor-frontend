@@ -32,6 +32,20 @@
   --tracking-tight: #{$tracking-tight};
   --tracking-caps:  #{$tracking-caps};
 
+  // spacing — components reference these as var(--space-N); without the bridge
+  // every `padding: var(--space-5)` is an invalid value and gets dropped, which
+  // is how the modals ended up with no padding at all.
+  --space-1:  #{$space-1};
+  --space-2:  #{$space-2};
+  --space-3:  #{$space-3};
+  --space-4:  #{$space-4};
+  --space-5:  #{$space-5};
+  --space-6:  #{$space-6};
+  --space-8:  #{$space-8};
+  --space-10: #{$space-10};
+  --space-12: #{$space-12};
+  --space-16: #{$space-16};
+
   // radius
   --radius-xs:   #{$radius-xs};
   --radius-sm:   #{$radius-sm};

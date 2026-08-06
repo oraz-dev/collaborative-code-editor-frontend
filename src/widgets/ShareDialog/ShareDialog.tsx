@@ -8,6 +8,7 @@ import { Spinner } from '@/shared/ui/Spinner/Spinner';
 import { Icons } from '@/shared/ui/Icon/Icons';
 import { initials } from '@/shared/lib/initials/initials';
 import { isApiError } from '@/shared/api';
+import { presenceColorFor } from '@/features/collaboration';
 import { useUserSearch, useUsersByIds, type User } from '@/entities/User';
 import {
   GRANTABLE_ROLES,
@@ -37,6 +38,15 @@ const ROLE_OPTIONS = GRANTABLE_ROLES.map((role) => ({
   value: role,
   label: GRANTABLE_ROLE_LABELS[role],
 }));
+
+/**
+ * Both services can hand back a person with no display name at all, which used
+ * to render as an empty row you could not tell apart from anyone else. Fall
+ * back through the username before giving up.
+ */
+function displayNameOf(person: { displayName?: string; username?: string }): string {
+  return person.displayName?.trim() || person.username?.trim() || 'Unknown member';
+}
 
 function describeError(error: unknown): string {
   if (!isApiError(error)) return 'Something went wrong. Please try again.';
@@ -131,7 +141,7 @@ export const ShareDialog = memo((props: ShareDialogProps) => {
     <Modal
       open={open}
       onClose={onClose}
-      size="md"
+      size="lg"
       title={document ? `Share “${document.name}”` : 'Share'}
     >
       <div className={cls.root} data-testid="share-dialog">
@@ -148,6 +158,7 @@ export const ShareDialog = memo((props: ShareDialogProps) => {
                 className={cls.inviteInput}
                 value={query}
                 onChange={setQuery}
+                icon="search"
                 placeholder="Search by username or email"
                 aria-label="Search people to share with"
                 data-testid="share-search"
@@ -157,6 +168,7 @@ export const ShareDialog = memo((props: ShareDialogProps) => {
                 value={role}
                 onChange={handleRoleChange}
                 options={ROLE_OPTIONS}
+                aria-label="Access level for people you invite"
               />
             </div>
 
@@ -183,17 +195,21 @@ export const ShareDialog = memo((props: ShareDialogProps) => {
               <div className={cls.results}>
                 {results.map((user) => (
                   <div className={cls.result} key={user.id}>
-                    <Avatar size="sm" initials={initials(user.displayName)} />
+                    <Avatar
+                      size="sm"
+                      initials={initials(displayNameOf(user))}
+                      color={presenceColorFor(user.id)}
+                    />
                     <div className={cls.resultText}>
-                      <span className={cls.resultName}>{user.displayName}</span>
-                      <span className={cls.resultSub}>{user.username || user.email}</span>
+                      <span className={cls.resultName}>{displayNameOf(user)}</span>
+                      <span className={cls.resultSub}>{user.username ? `@${user.username}` : user.email}</span>
                     </div>
                     <Button
                       size="small"
                       variant="secondary"
                       onClick={() => onInvite(user)}
                       isLoading={shareMutation.isPending}
-                      aria-label={`Share with ${user.displayName}`}
+                      aria-label={`Share with ${displayNameOf(user)}`}
                     >
                       {existingIds.has(user.id) ? 'Update' : 'Invite'}
                     </Button>
@@ -231,40 +247,49 @@ export const ShareDialog = memo((props: ShareDialogProps) => {
 
             return (
               <div className={cls.row} key={collaborator.userId} data-testid={`collaborator-${collaborator.userId}`}>
-                <Avatar size="sm" initials={initials(collaborator.displayName)} />
+                <Avatar
+                  size="sm"
+                  initials={initials(displayNameOf(collaborator))}
+                  color={presenceColorFor(collaborator.userId)}
+                />
                 <div className={cls.rowText}>
                   <span className={cls.rowName}>
-                    {collaborator.displayName}{isSelf && <span className={cls.you}> (you)</span>}
+                    {displayNameOf(collaborator)}{isSelf && <span className={cls.you}> (you)</span>}
                   </span>
                   {collaborator.username && (
-                    <span className={cls.rowSub}>{collaborator.username}</span>
+                    <span className={cls.rowSub}>@{collaborator.username}</span>
                   )}
                 </div>
 
-                {isDocumentOwner ? (
-                  <span className={cls.ownerTag}>Owner</span>
-                ) : isOwner ? (
-                  <>
-                    <Select
-                      className={cls.roleSelect}
-                      value={collaborator.role}
-                      onChange={(value) => onChangeExistingRole(collaborator, value)}
-                      options={ROLE_OPTIONS}
-                    />
-                    <button
-                      type="button"
-                      className={cls.revoke}
-                      onClick={() => onRevoke(collaborator)}
-                      aria-label={`Remove ${collaborator.displayName}`}
-                    >
-                      <Icons.X size={14} />
-                    </button>
-                  </>
-                ) : (
-                  <span className={cls.roleTag}>
-                    {collaborator.role === 'editor' ? 'Can edit' : 'Can view'}
-                  </span>
-                )}
+                <div className={cls.rowControls}>
+                  {isDocumentOwner ? (
+                    <span className={cls.ownerTag}>Owner</span>
+                  ) : isOwner ? (
+                    <>
+                      <Select
+                        className={cls.rowRoleSelect}
+                        variant="ghost"
+                        size="sm"
+                        value={collaborator.role}
+                        onChange={(value) => onChangeExistingRole(collaborator, value)}
+                        options={ROLE_OPTIONS}
+                        aria-label={`Access level for ${displayNameOf(collaborator)}`}
+                      />
+                      <button
+                        type="button"
+                        className={cls.revoke}
+                        onClick={() => onRevoke(collaborator)}
+                        aria-label={`Remove ${displayNameOf(collaborator)}`}
+                      >
+                        <Icons.X size={14} />
+                      </button>
+                    </>
+                  ) : (
+                    <span className={cls.roleTag}>
+                      {collaborator.role === 'editor' ? 'Can edit' : 'Can view'}
+                    </span>
+                  )}
+                </div>
               </div>
             );
           })}

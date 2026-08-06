@@ -65,7 +65,7 @@
 
 .hereLbl { font: var(--weight-medium) 11px/1 var(--font-mono); color: var(--color-text-muted); }
 
-.work { flex: 1; min-height: 0; display: flex; gap: 18px; }
+.work { flex: 1; min-height: 0; display: flex; gap: 14px; }
 
 .viewpanel {
   flex: 1;
@@ -80,6 +80,13 @@
   box-shadow: var(--shadow-lg), var(--edge);
 }
 
+/* Between the tab strip/breadcrumbs and the status bar. */
+.editorArea {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
 
 .placeholder {
   display: flex;
@@ -88,29 +95,29 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 24px;
-  color: var(--ink-500, #78716c);
+  gap: var(--space-3);
+  padding: var(--space-6);
+  color: var(--color-text-faint);
   text-align: center;
 }
 
 .placeholder p {
   margin: 0;
-  color: var(--ink-300, #d6d3d1);
-  font-size: 14px;
+  color: var(--color-text-secondary);
+  font-size: var(--text-base);
 }
 
 .placeholderHint {
   max-width: 320px;
-  font-size: 12.5px;
-  line-height: 1.5;
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
 }
 
 .viewOnly {
   padding: 3px 9px;
-  border: 1px solid var(--line-700, #44403c);
-  border-radius: 999px;
-  color: var(--ink-400, #a8a29e);
-  font-size: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
   white-space: nowrap;
 }

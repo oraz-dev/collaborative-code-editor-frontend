@@ -1,0 +1,55 @@
+.bar {
+  display: flex;
+  height: 26px;
+  flex: none;
+  align-items: center;
+  padding: 0 var(--space-3);
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-surface);
+  overflow-x: auto;
+  scrollbar-width: none;
+  white-space: nowrap;
+}
+
+.bar::-webkit-scrollbar {
+  display: none;
+}
+
+.item {
+  display: inline-flex;
+  align-items: center;
+}
+
+.sep {
+  display: inline-flex;
+  padding: 0 1px;
+  color: var(--color-text-disabled);
+}
+
+.crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 5px;
+  border: none;
+  border-radius: var(--radius-xs);
+  background: none;
+  color: var(--color-text-faint);
+  cursor: pointer;
+  font: var(--text-xs) / 1 var(--font-body);
+  transition: var(--transition-control);
+}
+
+.crumb:not(:disabled):hover {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+}
+
+.current {
+  color: var(--color-text-secondary);
+}
+
+/* Unresolved ancestors and the file itself are labels, not controls. */
+.plain {
+  cursor: default;
+}

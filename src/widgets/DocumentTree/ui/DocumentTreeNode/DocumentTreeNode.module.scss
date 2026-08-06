@@ -1,49 +1,74 @@
 .row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 26px;
-  padding-right: 8px;
-  border-radius: 5px;
-  color: var(--ink-300, #d6d3d1);
+  height: 24px;
+  padding: 0 6px 0 6px;
+  color: var(--color-text-secondary);
   cursor: pointer;
-  font-size: 12.5px;
+  font-size: var(--text-sm);
   user-select: none;
+  transition: background var(--duration-fast) var(--ease), color var(--duration-fast) var(--ease);
 }
 
 .row:hover {
-  background: var(--surface-800, #292524);
+  background: var(--color-surface-2);
+  color: var(--color-text);
 }
 
 .row:focus-visible {
-  outline: 2px solid var(--accent-500, #6366f1);
-  outline-offset: -2px;
+  outline: 1px solid var(--color-primary);
+  outline-offset: -1px;
 }
 
+// The selected file keeps an accent rail on the left edge, which is what makes
+// "where am I" legible at a glance in a long tree.
 .active {
-  background: var(--surface-750, #33302c);
-  color: var(--ink-100, #fafaf9);
+  background: var(--fill-primary);
+  color: var(--color-text);
+  font-weight: var(--weight-medium);
+}
+
+.active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+  background: var(--color-primary);
 }
 
 .pending {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: default;
 }
 
-.icon {
-  display: inline-flex;
-  width: 13px;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  color: var(--ink-500, #78716c);
+/* One hairline per ancestor level — the editor indent-guide idiom. */
+.guide {
+  flex: none;
+  width: 14px;
+  height: 100%;
+  border-left: 1px solid var(--color-border-subtle);
 }
 
-.fileDot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--ink-600, #57534e);
+.twisty {
+  display: inline-flex;
+  width: 14px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-faint);
+  transition: color var(--duration-fast) var(--ease);
+}
+
+.row:hover .twisty {
+  color: var(--color-text-muted);
+}
+
+.fileIcon {
+  opacity: 0.95;
 }
 
 .name {
@@ -55,7 +80,7 @@
 
 .actions {
   display: none;
-  gap: 2px;
+  gap: 1px;
 }
 
 .row:hover .actions,
@@ -67,39 +92,45 @@
   display: inline-flex;
   padding: 3px;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   background: transparent;
-  color: var(--ink-400, #a8a29e);
+  color: var(--color-text-faint);
   cursor: pointer;
+  transition: var(--transition-control);
 }
 
 .action:hover {
-  background: var(--surface-700, #44403c);
-  color: var(--ink-100, #fafaf9);
+  background: var(--color-surface-3);
+  color: var(--color-text);
+}
+
+.action:focus-visible {
+  outline: 1px solid var(--color-primary);
+  outline-offset: 1px;
 }
 
 .status {
   display: flex;
-  height: 24px;
+  height: 22px;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 
 .empty {
-  color: var(--ink-600, #57534e);
+  color: var(--color-text-disabled);
   font-style: italic;
 }
 
 .error {
-  color: var(--coral-400, #f87171);
+  color: var(--color-destructive);
 }
 
 .retry {
   border: none;
   background: none;
-  color: var(--accent-400, #818cf8);
+  color: var(--color-text-link);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--text-xs);
   text-decoration: underline;
 }

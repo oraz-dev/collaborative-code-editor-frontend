@@ -33,12 +33,19 @@ export function useDocumentChildren(parentId: string | null, enabled = true) {
   });
 }
 
-/** Documents other people have shared with the signed-in user. */
+/**
+ * Documents other people have shared with the signed-in user.
+ *
+ * Polled, because nothing pushes a new grant to the client: without it a share
+ * only appears after a reload, and the "shared with you" alert would never
+ * fire while you were sitting on the page it concerns.
+ */
 export function useSharedDocuments() {
   return useQuery({
     queryKey: queryKeys.documentsSharedWithMe(),
     queryFn: ({ signal }) => fetchSharedDocuments(signal),
     select: sortDocuments,
+    refetchInterval: 60_000,
   });
 }
 

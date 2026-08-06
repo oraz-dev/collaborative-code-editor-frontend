@@ -68,9 +68,23 @@
 
 .meta {
   display: flex;
+  align-items: center;
   gap: 5px;
-  color: var(--ink-500, #78716c);
-  font-size: 12px;
+  color: var(--color-text-faint);
+  font-size: var(--text-xs);
+}
+
+/* Both were referenced by the card but never declared, so the type and the
+   timestamp inherited `.meta` wholesale and read as one flat run of text. */
+.kind {
+  color: var(--color-text-muted);
+}
+
+.updated {
+  overflow: hidden;
+  color: var(--color-text-disabled);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -13,7 +13,8 @@ import {
   type WorkspaceDocument,
 } from '@/entities/Document';
 import { ShareDialog } from '@/widgets/ShareDialog';
-import { DocumentTreeNode, type TreeCreationTarget } from './ui/DocumentTreeNode/DocumentTreeNode';
+import { FileTypeIcon } from '@/shared/ui/FileTypeIcon/FileTypeIcon';
+import { INDENT_STEP, DocumentTreeNode, type TreeCreationTarget } from './ui/DocumentTreeNode/DocumentTreeNode';
 import cls from './DocumentTree.module.scss';
 
 interface DocumentTreeProps {
@@ -101,8 +102,15 @@ export const DocumentTree = memo((props: DocumentTreeProps) => {
     setCreating({ parentId: null, kind: 'folder' });
   }, []);
 
+  const [collapsed, setCollapsed] = useState(false);
+
+  const onToggleSection = useCallback(() => {
+    setCollapsed((value) => !value);
+  }, []);
+
   const isCreatingAtRoot = creating?.parentId === null;
   const shared = sharedQuery.data ?? [];
+  const rootCount = rootsQuery.data?.length ?? 0;
 
   const nodeHandlers = {
     currentUserId: ownerId,
@@ -121,8 +129,22 @@ export const DocumentTree = memo((props: DocumentTreeProps) => {
 
   return (
     <div className={classNames(cls.root, {}, [className])} data-testid="document-tree">
+      <div className={cls.paneTitle}>Explorer</div>
+
       <div className={cls.head}>
-        <span className={cls.title}>Files</span>
+        <button
+          type="button"
+          className={cls.headToggle}
+          onClick={onToggleSection}
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? 'Expand files' : 'Collapse files'}
+        >
+          <span className={cls.headChevron} aria-hidden="true">
+            {collapsed ? <Icons.ChevR size={12} /> : <Icons.ChevD size={12} />}
+          </span>
+          Files
+          {rootCount > 0 && <span className={cls.count}>{rootCount}</span>}
+        </button>
         <button type="button" className={cls.action} onClick={onNewRootFile} aria-label="New file">
           <Icons.Plus size={13} />
         </button>
@@ -131,6 +153,7 @@ export const DocumentTree = memo((props: DocumentTreeProps) => {
         </button>
       </div>
 
+      {!collapsed && (
       <div className={cls.scroll} role="tree" aria-label="Workspace files">
         {rootsQuery.isPending && (
           <div className={cls.center}><Spinner /></div>
@@ -163,10 +186,10 @@ export const DocumentTree = memo((props: DocumentTreeProps) => {
 
         {isCreatingAtRoot && (
           <InlineNameInput
-            style={{ paddingLeft: 8 }}
+            style={{ paddingLeft: INDENT_STEP }}
             ariaLabel={creating.kind === 'folder' ? 'New folder name' : 'New file name'}
             placeholder={creating.kind === 'folder' ? 'folder name' : 'file name'}
-            icon={creating.kind === 'folder' ? <Icons.Folder size={13} /> : <Icons.Files size={13} />}
+            icon={<FileTypeIcon name="" variant={creating.kind === 'folder' ? 'folder' : 'file'} size={15} />}
             onSubmit={onSubmitCreate}
             onCancel={onCancelCreate}
           />
@@ -196,6 +219,7 @@ export const DocumentTree = memo((props: DocumentTreeProps) => {
           </>
         )}
       </div>
+      )}
 
       <ShareDialog
         open={Boolean(sharing)}

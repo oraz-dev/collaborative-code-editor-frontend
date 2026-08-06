@@ -51,13 +51,16 @@ export const Input = memo((props: InputProps) => {
   };
 
   return (
-    <div className={cls.inputWrapper} >
+    // `className` belongs on the wrapper, not the field: sizing a caller passes
+    // in (`flex: 1`, a fixed width) has to apply to the element that is actually
+    // the flex item, otherwise the field keeps its intrinsic width and overflows.
+    <div className={classNames(cls.inputWrapper, {}, [className])}>
       {label && (
         <span className={cls.label} >
           {label}
         </span>
       )}
-      <div className={classNames(cls.input, mods, [className])}>
+      <div className={classNames(cls.input, mods)}>
         {icon && <Icon className={cls.icon} name={icon}/>}
         <input
           ref={ref}

@@ -9,12 +9,16 @@ import {
 import { classNames } from '@/shared/lib/classNames/classNames';
 import cls from './InlineNameInput.module.scss';
 
+/** `sm` matches a file-tree row; `md` stands on its own in a card. */
+type InlineNameInputSize = 'sm' | 'md';
+
 interface InlineNameInputProps {
   className?: string;
   style?: CSSProperties;
   ariaLabel: string;
   placeholder?: string;
   icon?: ReactNode;
+  size?: InlineNameInputSize;
 }
 
 interface Handlers {
@@ -28,7 +32,7 @@ interface Handlers {
  * start writing".
  */
 export const InlineNameInput = memo((props: InlineNameInputProps & Handlers) => {
-  const { className, style, ariaLabel, placeholder, icon, onSubmit, onCancel } = props;
+  const { className, style, ariaLabel, placeholder, icon, size = 'sm', onSubmit, onCancel } = props;
   const [name, setName] = useState('');
 
   const handleChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -53,7 +57,7 @@ export const InlineNameInput = memo((props: InlineNameInputProps & Handlers) => 
   }, [commit, onCancel]);
 
   return (
-    <div className={classNames(cls.row, {}, [className])} style={style}>
+    <div className={classNames(cls.row, { [cls[size]]: true }, [className])} style={style}>
       {icon}
       <input
         className={cls.input}

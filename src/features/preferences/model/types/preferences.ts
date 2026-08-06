@@ -50,9 +50,14 @@ export const ACCENT_COLORS: Record<AccentPreference, string> = {
   coral: '#ef6c5a',
 };
 
+/**
+ * `… Variable` is the family name the bundled woff2 registers. Without it the
+ * first entry never matched anything and all three options collapsed onto the
+ * same system fallback, so the picker appeared to do nothing.
+ */
 export const EDITOR_FONT_STACKS: Record<EditorFontPreference, string> = {
-  jetbrains: "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
-  fira: "'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace",
+  jetbrains: "'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
+  fira: "'Fira Code Variable', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace",
   sf: "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace",
 };
 

@@ -3,6 +3,7 @@ import { Icons } from '@/shared/ui/Icon/Icons';
 import { Spinner } from '@/shared/ui/Spinner/Spinner';
 import { classNames } from '@/shared/lib/classNames/classNames';
 import { InlineNameInput } from '@/shared/ui/InlineNameInput/InlineNameInput';
+import { FileTypeIcon } from '@/shared/ui/FileTypeIcon/FileTypeIcon';
 import {
   isOptimisticDocument,
   useDocumentChildren,
@@ -15,6 +16,9 @@ export interface TreeCreationTarget {
   parentId: string | null;
   kind: DocumentKind;
 }
+
+/** Kept in sync with the `.guide` width so inline inputs line up with rows. */
+export const INDENT_STEP = 14;
 
 interface DocumentTreeNodeProps {
   document: WorkspaceDocument;
@@ -102,21 +106,26 @@ export const DocumentTreeNode = memo((props: DocumentTreeNodeProps) => {
   const isActive = activeDocumentId === document.id;
   const isRenaming = renamingId === document.id;
 
+  // Indent guides, the way an editor draws them: one hairline per ancestor
+  // level rather than blank padding, so a deep tree stays readable.
+  const guides = Array.from({ length: depth }, (_, level) => (
+    <span key={level} className={cls.guide} aria-hidden="true" />
+  ));
+
   return (
     <>
       {isRenaming ? (
         <InlineNameInput
-          style={{ paddingLeft: 8 + depth * 12 }}
+          style={{ paddingLeft: INDENT_STEP + depth * INDENT_STEP }}
           ariaLabel={`Rename ${document.name}`}
           placeholder={document.name}
-          icon={isFolder ? <Icons.Folder size={13} /> : <Icons.Files size={13} />}
+          icon={<FileTypeIcon name={document.name} variant={isFolder ? 'folder' : 'file'} size={15} />}
           onSubmit={onSubmitRename}
           onCancel={onCancelRename}
         />
       ) : (
         <div
           className={classNames(cls.row, { [cls.active]: isActive, [cls.pending]: isPending })}
-          style={{ paddingLeft: 8 + depth * 12 }}
           onClick={onRowClick}
           role="treeitem"
           aria-expanded={isFolder ? expanded : undefined}
@@ -125,11 +134,17 @@ export const DocumentTreeNode = memo((props: DocumentTreeNodeProps) => {
           tabIndex={0}
           data-testid={`tree-node-${document.name}`}
         >
-          <span className={cls.icon} aria-hidden="true">
-            {isFolder
-              ? (expanded ? <Icons.ChevD size={12} /> : <Icons.ChevR size={12} />)
-              : <span className={cls.fileDot} />}
+          {guides}
+          <span className={cls.twisty} aria-hidden="true">
+            {isFolder && (expanded ? <Icons.ChevD size={12} /> : <Icons.ChevR size={12} />)}
           </span>
+          <FileTypeIcon
+            className={cls.fileIcon}
+            name={document.name}
+            variant={isFolder ? 'folder' : 'file'}
+            expanded={expanded}
+            size={15}
+          />
           <span className={cls.name}>{document.name}</span>
 
           {isPending && <Spinner />}
@@ -192,13 +207,13 @@ export const DocumentTreeNode = memo((props: DocumentTreeNodeProps) => {
       {isFolder && expanded && (
         <>
           {childrenQuery.isPending && (
-            <div className={cls.status} style={{ paddingLeft: 20 + depth * 12 }}>
+            <div className={cls.status} style={{ paddingLeft: INDENT_STEP * (depth + 2) }}>
               <Spinner />
             </div>
           )}
 
           {childrenQuery.isError && (
-            <div className={cls.status} style={{ paddingLeft: 20 + depth * 12 }}>
+            <div className={cls.status} style={{ paddingLeft: INDENT_STEP * (depth + 2) }}>
               <span className={cls.error}>Couldn&apos;t load</span>
               <button
                 type="button"
@@ -234,10 +249,10 @@ export const DocumentTreeNode = memo((props: DocumentTreeNodeProps) => {
 
           {isCreatingHere && (
             <InlineNameInput
-              style={{ paddingLeft: 8 + (depth + 1) * 12 }}
+              style={{ paddingLeft: INDENT_STEP * (depth + 2) }}
               ariaLabel={creating.kind === 'folder' ? 'New folder name' : 'New file name'}
               placeholder={creating.kind === 'folder' ? 'folder name' : 'file name'}
-              icon={creating.kind === 'folder' ? <Icons.Folder size={13} /> : <Icons.Files size={13} />}
+              icon={<FileTypeIcon name="" variant={creating.kind === 'folder' ? 'folder' : 'file'} size={15} />}
               onSubmit={onSubmitCreate}
               onCancel={onCancelCreate}
             />
@@ -247,7 +262,7 @@ export const DocumentTreeNode = memo((props: DocumentTreeNodeProps) => {
             && !childrenQuery.isError
             && childrenQuery.data?.length === 0
             && !isCreatingHere && (
-            <div className={cls.status} style={{ paddingLeft: 20 + depth * 12 }}>
+            <div className={cls.status} style={{ paddingLeft: INDENT_STEP * (depth + 2) }}>
               <span className={cls.empty}>Empty</span>
             </div>
           )}
