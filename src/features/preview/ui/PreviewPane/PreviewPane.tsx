@@ -1,5 +1,12 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { classNames } from '@/shared/lib/classNames/classNames';
+import { ResizeHandle } from '@/shared/ui/ResizeHandle/ResizeHandle';
+import {
+  CONSOLE_HEIGHT_RANGE,
+  DEFAULT_PREFERENCES,
+  preferencesStore,
+  useLayoutPreferences,
+} from '@/features/preferences';
 import { Icons } from '@/shared/ui/Icon/Icons';
 import { IconButton } from '@/shared/ui/IconButton/IconButton';
 import {
@@ -19,6 +26,8 @@ interface ConsoleLine {
 
 interface PreviewPaneProps {
   className?: string;
+  /** Set by the resizable layout in EditorPage. */
+  style?: CSSProperties;
   files: PreviewFile[];
   entry: string;
   /** Lets the owner re-snapshot the buffer so a replay picks up new edits. */
@@ -40,7 +49,17 @@ const MAX_LINES = 500;
  * equivalent to no sandbox at all.
  */
 export const PreviewPane = memo((props: PreviewPaneProps) => {
-  const { className, files, entry, onRerun, onClose } = props;
+  const { className, style, files, entry, onRerun, onClose } = props;
+
+  const { consoleHeight } = useLayoutPreferences();
+
+  const onResizeConsole = useCallback((next: number) => {
+    preferencesStore.setLayout({ consoleHeight: next });
+  }, []);
+
+  const onResetConsole = useCallback(() => {
+    preferencesStore.setLayout({ consoleHeight: DEFAULT_PREFERENCES.layout.consoleHeight });
+  }, []);
 
   const frameRef = useRef<HTMLIFrameElement>(null);
   const nextLineId = useRef(0);
@@ -101,7 +120,7 @@ export const PreviewPane = memo((props: PreviewPaneProps) => {
   const errorCount = lines.filter((line) => line.level === 'error').length;
 
   return (
-    <div className={classNames(cls.pane, {}, [className])} data-testid="preview-pane">
+    <div className={classNames(cls.pane, {}, [className])} style={style} data-testid="preview-pane">
       <div className={cls.bar}>
         <span className={cls.title}>Preview</span>
         <span className={cls.entry} title={entry}>{entry}</span>
@@ -156,7 +175,25 @@ export const PreviewPane = memo((props: PreviewPaneProps) => {
       </div>
 
       {showConsole && (
-        <div className={cls.console} data-testid="preview-console">
+        <ResizeHandle
+          axis="y"
+          size={consoleHeight}
+          min={CONSOLE_HEIGHT_RANGE.min}
+          max={CONSOLE_HEIGHT_RANGE.max}
+          // The console sits below the handle, so dragging down shrinks it.
+          reversed
+          label="Resize console"
+          onResize={onResizeConsole}
+          onReset={onResetConsole}
+        />
+      )}
+
+      {showConsole && (
+        <div
+          className={cls.console}
+          style={{ height: consoleHeight }}
+          data-testid="preview-console"
+        >
           {lines.length === 0 && <div className={cls.empty}>No output yet.</div>}
           {lines.map((line) => (
             <div className={classNames(cls.line, { [cls[line.level]]: true })} key={line.id}>

@@ -25,3 +25,7 @@ export function useEditorPreferences() {
 export function useCollaborationPreferences() {
   return usePreferences().collaboration;
 }
+
+export function useLayoutPreferences() {
+  return usePreferences().layout;
+}

@@ -1,4 +1,4 @@
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback, useState, type CSSProperties } from 'react';
 import { Icons } from '@/shared/ui/Icon/Icons';
 import { Spinner } from '@/shared/ui/Spinner/Spinner';
 import { Button } from '@/shared/ui/Button/Button';
@@ -19,6 +19,8 @@ import cls from './DocumentTree.module.scss';
 
 interface DocumentTreeProps {
   className?: string;
+  /** Set by the resizable layout in EditorPage. */
+  style?: CSSProperties;
   ownerId: string;
   activeDocumentId?: string | null;
   onSelectDocument: (document: WorkspaceDocument) => void;
@@ -33,7 +35,7 @@ interface DocumentTreeProps {
  * owner's tree, so they would never appear among this user's roots.
  */
 export const DocumentTree = memo((props: DocumentTreeProps) => {
-  const { className, ownerId, activeDocumentId, onSelectDocument } = props;
+  const { className, style, ownerId, activeDocumentId, onSelectDocument } = props;
 
   const rootsQuery = useDocumentRoots();
   const sharedQuery = useSharedDocuments();
@@ -128,7 +130,7 @@ export const DocumentTree = memo((props: DocumentTreeProps) => {
   };
 
   return (
-    <div className={classNames(cls.root, {}, [className])} data-testid="document-tree">
+    <div className={classNames(cls.root, {}, [className])} style={style} data-testid="document-tree">
       <div className={cls.paneTitle}>Explorer</div>
 
       <div className={cls.head}>

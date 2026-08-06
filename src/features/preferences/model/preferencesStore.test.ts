@@ -80,3 +80,39 @@ describe('preferencesStore', () => {
     expect(preferencesStore.get()).toEqual(DEFAULT_PREFERENCES);
   });
 });
+
+describe('layout preferences', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    preferencesStore.reload();
+  });
+
+  test('remembers a pane size across a reload', () => {
+    preferencesStore.setLayout({ treeWidth: 320 });
+    preferencesStore.reload();
+
+    expect(preferencesStore.get().layout.treeWidth).toBe(320);
+  });
+
+  test('clamps a stored size that would make a pane unusable', () => {
+    localStorage.setItem(
+      'space:preferences',
+      JSON.stringify({ layout: { treeWidth: 10, previewWidth: 9999, consoleHeight: 0 } }),
+    );
+    preferencesStore.reload();
+
+    const { layout } = preferencesStore.get();
+    expect(layout.treeWidth).toBe(180);
+    expect(layout.previewWidth).toBe(900);
+    expect(layout.consoleHeight).toBe(80);
+  });
+
+  test('resizing one pane leaves the others alone', () => {
+    preferencesStore.setLayout({ previewWidth: 520 });
+
+    const { layout } = preferencesStore.get();
+    expect(layout.previewWidth).toBe(520);
+    expect(layout.treeWidth).toBe(240);
+    expect(layout.consoleHeight).toBe(160);
+  });
+});

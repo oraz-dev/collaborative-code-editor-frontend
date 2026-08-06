@@ -1,5 +1,6 @@
 .root {
   display: flex;
+  /* Default only — EditorPage overrides it with the persisted width. */
   width: 240px;
   min-height: 0;
   flex: none;

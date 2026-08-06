@@ -23,10 +23,18 @@ export interface CollaborationPreferences {
   cursorLabels: boolean;
 }
 
+/** Pane sizes in px, so a layout a dev settles on survives a reload. */
+export interface LayoutPreferences {
+  treeWidth: number;
+  previewWidth: number;
+  consoleHeight: number;
+}
+
 export interface Preferences {
   appearance: AppearancePreferences;
   editor: EditorPreferences;
   collaboration: CollaborationPreferences;
+  layout: LayoutPreferences;
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -40,6 +48,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
     ligatures: true,
   },
   collaboration: { liveCursors: true, cursorLabels: true },
+  layout: { treeWidth: 240, previewWidth: 480, consoleHeight: 160 },
 };
 
 /** Drawn from the shared presence palette so accents match collaborator colours. */
@@ -64,6 +73,16 @@ export const EDITOR_FONT_STACKS: Record<EditorFontPreference, string> = {
 export const FONT_SIZE_RANGE = { min: 10, max: 24 } as const;
 export const TAB_SIZE_RANGE = { min: 1, max: 8 } as const;
 
+/*
+ * Bounds for the draggable panes. The minimums are the point below which a pane
+ * stops being useful rather than merely small — a file tree narrower than this
+ * truncates every name, and the editor needs room left over once the preview
+ * has taken its share.
+ */
+export const TREE_WIDTH_RANGE = { min: 180, max: 480 } as const;
+export const PREVIEW_WIDTH_RANGE = { min: 280, max: 900 } as const;
+export const CONSOLE_HEIGHT_RANGE = { min: 80, max: 480 } as const;
+
 function clamp(value: number, min: number, max: number, fallback: number): number {
   if (!Number.isFinite(value)) return fallback;
   return Math.min(max, Math.max(min, Math.round(value)));
@@ -87,6 +106,7 @@ export function normalisePreferences(raw: unknown): Preferences {
   const appearance = (source.appearance ?? {}) as Partial<AppearancePreferences>;
   const editor = (source.editor ?? {}) as Partial<EditorPreferences>;
   const collaboration = (source.collaboration ?? {}) as Partial<CollaborationPreferences>;
+  const layout = (source.layout ?? {}) as Partial<LayoutPreferences>;
 
   return {
     appearance: {
@@ -104,6 +124,11 @@ export function normalisePreferences(raw: unknown): Preferences {
     collaboration: {
       liveCursors: bool(collaboration.liveCursors, DEFAULT_PREFERENCES.collaboration.liveCursors),
       cursorLabels: bool(collaboration.cursorLabels, DEFAULT_PREFERENCES.collaboration.cursorLabels),
+    },
+    layout: {
+      treeWidth: clamp(Number(layout.treeWidth), TREE_WIDTH_RANGE.min, TREE_WIDTH_RANGE.max, DEFAULT_PREFERENCES.layout.treeWidth),
+      previewWidth: clamp(Number(layout.previewWidth), PREVIEW_WIDTH_RANGE.min, PREVIEW_WIDTH_RANGE.max, DEFAULT_PREFERENCES.layout.previewWidth),
+      consoleHeight: clamp(Number(layout.consoleHeight), CONSOLE_HEIGHT_RANGE.min, CONSOLE_HEIGHT_RANGE.max, DEFAULT_PREFERENCES.layout.consoleHeight),
     },
   };
 }

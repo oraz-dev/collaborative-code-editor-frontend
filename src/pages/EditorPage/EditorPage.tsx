@@ -9,6 +9,14 @@ import { Button } from '@/shared/ui/Button/Button';
 import { classNames } from '@/shared/lib/classNames/classNames';
 import { toEditorPath, RoutePaths } from '@/shared/config/routeConfig/routeConfig';
 import { useCommandPaletteHotkey } from '@/shared/lib/hotkey/useCommandPaletteHotkey';
+import { ResizeHandle } from '@/shared/ui/ResizeHandle/ResizeHandle';
+import {
+  DEFAULT_PREFERENCES,
+  PREVIEW_WIDTH_RANGE,
+  TREE_WIDTH_RANGE,
+  preferencesStore,
+  useLayoutPreferences,
+} from '@/features/preferences';
 import { useSession } from '@/features/auth';
 import { useEditorPreferences } from '@/features/preferences';
 import { PreviewPane, isRunnable, type PreviewFile } from '@/features/preview';
@@ -48,6 +56,24 @@ export const EditorPage = memo((props: EditorPageProps) => {
   const [shareOpen, setShareOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewFiles, setPreviewFiles] = useState<PreviewFile[]>([]);
+
+  const layout = useLayoutPreferences();
+
+  const onResizeTree = useCallback((next: number) => {
+    preferencesStore.setLayout({ treeWidth: next });
+  }, []);
+
+  const onResetTree = useCallback(() => {
+    preferencesStore.setLayout({ treeWidth: DEFAULT_PREFERENCES.layout.treeWidth });
+  }, []);
+
+  const onResizePreview = useCallback((next: number) => {
+    preferencesStore.setLayout({ previewWidth: next });
+  }, []);
+
+  const onResetPreview = useCallback(() => {
+    preferencesStore.setLayout({ previewWidth: DEFAULT_PREFERENCES.layout.previewWidth });
+  }, []);
 
   const { user } = useSession();
   const documentQuery = useDocument(documentId);
@@ -335,11 +361,23 @@ export const EditorPage = memo((props: EditorPageProps) => {
 
       <div className={cls.work}>
         {user && (
-          <DocumentTree
-            ownerId={user.id}
-            activeDocumentId={documentId ?? null}
-            onSelectDocument={onSelectDocument}
-          />
+          <>
+            <DocumentTree
+              style={{ width: layout.treeWidth }}
+              ownerId={user.id}
+              activeDocumentId={documentId ?? null}
+              onSelectDocument={onSelectDocument}
+            />
+            <ResizeHandle
+              axis="x"
+              size={layout.treeWidth}
+              min={TREE_WIDTH_RANGE.min}
+              max={TREE_WIDTH_RANGE.max}
+              label="Resize file tree"
+              onResize={onResizeTree}
+              onReset={onResetTree}
+            />
+          </>
         )}
         <div className={cls.viewpanel}>
           <EditorTabs
@@ -368,13 +406,27 @@ export const EditorPage = memo((props: EditorPageProps) => {
         </div>
 
         {previewOpen && activeDocument && (
-          <PreviewPane
-            className={cls.preview}
-            files={previewFiles}
-            entry={activeDocument.name}
-            onRerun={onRun}
-            onClose={onClosePreview}
-          />
+          <>
+            <ResizeHandle
+              axis="x"
+              size={layout.previewWidth}
+              min={PREVIEW_WIDTH_RANGE.min}
+              max={PREVIEW_WIDTH_RANGE.max}
+              // The preview sits after the handle, so dragging right shrinks it.
+              reversed
+              label="Resize preview"
+              onResize={onResizePreview}
+              onReset={onResetPreview}
+            />
+            <PreviewPane
+              style={{ width: layout.previewWidth }}
+              className={cls.preview}
+              files={previewFiles}
+              entry={activeDocument.name}
+              onRerun={onRun}
+              onClose={onClosePreview}
+            />
+          </>
         )}
       </div>
 

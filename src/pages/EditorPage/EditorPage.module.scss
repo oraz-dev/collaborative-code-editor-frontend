@@ -65,7 +65,8 @@
 
 .hereLbl { font: var(--weight-medium) 11px/1 var(--font-mono); color: var(--color-text-muted); }
 
-.work { flex: 1; min-height: 0; display: flex; gap: 14px; }
+/* No gap: the resize handles sit between the panes and supply the spacing. */
+.work { flex: 1; min-height: 0; display: flex; }
 
 .viewpanel {
   flex: 1;
@@ -104,7 +105,8 @@
 
 /* The preview takes a share of the work area without crushing the editor. */
 .preview {
-  width: clamp(320px, 42%, 640px);
+  /* Width comes from the persisted layout preference via an inline style. */
+  min-width: 0;
   flex: none;
   border-radius: var(--radius-2xl);
   border: 1px solid var(--color-border);

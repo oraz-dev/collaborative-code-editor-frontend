@@ -5,6 +5,7 @@ import {
   type AppearancePreferences,
   type CollaborationPreferences,
   type EditorPreferences,
+  type LayoutPreferences,
   type Preferences,
 } from './types/preferences';
 
@@ -65,6 +66,10 @@ export const preferencesStore = {
 
   setCollaboration(patch: Partial<CollaborationPreferences>): void {
     persist(normalisePreferences({ ...current, collaboration: { ...current.collaboration, ...patch } }));
+  },
+
+  setLayout(patch: Partial<LayoutPreferences>): void {
+    persist(normalisePreferences({ ...current, layout: { ...current.layout, ...patch } }));
   },
 
   reset(): void {
