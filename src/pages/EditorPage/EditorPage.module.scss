@@ -80,6 +80,38 @@
   box-shadow: var(--shadow-lg), var(--edge);
 }
 
+.runBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--control-sm);
+  padding: 0 11px 0 9px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-full);
+  background: var(--color-success);
+  color: #06210f;
+  cursor: pointer;
+  font: var(--weight-medium) var(--text-xs) / 1 var(--font-body);
+  transition: var(--transition-control), filter var(--duration-fast) var(--ease);
+}
+
+.runBtn:hover { filter: brightness(1.08); }
+
+.runBtn:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
+/* The preview takes a share of the work area without crushing the editor. */
+.preview {
+  width: clamp(320px, 42%, 640px);
+  flex: none;
+  border-radius: var(--radius-2xl);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-lg), var(--edge);
+  overflow: hidden;
+}
+
 /* Between the tab strip/breadcrumbs and the status bar. */
 .editorArea {
   display: flex;

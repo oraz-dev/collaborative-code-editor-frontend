@@ -11,7 +11,8 @@ import { toEditorPath, RoutePaths } from '@/shared/config/routeConfig/routeConfi
 import { useCommandPaletteHotkey } from '@/shared/lib/hotkey/useCommandPaletteHotkey';
 import { useSession } from '@/features/auth';
 import { useEditorPreferences } from '@/features/preferences';
-import { useDocument, type WorkspaceDocument } from '@/entities/Document';
+import { PreviewPane, isRunnable, type PreviewFile } from '@/features/preview';
+import { useDocument, useDocumentChildren, type WorkspaceDocument } from '@/entities/Document';
 import {
   CollaborativeEditor,
   ConnectionBadge,
@@ -45,6 +46,8 @@ export const EditorPage = memo((props: EditorPageProps) => {
 
   const [cmdOpen, setCmdOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewFiles, setPreviewFiles] = useState<PreviewFile[]>([]);
 
   const { user } = useSession();
   const documentQuery = useDocument(documentId);
@@ -133,6 +136,42 @@ export const EditorPage = memo((props: EditorPageProps) => {
   const onSelectCrumb = useCallback((segment: BreadcrumbSegment) => {
     navigate(toEditorPath(segment.id));
   }, [navigate]);
+
+  const canRun = Boolean(activeDocument) && !isFolder && isRunnable(activeDocument?.name ?? '');
+
+  // Siblings supply the modules the open file imports. Same query key the tree
+  // uses, so an expanded folder has usually already paid for it.
+  const siblingsQuery = useDocumentChildren(
+    activeDocument?.parentId ?? null,
+    canRun && Boolean(activeDocument?.parentId),
+  );
+
+  /**
+   * A run takes a snapshot rather than tracking the buffer live: recomputing
+   * the document on every keystroke would re-render the frame continuously,
+   * and reloading a page mid-keystroke is not what anyone means by "run".
+   */
+  const onRun = useCallback(() => {
+    if (!activeDocument) return;
+
+    const siblings = (siblingsQuery.data ?? [])
+      .filter((document) => document.kind === 'file' && document.id !== activeDocument.id)
+      .map((document) => ({ path: document.name, content: document.content }));
+
+    setPreviewFiles([
+      ...siblings,
+      {
+        path: activeDocument.name,
+        // What is on screen now, not what was last saved.
+        content: text?.toString() ?? activeDocument.content,
+      },
+    ]);
+    setPreviewOpen(true);
+  }, [activeDocument, siblingsQuery.data, text]);
+
+  const onClosePreview = useCallback(() => {
+    setPreviewOpen(false);
+  }, []);
 
   const handleOpenCmd = useCallback(() => {
     setCmdOpen(true);
@@ -251,6 +290,18 @@ export const EditorPage = memo((props: EditorPageProps) => {
               )}
             </>
           )}
+          {canRun && (
+            <button
+              type="button"
+              className={cls.runBtn}
+              onClick={onRun}
+              aria-label={`Run ${activeDocument?.name}`}
+              data-testid="run-button"
+            >
+              <Icons.Play size={12} />
+              Run
+            </button>
+          )}
           {activeDocument && (
             <IconButton size="sm" onClick={onOpenShare} aria-label="Share this document">
               <Icons.Share size={16} />
@@ -315,6 +366,16 @@ export const EditorPage = memo((props: EditorPageProps) => {
             />
           )}
         </div>
+
+        {previewOpen && activeDocument && (
+          <PreviewPane
+            className={cls.preview}
+            files={previewFiles}
+            entry={activeDocument.name}
+            onRerun={onRun}
+            onClose={onClosePreview}
+          />
+        )}
       </div>
 
       <CommandPalette open={cmdOpen} onClose={handleCloseCmd} />

@@ -33,4 +33,9 @@ describe('EditorPage', () => {
     renderWithProviders(<EditorPage />);
     expect(screen.getByTestId('editor-empty')).toHaveTextContent('Pick a file to start editing.');
   });
+
+  test('offers no Run button until a runnable file is open', () => {
+    renderWithProviders(<EditorPage />);
+    expect(screen.queryByTestId('run-button')).not.toBeInTheDocument();
+  });
 });

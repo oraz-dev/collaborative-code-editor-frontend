@@ -1,0 +1,157 @@
+.pane {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  border-left: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.bar {
+  display: flex;
+  height: 36px;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 6px 0 var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-sunken);
+}
+
+.title {
+  color: var(--color-text-faint);
+  font: var(--weight-semibold) var(--text-2xs) / 1 var(--font-body);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+
+.entry {
+  overflow: hidden;
+  min-width: 0;
+  color: var(--color-text-secondary);
+  font: var(--text-xs) / 1 var(--font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spacer { flex: 1; }
+
+/* White by default: a user's page expects a page background, not the editor's. */
+.frame {
+  min-height: 0;
+  flex: 1;
+  border: none;
+  background: #fff;
+}
+
+.blocked {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  color: var(--color-text-faint);
+  text-align: center;
+}
+
+.blocked p {
+  max-width: 280px;
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+}
+
+.consoleBar {
+  display: flex;
+  height: 26px;
+  flex: none;
+  align-items: center;
+  padding: 0 var(--space-2) 0 4px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg-sunken);
+}
+
+.consoleToggle {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  background: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font: var(--weight-semibold) var(--text-2xs) / 1 var(--font-body);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.chevron {
+  display: inline-flex;
+  color: var(--color-text-faint);
+}
+
+.count {
+  color: var(--color-text-disabled);
+  font-weight: var(--weight-regular);
+  letter-spacing: 0;
+}
+
+.errorCount {
+  color: var(--color-destructive);
+  font-weight: var(--weight-regular);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.clear {
+  border: none;
+  background: none;
+  color: var(--color-text-faint);
+  cursor: pointer;
+  font-size: var(--text-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.clear:hover { color: var(--color-text); }
+
+.console {
+  max-height: 40%;
+  flex: none;
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--color-border-subtle);
+  background: var(--color-inset);
+  overflow-y: auto;
+  font: var(--text-xs) / 1.6 var(--font-mono);
+}
+
+.empty {
+  padding: 2px var(--space-3);
+  color: var(--color-text-disabled);
+}
+
+.line {
+  padding: 2px var(--space-3);
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.line + .line {
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.warn {
+  background: var(--fill-warning);
+  color: var(--color-warning);
+}
+
+.error {
+  background: var(--fill-error);
+  color: var(--color-destructive);
+}
+
+.debug { color: var(--color-text-faint); }
