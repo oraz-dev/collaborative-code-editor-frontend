@@ -1,5 +1,6 @@
 import { memo, useCallback } from 'react';
 import { Icons } from '@/shared/ui/Icon/Icons';
+import { FileTypeIcon } from '@/shared/ui/FileTypeIcon/FileTypeIcon';
 import { classNames } from '@/shared/lib/classNames/classNames';
 import { relativeTime } from '@/shared/lib/relativeTime/relativeTime';
 import { Spinner } from '@/shared/ui/Spinner/Spinner';
@@ -53,7 +54,7 @@ export const DocumentCard = memo((props: DocumentCardProps) => {
     >
       <div className={cls.top}>
         <span className={cls.icon} aria-hidden="true">
-          {isFolder ? <Icons.Folder size={15} /> : <Icons.Files size={15} />}
+          <FileTypeIcon name={document.name} variant={isFolder ? 'folder' : 'file'} size={15} />
         </span>
         <span className={cls.name}>{document.name}</span>
         {isPending && <Spinner />}

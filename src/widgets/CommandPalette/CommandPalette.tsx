@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, type KeyboardE
 import { useNavigate } from 'react-router';
 import { Icons } from '@/shared/ui/Icon/Icons';
 import { Kbd } from '@/shared/ui/Kbd/Kbd';
+import { FileTypeIcon } from '@/shared/ui/FileTypeIcon/FileTypeIcon';
 import { RoutePaths, toEditorPath } from '@/shared/config/routeConfig/routeConfig';
 import { useDocumentSearch, type WorkspaceDocument } from '@/entities/Document';
 import cls from './CommandPalette.module.scss';
@@ -125,7 +126,13 @@ export const CommandPalette = memo((props: CommandPaletteProps) => {
       data-testid={`palette-doc-${document.name}`}
     >
       <span className={cls.ico}>
-        {document.kind === 'folder' ? <Icons.Folder size={16} /> : <Icons.Files size={16} />}
+        {/* Same icon system as the tree — Icons.Files draws a folder, which
+            made every file in here look like one. */}
+        <FileTypeIcon
+          name={document.name}
+          variant={document.kind === 'folder' ? 'folder' : 'file'}
+          size={16}
+        />
       </span>
       <span className={cls.lbl}>{document.name}</span>
       <span className={cls.meta}>{document.kind === 'folder' ? 'Folder' : 'File'}</span>
