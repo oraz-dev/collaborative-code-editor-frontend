@@ -1,3 +1,5 @@
+@use '../../app/styles/breakpoints' as bp;
+
 .scrim {
   position: absolute;
   inset: 0;
@@ -48,6 +50,8 @@
 .list {
   max-height: 330px;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 8px;
 }
 
@@ -92,4 +96,46 @@
 .meta {
   color: var(--color-text-faint);
   font: var(--text-xs)/1 var(--font-mono);
+}
+
+
+/*
+ * The palette is the fastest way to reach a file, so on a phone it takes the
+ * whole screen rather than a 90%-wide card floating 104px down — that layout
+ * loses its list entirely once the keyboard opens.
+ */
+@include bp.phone {
+  .scrim {
+    position: fixed;
+    align-items: stretch;
+    padding: 0;
+  }
+
+  .palette {
+    display: flex;
+    width: 100%;
+    max-width: 100%;
+    flex-direction: column;
+    border: none;
+    border-radius: 0;
+    padding-top: var(--safe-top);
+    animation: none;
+  }
+
+  .input {
+    /* Room either side of the notch in landscape. */
+    padding: 14px max(16px, var(--safe-left)) 14px max(16px, var(--safe-right));
+  }
+
+  .list {
+    /* Fills whatever the keyboard leaves rather than a fixed 330px. */
+    max-height: none;
+    flex: 1;
+    padding-bottom: max(8px, var(--safe-bottom));
+  }
+
+  /* A row has to be findable with a thumb, not a cursor. */
+  .row {
+    min-height: 48px;
+  }
 }

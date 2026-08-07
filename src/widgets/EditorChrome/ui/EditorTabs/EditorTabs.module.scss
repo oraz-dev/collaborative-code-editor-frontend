@@ -1,3 +1,5 @@
+@use '../../../../app/styles/breakpoints' as bp;
+
 .strip {
   display: flex;
   flex: none;
@@ -8,6 +10,9 @@
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  /* Swiping the strip must not drag the page behind it. */
+  overscroll-behavior-x: contain;
 }
 
 .strip::-webkit-scrollbar {
@@ -88,10 +93,32 @@
   transition: var(--transition-control), opacity var(--duration-fast) var(--ease);
 }
 
-.tab:hover .close,
 .active .close,
 .close:focus-visible {
   opacity: 1;
+}
+
+@include bp.can-hover {
+  .tab:hover .close {
+    opacity: 1;
+  }
+}
+
+/*
+ * Without hover, a background tab's close button never appears — closing it
+ * would mean opening it first. Every tab shows one on touch, and each is grown
+ * to something a finger can actually land on.
+ */
+@include bp.touch {
+  .close {
+    opacity: 1;
+    padding: 6px;
+  }
+
+  .tab {
+    /* Room for the larger close button, and a taller strip to swipe. */
+    padding-right: var(--space-2);
+  }
 }
 
 .close:hover {

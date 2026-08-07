@@ -9,6 +9,7 @@
   overflow-x: auto;
   scrollbar-width: none;
   white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
 }
 
 .bar::-webkit-scrollbar {
@@ -53,3 +54,5 @@
 .plain {
   cursor: default;
 }
+
+

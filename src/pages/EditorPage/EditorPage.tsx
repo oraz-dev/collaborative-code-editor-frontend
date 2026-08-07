@@ -9,6 +9,7 @@ import { Button } from '@/shared/ui/Button/Button';
 import { classNames } from '@/shared/lib/classNames/classNames';
 import { toEditorPath, RoutePaths } from '@/shared/config/routeConfig/routeConfig';
 import { useCommandPaletteHotkey } from '@/shared/lib/hotkey/useCommandPaletteHotkey';
+import { useIsCompact, useIsPhone } from '@/shared/lib/media/useMediaQuery';
 import { ResizeHandle } from '@/shared/ui/ResizeHandle/ResizeHandle';
 import {
   DEFAULT_PREFERENCES,
@@ -52,12 +53,46 @@ export const EditorPage = memo((props: EditorPageProps) => {
   const { documentId } = useParams<{ documentId?: string }>();
   const navigate = useNavigate();
 
+  /*
+   * Below 1024px there is no room for tree | editor | preview side by side, so
+   * the tree becomes a drawer and the preview an overlay. This is a behaviour
+   * change rather than a style one — the resize handles stop existing, the
+   * drawer traps Escape, and picking a file dismisses it — so it is driven from
+   * JS instead of a media query.
+   */
+  const isCompact = useIsCompact();
+  const isPhone = useIsPhone();
+
+  const [treeOpen, setTreeOpen] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewFiles, setPreviewFiles] = useState<PreviewFile[]>([]);
 
   const layout = useLayoutPreferences();
+
+  const onOpenTree = useCallback(() => {
+    setTreeOpen(true);
+  }, []);
+
+  const onCloseTree = useCallback(() => {
+    setTreeOpen(false);
+  }, []);
+
+  // Going back to a desktop width while the drawer is open would otherwise
+  // leave it stacked on top of the pane it turned back into.
+  useEffect(() => {
+    if (!isCompact) setTreeOpen(false);
+  }, [isCompact]);
+
+  useEffect(() => {
+    if (!treeOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setTreeOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [treeOpen]);
 
   const onResizeTree = useCallback((next: number) => {
     preferencesStore.setLayout({ treeWidth: next });
@@ -123,6 +158,8 @@ export const EditorPage = memo((props: EditorPageProps) => {
 
   const onSelectDocument = useCallback((document: WorkspaceDocument) => {
     navigate(toEditorPath(document.id));
+    // On a phone the drawer covers the editor it just navigated to.
+    setTreeOpen(false);
   }, [navigate]);
 
   const onSelectTab = useCallback((id: string) => {
@@ -299,10 +336,24 @@ export const EditorPage = memo((props: EditorPageProps) => {
   return (
     <div className={classNames(cls.canvas, {}, [className])}>
       <div className={cls.topnav}>
+        {isCompact && user && (
+          <IconButton
+            size="sm"
+            onClick={onOpenTree}
+            aria-label="Open file tree"
+            aria-expanded={treeOpen}
+            data-testid="open-tree"
+          >
+            <Icons.Sidebar size={16} />
+          </IconButton>
+        )}
         <WorkspaceSwitcher />
         <div className={cls.div} />
         <button type="button" className={cls.cmdPill} onClick={handleOpenCmd} aria-label="Search files">
-          <Icons.Search size={14} /> Search files… <Kbd keys={['⌘', 'K']} />
+          <Icons.Search size={14} />
+          <span className={cls.cmdLabel}>Search files…</span>
+          {/* A shortcut hint is noise on a device with no keyboard. */}
+          {!isPhone && <Kbd keys={['⌘', 'K']} />}
         </button>
         <div className={cls.sp} />
         <div className={cls.right}>
@@ -350,7 +401,7 @@ export const EditorPage = memo((props: EditorPageProps) => {
                     name: peer.name,
                     presence: 'online',
                   }))}
-                  max={4}
+                  max={isPhone ? 2 : 4}
                   size="xs"
                 />
               </div>
@@ -360,7 +411,7 @@ export const EditorPage = memo((props: EditorPageProps) => {
       </div>
 
       <div className={cls.work}>
-        {user && (
+        {user && !isCompact && (
           <>
             <DocumentTree
               style={{ width: layout.treeWidth }}
@@ -378,6 +429,29 @@ export const EditorPage = memo((props: EditorPageProps) => {
               onReset={onResetTree}
             />
           </>
+        )}
+
+        {/* The same tree, slid in over the editor. Kept unmounted while closed
+            so its queries and the drawer's focus trap do not run in the
+            background. */}
+        {user && isCompact && treeOpen && (
+          <div className={cls.drawerRoot} data-testid="tree-drawer">
+            <div className={cls.scrim} onClick={onCloseTree} aria-hidden="true" />
+            <div className={cls.drawer} role="dialog" aria-modal="true" aria-label="Files">
+              <div className={cls.drawerBar}>
+                <span className={cls.drawerTitle}>Files</span>
+                <IconButton size="sm" onClick={onCloseTree} aria-label="Close file tree">
+                  <Icons.X size={16} />
+                </IconButton>
+              </div>
+              <DocumentTree
+                className={cls.drawerTree}
+                ownerId={user.id}
+                activeDocumentId={documentId ?? null}
+                onSelectDocument={onSelectDocument}
+              />
+            </div>
+          </div>
         )}
         <div className={cls.viewpanel}>
           <EditorTabs
@@ -405,7 +479,7 @@ export const EditorPage = memo((props: EditorPageProps) => {
           )}
         </div>
 
-        {previewOpen && activeDocument && (
+        {previewOpen && activeDocument && !isCompact && (
           <>
             <ResizeHandle
               axis="x"
@@ -427,6 +501,20 @@ export const EditorPage = memo((props: EditorPageProps) => {
               onClose={onClosePreview}
             />
           </>
+        )}
+
+        {/* Splitting a 390px viewport in two leaves neither half usable, so the
+            preview takes the whole work area and the editor waits behind it. */}
+        {previewOpen && activeDocument && isCompact && (
+          <div className={cls.previewOverlay} data-testid="preview-overlay">
+            <PreviewPane
+              className={cls.previewSheet}
+              files={previewFiles}
+              entry={activeDocument.name}
+              onRerun={onRun}
+              onClose={onClosePreview}
+            />
+          </div>
         )}
       </div>
 

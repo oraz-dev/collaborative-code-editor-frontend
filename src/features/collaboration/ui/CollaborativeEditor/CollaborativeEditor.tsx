@@ -5,6 +5,7 @@ import { MonacoBinding } from 'y-monaco';
 import type * as Y from 'yjs';
 import type { Awareness } from 'y-protocols/awareness';
 import { classNames } from '@/shared/lib/classNames/classNames';
+import { useIsCompact } from '@/shared/lib/media/useMediaQuery';
 import { languageFromFileName } from '@/shared/lib/language/language';
 import { Spinner } from '@/shared/ui/Spinner/Spinner';
 import {
@@ -96,13 +97,22 @@ export const CollaborativeEditor = memo((props: CollaborativeEditorProps) => {
     return () => { cancelled = true; };
   }, [monacoApi, preferences.fontFamily, preferences.fontSize, preferences.ligatures]);
 
+  const isCompact = useIsCompact();
+
   const options = useMemo((): editor.IStandaloneEditorConstructionOptions => ({
-    minimap: { enabled: preferences.minimap, renderCharacters: false },
+    /*
+     * The minimap is a preference, but on a narrow viewport it eats a fifth of
+     * the text column to show a thumbnail nobody can read or drag accurately,
+     * so it is forced off regardless of the setting.
+     */
+    minimap: { enabled: preferences.minimap && !isCompact, renderCharacters: false },
     fontSize: preferences.fontSize,
     fontFamily: EDITOR_FONT_STACKS[preferences.fontFamily],
     fontLigatures: preferences.ligatures,
     tabSize: preferences.tabSize,
-    wordWrap: preferences.wordWrap ? 'on' : 'off',
+    /* Horizontal scrolling to read a line is miserable on a phone, and the
+       column is too narrow for anything else to work. */
+    wordWrap: preferences.wordWrap || isCompact ? 'on' : 'off',
     lineNumbersMinChars: 3,
     lineHeight: 1.6,
     scrollBeyondLastLine: false,
@@ -115,12 +125,17 @@ export const CollaborativeEditor = memo((props: CollaborativeEditorProps) => {
     cursorSmoothCaretAnimation: 'on',
     bracketPairColorization: { enabled: true },
     guides: { indentation: true, bracketPairs: 'active' },
-    stickyScroll: { enabled: true },
-    scrollbar: { verticalScrollbarSize: 11, horizontalScrollbarSize: 11, useShadows: false },
+    /* Sticky scroll costs two or three lines of a very short viewport. */
+    stickyScroll: { enabled: !isCompact },
+    scrollbar: {
+      verticalScrollbarSize: isCompact ? 14 : 11,
+      horizontalScrollbarSize: isCompact ? 14 : 11,
+      useShadows: false,
+    },
     overviewRulerBorder: false,
     roundedSelection: false,
     readOnly,
-  }), [preferences, readOnly]);
+  }), [isCompact, preferences, readOnly]);
 
   // Feeds the status bar. Monaco owns the selection, so it is read from the
   // editor rather than mirrored into React state on every keystroke.

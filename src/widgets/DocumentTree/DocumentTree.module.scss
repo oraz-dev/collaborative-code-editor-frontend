@@ -96,6 +96,10 @@
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--color-border-strong) transparent;
+  -webkit-overflow-scrolling: touch;
+  /* Reaching the end of the tree must not start scrolling the drawer behind
+     it, or bounce the whole page on iOS. */
+  overscroll-behavior: contain;
 }
 
 .scroll::-webkit-scrollbar {

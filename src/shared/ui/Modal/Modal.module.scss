@@ -1,3 +1,5 @@
+@use '../../../app/styles/breakpoints' as bp;
+
 .scrim {
   position: fixed;
   inset: 0;
@@ -25,7 +27,7 @@
   display: flex;
   width: 400px;
   max-width: calc(100vw - var(--space-8));
-  max-height: calc(100vh - var(--space-12));
+  max-height: calc(var(--app-height) - var(--space-12));
   flex-direction: column;
   background: var(--color-overlay);
   border: 1px solid var(--color-border-strong);
@@ -95,4 +97,42 @@
   gap: 8px;
   padding: var(--space-4) var(--space-5);
   border-top: 1px solid var(--color-border);
+}
+
+
+/*
+ * On a phone a centred 400px card leaves useless margins and sits under the
+ * on-screen keyboard the moment a field inside it is focused. A bottom sheet
+ * is anchored to the thumb instead, and grows upwards as the keyboard pushes
+ * the viewport (`--app-height` is dynamic).
+ */
+@include bp.phone {
+  .scrim {
+    align-items: flex-end;
+  }
+
+  .modal,
+  .sm,
+  .md,
+  .lg {
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(var(--app-height) - var(--space-8));
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    border-bottom: none;
+    /* Clears the home indicator so the last button is not half-swipeable. */
+    padding-bottom: var(--safe-bottom);
+    transform: translateY(100%);
+  }
+
+  .footer {
+    /* Stacked and full-width: side-by-side buttons at this width are too
+       narrow to hit confidently. */
+    flex-direction: column-reverse;
+    gap: var(--space-2);
+
+    button {
+      width: 100%;
+    }
+  }
 }

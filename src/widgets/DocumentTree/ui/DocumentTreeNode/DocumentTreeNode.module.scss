@@ -1,3 +1,5 @@
+@use '../../../../app/styles/breakpoints' as bp;
+
 .row {
   position: relative;
   display: flex;
@@ -83,9 +85,34 @@
   gap: 1px;
 }
 
-.row:hover .actions,
-.row:focus-within .actions {
-  display: inline-flex;
+@include bp.can-hover {
+  .row:hover .actions,
+  .row:focus-within .actions {
+    display: inline-flex;
+  }
+}
+
+/*
+ * No hover on touch, so actions revealed by it can never be reached. They stay
+ * visible instead — slightly busier, but reachable, which matters more.
+ */
+@include bp.touch {
+  .actions {
+    display: inline-flex;
+  }
+
+  .row {
+    /* A 24px row is roughly half a fingertip. */
+    height: 40px;
+  }
+
+  .action {
+    display: inline-flex;
+    min-width: 34px;
+    min-height: 34px;
+    align-items: center;
+    justify-content: center;
+  }
 }
 
 .action {

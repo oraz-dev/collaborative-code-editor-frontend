@@ -1,10 +1,12 @@
+@use '../../app/styles/breakpoints' as bp;
+
 .canvas {
   position: absolute;
   inset: 0;
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding: 14px 16px 16px;
+  @include bp.canvas-padding;
   color: var(--color-text);
   font: var(--type-body);
   background:
@@ -34,7 +36,7 @@
 }
 
 .cols { display: grid; grid-template-columns: 1fr 320px; gap: 26px; align-items: start; }
-@media (max-width: 980px) { .cols { grid-template-columns: 1fr; } }
+@include bp.tablet-down { .cols { grid-template-columns: 1fr; } }
 
 .secHead { display: flex; align-items: center; gap: 12px; margin: 14px 0 16px; padding: 0 2px; }
 .secTitle { font: var(--weight-medium) var(--text-lg)/1 var(--font-body); letter-spacing: -0.01em; }
@@ -58,7 +60,7 @@
 }
 
 .projgrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
-@media (max-width: 640px) { .projgrid { grid-template-columns: 1fr; } }
+@include bp.phone { .projgrid { grid-template-columns: 1fr; } }
 
 /*
  * The name-it field takes the slot the new card will occupy, so it has to be
@@ -206,4 +208,44 @@
   color: var(--color-text-faint);
   font-size: var(--text-xs);
   line-height: var(--leading-normal);
+}
+
+
+@include bp.tablet-down {
+  .wrap {
+    padding: 4px 0 40px;
+  }
+
+  .hero {
+    padding: 18px 2px 16px;
+  }
+}
+
+@include bp.phone {
+  .hero {
+    padding: 12px 2px 14px;
+  }
+
+  .eyebrow {
+    margin-bottom: 8px;
+  }
+
+  /* The side rail is no longer beside anything, so pinning it does nothing but
+     confuse the scroll. */
+  .side {
+    position: static;
+    gap: 16px;
+  }
+
+  /* 178px of empty card is a whole phone screen for two projects. */
+  .createCard,
+  .projNew {
+    min-height: 132px;
+  }
+
+  .actrow {
+    /* Comfortable to hit, and tall enough that the two lines of text inside
+       are not touching. */
+    min-height: 52px;
+  }
 }
