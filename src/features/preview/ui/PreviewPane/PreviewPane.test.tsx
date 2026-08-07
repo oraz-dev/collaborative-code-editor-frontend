@@ -4,14 +4,18 @@ import { PreviewPane } from './PreviewPane';
 
 const FILES = [{ path: 'main.js', content: 'console.log("hi")' }];
 
-function emit(level: string, text: string) {
+function post(data: Record<string, unknown>) {
   const frame = screen.getByTestId('preview-frame') as HTMLIFrameElement;
   act(() => {
     window.dispatchEvent(new MessageEvent('message', {
       source: frame.contentWindow,
-      data: { channel: '__space_preview__', type: 'console', level, text },
+      data: { channel: '__space_preview__', ...data },
     }));
   });
+}
+
+function emit(level: string, text: string) {
+  post({ type: 'console', level, text });
 }
 
 describe('PreviewPane', () => {
@@ -107,5 +111,74 @@ describe('PreviewPane', () => {
     await user.click(screen.getByLabelText('Re-run preview'));
 
     expect(screen.getByTestId('preview-console')).not.toHaveTextContent('from the first run');
+  });
+});
+
+describe('PreviewPane run outcome', () => {
+  test('says so when code ran but rendered nothing, pointing at the console', async () => {
+    // The usual "I hit run and nothing happened": a script that only logs.
+    render(<PreviewPane files={FILES} entry="main.js" />);
+    // Wait for the document to actually be built: the frame cannot post
+    // anything before it has one, and a message arriving earlier is discarded
+    // when the fresh document resets the run state.
+    await waitFor(() => {
+      expect(screen.getByTestId('preview-frame').getAttribute('srcdoc')).toBeTruthy();
+    });
+
+    emit('log', 'oraz');
+    post({ type: 'ready', drew: false });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('preview-silent')).toHaveTextContent(/rendering anything/i);
+    });
+    expect(screen.getByTestId('preview-silent')).toHaveTextContent(/Console below/i);
+  });
+
+  test('stays out of the way when the run drew something', async () => {
+    render(<PreviewPane files={FILES} entry="main.js" />);
+    // Wait for the document to actually be built: the frame cannot post
+    // anything before it has one, and a message arriving earlier is discarded
+    // when the fresh document resets the run state.
+    await waitFor(() => {
+      expect(screen.getByTestId('preview-frame').getAttribute('srcdoc')).toBeTruthy();
+    });
+
+    post({ type: 'ready', drew: true });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('preview-silent')).not.toBeInTheDocument();
+    });
+  });
+
+  test('shows a failure banner, not just a console line', async () => {
+    render(<PreviewPane files={FILES} entry="main.js" />);
+    // Wait for the document to actually be built: the frame cannot post
+    // anything before it has one, and a message arriving earlier is discarded
+    // when the fresh document resets the run state.
+    await waitFor(() => {
+      expect(screen.getByTestId('preview-frame').getAttribute('srcdoc')).toBeTruthy();
+    });
+
+    post({ type: 'failed', text: 'ReferenceError: nope is not defined' });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('preview-failure')).toHaveTextContent(/ReferenceError/);
+    });
+  });
+
+  test('a failure takes precedence over the silent hint', async () => {
+    render(<PreviewPane files={FILES} entry="main.js" />);
+    // Wait for the document to actually be built: the frame cannot post
+    // anything before it has one, and a message arriving earlier is discarded
+    // when the fresh document resets the run state.
+    await waitFor(() => {
+      expect(screen.getByTestId('preview-frame').getAttribute('srcdoc')).toBeTruthy();
+    });
+
+    post({ type: 'failed', text: 'boom' });
+    post({ type: 'ready', drew: false });
+
+    await waitFor(() => expect(screen.getByTestId('preview-failure')).toBeInTheDocument());
+    expect(screen.queryByTestId('preview-silent')).not.toBeInTheDocument();
   });
 });

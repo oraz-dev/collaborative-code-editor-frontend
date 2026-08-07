@@ -67,6 +67,9 @@ export const PreviewPane = memo((props: PreviewPaneProps) => {
   const [lines, setLines] = useState<ConsoleLine[]>([]);
   const [runCount, setRunCount] = useState(0);
   const [showConsole, setShowConsole] = useState(true);
+  /** Set when a run stops early, so a blank frame is never left unexplained. */
+  const [runError, setRunError] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState<'pending' | 'drew' | 'silent'>('pending');
 
   const blocked = whyNotRunnable(entry);
 
@@ -87,7 +90,12 @@ export const PreviewPane = memo((props: PreviewPaneProps) => {
     transpileWorkspace(files)
       .then(({ files: compiled, failures }) => {
         if (cancelled) return;
-        setBuildErrors(failures.map((failure) => `${failure.path}: ${failure.message}`));
+        const messages = failures.map((failure) => `${failure.path}: ${failure.message}`);
+        setBuildErrors(messages);
+        if (messages.length > 0) {
+          setRunError(`${messages.length} file${messages.length === 1 ? '' : 's'} failed to compile.`);
+          setShowConsole(true);
+        }
         setDocument(buildPreviewDocument({ files: compiled, entry }));
       })
       .catch((error: unknown) => {
@@ -107,6 +115,18 @@ export const PreviewPane = memo((props: PreviewPaneProps) => {
       // nothing. Identity comes from the window itself.
       if (event.source !== frameRef.current?.contentWindow) return;
       if (event.data?.channel !== CHANNEL) return;
+      if (event.data.type === 'failed') {
+        setRunError(String(event.data.text ?? 'The preview stopped with an error.'));
+        // The detail is in the console, so make sure it is not collapsed.
+        setShowConsole(true);
+        return;
+      }
+
+      if (event.data.type === 'ready') {
+        setOutcome(event.data.drew ? 'drew' : 'silent');
+        return;
+      }
+
       if (event.data.type !== 'console') return;
 
       setLines((current) => [
@@ -126,6 +146,8 @@ export const PreviewPane = memo((props: PreviewPaneProps) => {
   // Editing the code starts a fresh run, so previous output is stale.
   useEffect(() => {
     setLines([]);
+    setRunError(null);
+    setOutcome('pending');
   }, [document_]);
 
   const handleRerun = useCallback(() => {
@@ -133,6 +155,8 @@ export const PreviewPane = memo((props: PreviewPaneProps) => {
     // is not a change, so React would leave the existing document running.
     setRunCount((count) => count + 1);
     setLines([]);
+    setRunError(null);
+    setOutcome('pending');
     onRerun?.();
   }, [onRerun]);
 
@@ -166,16 +190,40 @@ export const PreviewPane = memo((props: PreviewPaneProps) => {
           <p>{blocked}</p>
         </div>
       ) : (
-        <iframe
-          key={runCount}
-          ref={frameRef}
-          className={cls.frame}
-          title="Preview"
-          // See the component comment: allow-scripts alone is the boundary.
-          sandbox="allow-scripts"
-          srcDoc={document_}
-          data-testid="preview-frame"
-        />
+        <div className={cls.stage}>
+          <iframe
+            key={runCount}
+            ref={frameRef}
+            className={cls.frame}
+            title="Preview"
+            // See the component comment: allow-scripts alone is the boundary.
+            sandbox="allow-scripts"
+            srcDoc={document_}
+            data-testid="preview-frame"
+          />
+
+          {/* A failed run leaves the frame blank; without this it just looks
+              like the button did nothing. */}
+          {runError && (
+            <div className={cls.failure} role="alert" data-testid="preview-failure">
+              <Icons.X size={14} />
+              <span className={cls.failureText}>{runError}</span>
+            </div>
+          )}
+
+          {/* Ran fine but rendered nothing — the usual cause of "nothing
+              happened" for a script that only logs. */}
+          {!runError && outcome === 'silent' && (
+            <div className={cls.silent} data-testid="preview-silent">
+              <p>Ran without rendering anything.</p>
+              <span>
+                {lines.length > 0
+                  ? `Output is in the Console below (${lines.length} line${lines.length === 1 ? '' : 's'}).`
+                  : 'This code produced no output. Add console.log(…) or write to document.body.'}
+              </span>
+            </div>
+          )}
+        </div>
       )}
 
       <div className={cls.consoleBar}>

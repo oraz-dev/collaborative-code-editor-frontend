@@ -96,7 +96,10 @@ describe('buildPreviewDocument', () => {
     expect(html).toContain('<h1>hi</h1>');
     expect(html).toContain('__space_preview__');
     // A page brings its own scripts, so the module loader must stay out of it.
-    expect(html).not.toContain('__workspace__');
+    // Matched on the island itself: the console bridge legitimately mentions
+    // the id, because that is how it detects there is no loader to report for it.
+    expect(html).not.toContain('id="__workspace__"');
+    expect(html).not.toContain('importmap');
   });
 
   test('wraps a bare html fragment into a full document', () => {

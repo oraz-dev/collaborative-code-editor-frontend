@@ -56,6 +56,29 @@ export const CONSOLE_BRIDGE = String.raw`
     }
   }
 
+  // A data: module's URL is its entire percent-encoded source, so any stack
+  // frame naming one drowns the actual message. The loader registers the real
+  // paths; swap them back in and shorten anything left over.
+  window.__spaceModuleNames = window.__spaceModuleNames || {};
+
+  function sanitise(text) {
+    var names = window.__spaceModuleNames;
+    Object.keys(names).forEach(function (url) {
+      text = text.split(url).join(names[url]);
+    });
+    return text.replace(/data:text\/javascript[^\s)'"]*/g, '<module>');
+  }
+
+  window.__spaceSanitise = sanitise;
+
+  // The frame has an opaque origin, so the editor cannot read its DOM to see
+  // whether anything was rendered. Only the frame itself can answer that.
+  window.__spaceDrew = function () {
+    return !!(document.body && document.body.innerHTML.trim().length);
+  };
+
+  var renderRaw = render;
+  render = function (value, seen) { return sanitise(renderRaw(value, seen)); };
   window.__spaceRender = render;
 
   ['log', 'info', 'warn', 'error', 'debug'].forEach(function (level) {
@@ -68,20 +91,29 @@ export const CONSOLE_BRIDGE = String.raw`
   });
 
   window.addEventListener('error', function (event) {
-    post('console', {
-      level: 'error',
-      text: event.error
-        ? render(event.error)
-        : event.message + ' (' + event.lineno + ':' + event.colno + ')',
-    });
+    var text = event.error
+      ? render(event.error)
+      : sanitise(event.message + ' (' + event.lineno + ':' + event.colno + ')');
+    post('console', { level: 'error', text: text });
+    post('failed', { text: text });
   });
 
   window.addEventListener('unhandledrejection', function (event) {
-    post('console', { level: 'error', text: 'Uncaught (in promise) ' + render(event.reason) });
+    var text = 'Uncaught (in promise) ' + render(event.reason);
+    post('console', { level: 'error', text: text });
+    post('failed', { text: text });
   });
 
   // A modal raised in here would freeze the whole tab, editor included, and the
   // sandbox gives no way to dismiss it. They become log lines instead.
+  // A page entry runs its own scripts; with no loader to report for it, it
+  // says when it has finished settling.
+  if (!document.getElementById('__workspace__')) {
+    window.addEventListener('load', function () {
+      post('ready', { drew: window.__spaceDrew() });
+    });
+  }
+
   window.alert = function (m) { post('console', { level: 'info', text: 'alert: ' + render(m) }); };
   window.confirm = function (m) { post('console', { level: 'info', text: 'confirm: ' + render(m) }); return false; };
   window.prompt = function (m) { post('console', { level: 'info', text: 'prompt: ' + render(m) }); return null; };
@@ -120,16 +152,25 @@ export const MODULE_LOADER = String.raw`
     if (target) imports['workspace:' + alias] = target;
   });
 
+  // Lets the bridge turn a data: URL in a stack back into the file it came from.
+  Object.keys(files).forEach(function (path) {
+    window.__spaceModuleNames['data:text/javascript;charset=utf-8,'
+      + encodeURIComponent(files[path])] = path;
+  });
+
   var map = document.createElement('script');
   map.type = 'importmap';
   map.textContent = JSON.stringify({ imports: imports });
   document.head.appendChild(map);
 
   import(imports['workspace:' + entry])
-    .then(function () { window.__spacePost('ready', {}); })
+    .then(function () { window.__spacePost('ready', { drew: window.__spaceDrew() }); })
     .catch(function (error) {
-      window.__spacePost('console', { level: 'error', text: window.__spaceRender(error) });
-      window.__spacePost('ready', {});
+      var text = window.__spaceRender(error);
+      window.__spacePost('console', { level: 'error', text: text });
+      // Distinct from a logged error: nothing ran at all, so the pane can say so.
+      window.__spacePost('failed', { text: text });
+      window.__spacePost('ready', { drew: window.__spaceDrew() });
     });
 })();
 `;
