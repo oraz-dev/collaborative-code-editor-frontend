@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { memo, useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { classNames } from '@/shared/lib/classNames/classNames';
 import { ResizeHandle } from '@/shared/ui/ResizeHandle/ResizeHandle';
 import {
@@ -14,6 +14,7 @@ import {
   whyNotRunnable,
   type PreviewFile,
 } from '../../model/buildPreviewDocument/buildPreviewDocument';
+import { transpileWorkspace } from '../../model/transpile/transpile';
 import cls from './PreviewPane.module.scss';
 
 export type ConsoleLevel = 'log' | 'info' | 'warn' | 'error' | 'debug';
@@ -69,10 +70,36 @@ export const PreviewPane = memo((props: PreviewPaneProps) => {
 
   const blocked = whyNotRunnable(entry);
 
-  const document_ = useMemo(() => {
-    if (blocked) return '';
-    return buildPreviewDocument({ files, entry });
-  }, [blocked, files, entry]);
+  const [document_, setDocument] = useState('');
+  const [buildErrors, setBuildErrors] = useState<string[]>([]);
+
+  // Stripping types is async — sucrase is only fetched the first time a
+  // workspace actually contains TypeScript.
+  useEffect(() => {
+    if (blocked) {
+      setDocument('');
+      setBuildErrors([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    transpileWorkspace(files)
+      .then(({ files: compiled, failures }) => {
+        if (cancelled) return;
+        setBuildErrors(failures.map((failure) => `${failure.path}: ${failure.message}`));
+        setDocument(buildPreviewDocument({ files: compiled, entry }));
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        setBuildErrors([error instanceof Error ? error.message : String(error)]);
+        setDocument('');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [blocked, files, entry, runCount]);
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
@@ -117,7 +144,7 @@ export const PreviewPane = memo((props: PreviewPaneProps) => {
     setShowConsole((visible) => !visible);
   }, []);
 
-  const errorCount = lines.filter((line) => line.level === 'error').length;
+  const errorCount = lines.filter((line) => line.level === 'error').length + buildErrors.length;
 
   return (
     <div className={classNames(cls.pane, {}, [className])} style={style} data-testid="preview-pane">
@@ -194,7 +221,15 @@ export const PreviewPane = memo((props: PreviewPaneProps) => {
           style={{ height: consoleHeight }}
           data-testid="preview-console"
         >
-          {lines.length === 0 && <div className={cls.empty}>No output yet.</div>}
+          {/* Compile failures first: nothing ran, so they explain the empty frame. */}
+          {buildErrors.map((message) => (
+            <div className={classNames(cls.line, { [cls.error]: true })} key={message}>
+              {message}
+            </div>
+          ))}
+          {lines.length === 0 && buildErrors.length === 0 && (
+            <div className={cls.empty}>No output yet.</div>
+          )}
           {lines.map((line) => (
             <div className={classNames(cls.line, { [cls[line.level]]: true })} key={line.id}>
               {line.text}

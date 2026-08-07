@@ -101,6 +101,8 @@ export const MODULE_LOADER = String.raw`
   var node = document.getElementById('__workspace__');
   var files = JSON.parse(node.textContent);
   var entry = node.dataset.entry;
+  var aliasNode = document.getElementById('__aliases__');
+  var aliases = aliasNode ? JSON.parse(aliasNode.textContent) : {};
   var imports = {};
 
   Object.keys(files).forEach(function (path) {
@@ -109,6 +111,13 @@ export const MODULE_LOADER = String.raw`
     // loadable by the document that built it.
     imports['workspace:' + path] =
       'data:text/javascript;charset=utf-8,' + encodeURIComponent(files[path]);
+  });
+
+  // './util' and './util.ts' both have to reach the module published as
+  // util.js — an import map performs no extension fallback of its own.
+  Object.keys(aliases).forEach(function (alias) {
+    var target = imports['workspace:' + aliases[alias]];
+    if (target) imports['workspace:' + alias] = target;
   });
 
   var map = document.createElement('script');

@@ -5,11 +5,11 @@ import {
 } from './buildPreviewDocument';
 
 describe('isRunnable', () => {
-  test.each(['a.js', 'a.mjs', 'a.jsx', 'page.html'])('%s runs', (name) => {
+  test.each(['a.js', 'a.mjs', 'a.jsx', 'a.ts', 'a.tsx', 'page.html'])('%s runs', (name) => {
     expect(isRunnable(name)).toBe(true);
   });
 
-  test.each(['a.ts', 'a.tsx', 'a.css', 'notes.md'])('%s does not', (name) => {
+  test.each(['a.css', 'notes.md'])('%s does not', (name) => {
     expect(isRunnable(name)).toBe(false);
   });
 });
@@ -19,8 +19,9 @@ describe('whyNotRunnable', () => {
     expect(whyNotRunnable('a.js')).toBeNull();
   });
 
-  test('explains the missing compile step for TypeScript', () => {
-    expect(whyNotRunnable('a.ts')).toMatch(/compile step/i);
+  test('TypeScript runs now that types are stripped before the sandbox sees it', () => {
+    expect(whyNotRunnable('a.ts')).toBeNull();
+    expect(whyNotRunnable('a.tsx')).toBeNull();
   });
 
   test('explains that a stylesheet needs a page', () => {

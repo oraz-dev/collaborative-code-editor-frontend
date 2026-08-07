@@ -1,4 +1,4 @@
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PreviewPane } from './PreviewPane';
 
@@ -22,11 +22,14 @@ describe('PreviewPane', () => {
     expect(screen.getByTestId('preview-frame')).toHaveAttribute('sandbox', 'allow-scripts');
   });
 
-  test('inlines the workspace into the frame document', () => {
+  test('inlines the workspace into the frame document', async () => {
     render(<PreviewPane files={FILES} entry="main.js" />);
-    // Carried as a JSON island, so the source arrives escaped.
-    expect(screen.getByTestId('preview-frame').getAttribute('srcdoc'))
-      .toContain(String.raw`console.log(\"hi\")`);
+    // Carried as a JSON island, so the source arrives escaped. Built after an
+    // await now, since a TypeScript workspace is compiled first.
+    await waitFor(() => {
+      expect(screen.getByTestId('preview-frame').getAttribute('srcdoc'))
+        .toContain(String.raw`console.log(\"hi\")`);
+    });
   });
 
   test('shows console output the frame sends back', () => {
@@ -63,9 +66,37 @@ describe('PreviewPane', () => {
   });
 
   test('explains itself instead of rendering a frame for a file it cannot run', () => {
-    render(<PreviewPane files={[{ path: 'a.ts', content: '' }]} entry="a.ts" />);
-    expect(screen.getByTestId('preview-blocked')).toHaveTextContent(/compile step/i);
+    render(<PreviewPane files={[{ path: 'a.css', content: '' }]} entry="a.css" />);
+    expect(screen.getByTestId('preview-blocked')).toHaveTextContent(/stylesheet/i);
     expect(screen.queryByTestId('preview-frame')).not.toBeInTheDocument();
+  });
+
+  test('compiles a TypeScript entry and strips its types', async () => {
+    render(
+      <PreviewPane
+        files={[{ path: 'main.ts', content: 'const n: number = 1; console.log(n);' }]}
+        entry="main.ts"
+      />,
+    );
+
+    await waitFor(() => {
+      const srcdoc = screen.getByTestId('preview-frame').getAttribute('srcdoc') ?? '';
+      expect(srcdoc).toContain('console.log(n)');
+      expect(srcdoc).not.toContain(': number');
+    });
+  });
+
+  test('reports a TypeScript syntax error in the console instead of a blank frame', async () => {
+    render(
+      <PreviewPane
+        files={[{ path: 'main.ts', content: 'const = : oops' }]}
+        entry="main.ts"
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('preview-console')).toHaveTextContent(/main\.ts/);
+    });
   });
 
   test('re-running starts from a clean console', async () => {
