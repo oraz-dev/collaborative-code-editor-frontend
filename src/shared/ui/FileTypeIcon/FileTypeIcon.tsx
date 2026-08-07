@@ -40,7 +40,16 @@ const GLYPH_PATHS: Record<FileGlyph, string[]> = {
     'm4 16 4.5-4 4 3.5L16 12l4 4',
   ],
   binary: ['m21 8-9-5-9 5 9 5 9-5z', 'M3 8v8l9 5 9-5V8', 'M12 13v8'],
+  // Drawn as text, not paths — see the `mark` branch below.
+  mark: [],
 };
+
+/** Shrinks the lettermark as it gets longer so three characters still fit. */
+function markFontSize(text: string): number {
+  if (text.length <= 1) return 13;
+  if (text.length === 2) return 10.5;
+  return 8;
+}
 
 const FOLDER_CLOSED = 'M3 7.5A2.5 2.5 0 0 1 5.5 5h3.2a2 2 0 0 1 1.5.7L11.5 7h7A2.5 2.5 0 0 1 21 9.5v7A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5z';
 const FOLDER_OPEN_PATHS = [
@@ -60,6 +69,35 @@ export const FileTypeIcon = memo((props: FileTypeIconProps) => {
   const paths = isFolder
     ? (expanded ? FOLDER_OPEN_PATHS : [FOLDER_CLOSED])
     : GLYPH_PATHS[type.glyph];
+
+  // Languages that would otherwise share a silhouette are drawn as a
+  // lettermark: at 15px a hue change alone does not separate .ts from .js.
+  if (!isFolder && type.glyph === 'mark' && type.text) {
+    return (
+      <svg
+        className={classNames(cls.icon, {}, [className])}
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <text
+          x="12"
+          y="12.5"
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill={type.color}
+          fontSize={markFontSize(type.text)}
+          fontWeight={700}
+          letterSpacing="-0.4"
+          fontFamily="var(--font-mono)"
+        >
+          {type.text}
+        </text>
+      </svg>
+    );
+  }
 
   return (
     <svg

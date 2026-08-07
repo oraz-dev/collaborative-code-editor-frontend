@@ -16,7 +16,19 @@ describe('extensionOf', () => {
 
 describe('fileTypeFor', () => {
   test('maps a known extension to its glyph and colour', () => {
-    expect(fileTypeFor('App.tsx')).toMatchObject({ glyph: 'braces', label: 'TypeScript JSX' });
+    expect(fileTypeFor('styles.css')).toMatchObject({ glyph: 'hash', label: 'CSS' });
+    expect(fileTypeFor('App.tsx')).toMatchObject({ glyph: 'mark', text: 'TSX', label: 'TypeScript JSX' });
+  });
+
+  test('languages that would share a shape are told apart by more than hue', () => {
+    // The whole point: at 15px a colour change alone does not separate these.
+    const ts = fileTypeFor('a.ts');
+    const js = fileTypeFor('a.js');
+
+    expect(ts.color).not.toBe(js.color);
+    expect(ts.text).toBe('TS');
+    expect(js.text).toBe('JS');
+    expect(ts.text).not.toBe(js.text);
   });
 
   test('prefers a whole-name match over the extension', () => {

@@ -3,10 +3,26 @@ import { fileTypeFor } from '@/shared/lib/fileType/fileType';
 import { FileTypeIcon } from './FileTypeIcon';
 
 describe('FileTypeIcon', () => {
-  test('tints a file with its language colour', () => {
-    const { container } = render(<FileTypeIcon name="App.tsx" />);
+  test('tints a drawn glyph with its language colour', () => {
+    const { container } = render(<FileTypeIcon name="styles.css" />);
     const svg = container.querySelector('svg');
-    expect(svg).toHaveAttribute('stroke', fileTypeFor('App.tsx').color);
+    expect(svg).toHaveAttribute('stroke', fileTypeFor('styles.css').color);
+  });
+
+  test('draws a lettermark for a language that would otherwise share a shape', () => {
+    const { container } = render(<FileTypeIcon name="App.tsx" />);
+    const text = container.querySelector('text');
+
+    expect(text).toHaveTextContent('TSX');
+    expect(text).toHaveAttribute('fill', fileTypeFor('App.tsx').color);
+  });
+
+  test('.ts and .js are distinguishable by shape, not only colour', () => {
+    const ts = render(<FileTypeIcon name="a.ts" />).container.querySelector('text');
+    const js = render(<FileTypeIcon name="a.js" />).container.querySelector('text');
+
+    expect(ts).toHaveTextContent('TS');
+    expect(js).toHaveTextContent('JS');
   });
 
   test('is hidden from assistive tech, since the file name is already read out', () => {
