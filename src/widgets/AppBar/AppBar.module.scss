@@ -1,3 +1,5 @@
+@use '../../app/styles/breakpoints' as bp;
+
 .root {
   flex: none;
   height: 54px;
@@ -21,6 +23,9 @@
 }
 
 .cmdPill {
+  border: none;
+  font: inherit;
+  text-align: left;
   display: flex;
   align-items: center;
   gap: 9px;
@@ -47,4 +52,50 @@
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+
+@include bp.tablet-down {
+  .root {
+    gap: 10px;
+    padding: 0 8px;
+  }
+
+  /* A fixed 240px search field is most of a tablet's remaining width. */
+  .cmdPill {
+    width: auto;
+    flex: 1;
+    min-width: 0;
+    max-width: 320px;
+  }
+}
+
+@include bp.phone {
+  .root {
+    height: 48px;
+    gap: 8px;
+    padding: 0 6px;
+    border-radius: var(--radius-xl);
+  }
+
+  .div {
+    display: none;
+  }
+
+  /* Down to the magnifier: the label and the ⌘K hint are both dead weight on a
+     device with no keyboard. */
+  .cmdPill {
+    width: 34px;
+    flex: none;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .cmdPill .sp {
+    display: none;
+  }
+
+  .right {
+    gap: 6px;
+  }
 }

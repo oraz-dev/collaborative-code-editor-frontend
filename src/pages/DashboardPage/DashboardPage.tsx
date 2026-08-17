@@ -1,91 +1,265 @@
-import { useState, useCallback, memo } from 'react';
+import { useState, useCallback, memo, useMemo } from 'react';
+import { useNavigate } from 'react-router';
 import { Icons } from '@/shared/ui/Icon/Icons';
-import { Avatar } from '@/shared/ui/Avatar/Avatar';
-import { AvatarStack } from '@/shared/ui/AvatarStack/AvatarStack';
-import { IconButton } from '@/shared/ui/IconButton/IconButton';
-import { PROJECTS, LIVE_SESSIONS, ACTIVITY, byId } from '@/shared/data/demo';
-import { initials } from '@/shared/lib/initials/initials';
+import { Button } from '@/shared/ui/Button/Button';
+import { Spinner } from '@/shared/ui/Spinner/Spinner';
+import { InlineNameInput } from '@/shared/ui/InlineNameInput/InlineNameInput';
+import { relativeTime } from '@/shared/lib/relativeTime/relativeTime';
+import { toEditorPath } from '@/shared/config/routeConfig/routeConfig';
+import { useSession } from '@/features/auth';
+import {
+  useCreateDocument,
+  useDeleteDocument,
+  useDocumentRoots,
+  useSharedAt,
+  useSharedDocuments,
+  type DocumentKind,
+  type WorkspaceDocument,
+} from '@/entities/Document';
+import { useSharedDocumentAlerts } from '@/features/notifications';
+import { FileTypeIcon } from '@/shared/ui/FileTypeIcon/FileTypeIcon';
+import { useCommandPaletteHotkey } from '@/shared/lib/hotkey/useCommandPaletteHotkey';
 import { AppBar } from '@/widgets/AppBar/AppBar';
-import { ProjectCard } from '@/widgets/ProjectCard/ProjectCard';
-import { NewProjectModal } from '@/widgets/NewProjectModal/NewProjectModal';
+import { CommandPalette } from '@/widgets/CommandPalette/CommandPalette';
+import { DocumentCard } from '@/widgets/DocumentCard/DocumentCard';
 import cls from './DashboardPage.module.scss';
-import { AppLink } from '@/shared/ui/AppLink/AppLink';
-import { AppRoutes } from '@/shared/config/routeConfig/routeConfig';
+
+function greetingFor(date = new Date()): string {
+  const hour = date.getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
+}
 
 export const DashboardPage = memo(() => {
-  const [newOpen, setNewOpen] = useState(false);
+  const navigate = useNavigate();
+  const { user } = useSession();
 
-  const handleOpenNew = useCallback(() => {
-    setNewOpen(true);
+  const rootsQuery = useDocumentRoots();
+  const sharedQuery = useSharedDocuments();
+  const createMutation = useCreateDocument();
+  const deleteMutation = useDeleteDocument();
+
+  const [creatingKind, setCreatingKind] = useState<DocumentKind | null>(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  const onOpenPalette = useCallback(() => {
+    setPaletteOpen(true);
   }, []);
 
-  const handleCloseNew = useCallback(() => {
-    setNewOpen(false);
+  const onClosePalette = useCallback(() => {
+    setPaletteOpen(false);
   }, []);
+
+  useCommandPaletteHotkey(onOpenPalette);
+
+  // Nothing pushes a share to the client, so arrival is noticed from the list
+  // itself and surfaced as a toast rather than appearing silently in the rail.
+  useSharedDocumentAlerts(sharedQuery.data);
+  const sharedAt = useSharedAt(sharedQuery.data, user?.id);
+
+  const documents = rootsQuery.data ?? [];
+
+  // Newest activity first, for the side rail.
+  const recentlyUpdated = useMemo(() => (
+    [...documents]
+      .filter((document) => Boolean(document.updatedAt))
+      .sort((a, b) => Date.parse(b.updatedAt ?? '') - Date.parse(a.updatedAt ?? ''))
+      .slice(0, 6)
+  ), [documents]);
+
+  const onOpenDocument = useCallback((document: WorkspaceDocument) => {
+    navigate(toEditorPath(document.id));
+  }, [navigate]);
+
+  const onStartFolder = useCallback(() => {
+    setCreatingKind('folder');
+  }, []);
+
+  const onStartFile = useCallback(() => {
+    setCreatingKind('file');
+  }, []);
+
+  const onCancelCreate = useCallback(() => {
+    setCreatingKind(null);
+  }, []);
+
+  const onSubmitCreate = useCallback((name: string) => {
+    if (!user || !creatingKind) return;
+
+    createMutation.mutate({
+      name,
+      kind: creatingKind,
+      ownerId: user.id,
+      parentId: null,
+      content: '',
+    });
+    setCreatingKind(null);
+  }, [createMutation, creatingKind, user]);
+
+  const onDeleteDocument = useCallback((document: WorkspaceDocument) => {
+    deleteMutation.mutate({ documentId: document.id, parentId: null });
+  }, [deleteMutation]);
 
   return (
     <div className={cls.canvas}>
-      <AppBar showNew onNew={handleOpenNew} />
+      <AppBar showNew onNew={onStartFolder} onCmdk={onOpenPalette} />
       <div className={cls.dash}>
         <div className={cls.wrap}>
           <div className={cls.hero}>
             <div className={cls.greeting}>
               <div className={cls.eyebrow}>Welcome back</div>
-              <h1 className={cls.h1}>Good evening, <em>You.</em></h1>
+              <h1 className={cls.h1}>
+                {greetingFor()}, <em>{user?.displayName ?? 'there'}.</em>
+              </h1>
             </div>
           </div>
+
           <div className={cls.cols}>
             <div>
               <div className={cls.secHead}>
                 <span className={cls.secTitle}>Projects</span>
-                <span className={cls.secCt}>{PROJECTS.length}</span>
+                {!rootsQuery.isPending && <span className={cls.secCt}>{documents.length}</span>}
                 <span className={cls.secSp} />
-                <IconButton size="sm" aria-label="Toggle grid view"><Icons.Grid size={15} /></IconButton>
+                <Button size="small" variant="secondary" onClick={onStartFile} aria-label="New file">
+                  New file
+                </Button>
               </div>
-              <div className={cls.projgrid}>
-                {PROJECTS.map(p => <ProjectCard key={p.id} project={p} />)}
-                <div className={cls.projNew} onClick={handleOpenNew}>
-                  <div className={cls.plus}><Icons.Plus size={18} /></div>
-                  <span>New project</span>
+
+              {rootsQuery.isPending && (
+                <div className={cls.state}><Spinner size="large" /></div>
+              )}
+
+              {rootsQuery.isError && (
+                <div className={cls.state} data-testid="dashboard-error">
+                  <p className={cls.stateText}>We couldn&apos;t load your projects.</p>
+                  <Button
+                    variant="secondary"
+                    size="small"
+                    onClick={() => rootsQuery.refetch()}
+                    isLoading={rootsQuery.isFetching}
+                    aria-label="Retry loading projects"
+                  >
+                    Try again
+                  </Button>
                 </div>
-              </div>
+              )}
+
+              {!rootsQuery.isPending && !rootsQuery.isError && (
+                <div className={cls.projgrid}>
+                  {documents.map((document) => (
+                    <DocumentCard
+                      key={document.id}
+                      document={document}
+                      onOpen={onOpenDocument}
+                      onDelete={onDeleteDocument}
+                    />
+                  ))}
+
+                  {creatingKind && (
+                    <InlineNameInput
+                      className={cls.createCard}
+                      size="md"
+                      ariaLabel={creatingKind === 'folder' ? 'New project name' : 'New file name'}
+                      placeholder={creatingKind === 'folder' ? 'project name' : 'file name'}
+                      icon={(
+                        <FileTypeIcon
+                          name=""
+                          variant={creatingKind === 'folder' ? 'folder' : 'file'}
+                          size={17}
+                        />
+                      )}
+                      onSubmit={onSubmitCreate}
+                      onCancel={onCancelCreate}
+                    />
+                  )}
+
+                  {!creatingKind && (
+                    <div
+                      className={cls.projNew}
+                      onClick={onStartFolder}
+                      role="button"
+                      tabIndex={0}
+                      aria-label="New project"
+                      data-testid="new-project"
+                    >
+                      <div className={cls.plus}><Icons.Plus size={18} /></div>
+                      <span>New project</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
+
             <div className={cls.side}>
+              {(sharedQuery.data?.length ?? 0) > 0 && (
+                <div className={cls.cardSoft} data-testid="shared-with-me">
+                  <div className={cls.cardHead}>
+                    <span className={cls.cardTitle}>Shared with me</span>
+                  </div>
+                  {sharedQuery.data?.map((document) => {
+                    // The grant time, not the document's last edit — a file
+                    // shared a minute ago was reading as "yesterday".
+                    const shared = relativeTime(sharedAt.get(document.id));
+
+                    return (
+                      <button
+                        type="button"
+                        className={cls.actrow}
+                        key={document.id}
+                        onClick={() => onOpenDocument(document)}
+                        aria-label={`Open ${document.name}`}
+                      >
+                        <FileTypeIcon
+                          className={cls.sideIcon}
+                          name={document.name}
+                          variant={document.kind === 'folder' ? 'folder' : 'file'}
+                          size={15}
+                        />
+                        <div className={cls.actTxt}>
+                          <b>{document.name}</b>
+                          {shared && <span className={cls.actSub}>Shared {shared}</span>}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
               <div className={cls.cardSoft}>
                 <div className={cls.cardHead}>
-                  <span className={cls.cardTitle}>Live sessions</span>
-                  <span className={cls.cardLive}><span className={cls.cardLiveDot} /> {LIVE_SESSIONS.length} active</span>
+                  <span className={cls.cardTitle}>Recently updated</span>
                 </div>
-                {LIVE_SESSIONS.map((sess, i) => (
-                  <AppLink className={cls.sessrow} key={i} to={AppRoutes.EDITOR}>
-                    <AvatarStack people={sess.people.map(id => { const u = byId(id); return { id, name: u.name, presence: u.presence }; })} max={3} size="xs" />
-                    <div className={cls.sessTxt}>
-                      <div className={cls.sessT}>{sess.project}</div>
-                      <div className={cls.sessS}>{sess.file} · {sess.started}</div>
-                    </div>
-                  </AppLink>
+
+                {recentlyUpdated.length === 0 && (
+                  <p className={cls.sideEmpty}>Nothing yet — create a project to get started.</p>
+                )}
+
+                {recentlyUpdated.map((document) => (
+                  <button
+                    type="button"
+                    className={cls.actrow}
+                    key={document.id}
+                    onClick={() => onOpenDocument(document)}
+                    aria-label={`Open ${document.name}`}
+                  >
+                    <FileTypeIcon
+                      className={cls.sideIcon}
+                      name={document.name}
+                      variant={document.kind === 'folder' ? 'folder' : 'file'}
+                      size={15}
+                    />
+                    <div className={cls.actTxt}><b>{document.name}</b></div>
+                    <span className={cls.actTime}>{relativeTime(document.updatedAt)}</span>
+                  </button>
                 ))}
-              </div>
-              <div className={cls.cardSoft}>
-                <div className={cls.cardHead}>
-                  <span className={cls.cardTitle}>Activity</span>
-                </div>
-                {ACTIVITY.map((a, i) => {
-                  const who = byId(a.who);
-                  return (
-                    <div className={cls.actrow} key={i}>
-                      <Avatar size="sm" initials={initials(who.name)} color={who.presence} />
-                      <div className={cls.actTxt}><b>{who.short}</b> {a.action} <span className={cls.actTarget}>{a.target}</span></div>
-                      <span className={cls.actTime}>{a.time}</span>
-                    </div>
-                  );
-                })}
               </div>
             </div>
           </div>
         </div>
       </div>
-      <NewProjectModal open={newOpen} onClose={handleCloseNew} />
+
+      <CommandPalette open={paletteOpen} onClose={onClosePalette} />
     </div>
   );
 });

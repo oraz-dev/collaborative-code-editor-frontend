@@ -3,8 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Collaborative Code Editor</title>
+    <script>
+      // Applies the saved theme before first paint, so choosing "light" doesn't
+      // flash the dark palette on every load. React re-applies it on mount.
+      (function () {
+        try {
+          var saved = JSON.parse(localStorage.getItem('space:preferences') || '{}');
+          var theme = saved && saved.appearance && saved.appearance.theme;
+          if (theme === 'system') {
+            theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          }
+          if (theme === 'dark' || theme === 'light') {
+            document.documentElement.dataset.theme = theme;
+          }
+        } catch (error) {
+          // no stored preference, or storage unavailable — keep the default
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

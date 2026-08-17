@@ -1,0 +1,84 @@
+/*
+ * The visible divider is a hairline, but the grab area has to be bigger than
+ * that to be usable — the handle is deliberately wider than it looks, with the
+ * line drawn by the inner grip.
+ */
+.handle {
+  position: relative;
+  flex: none;
+  border-radius: var(--radius-full);
+  background: transparent;
+  touch-action: none;
+  transition: background var(--duration-fast) var(--ease);
+}
+
+.handle:hover .grip,
+.handle:focus-visible .grip {
+  background: var(--color-primary);
+}
+
+.handle:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
+.grip {
+  position: absolute;
+  border-radius: var(--radius-full);
+  background: transparent;
+  transition: background var(--duration-fast) var(--ease);
+}
+
+.x {
+  width: 14px;
+  cursor: col-resize;
+  align-self: stretch;
+
+  .grip {
+    top: 12px;
+    bottom: 12px;
+    left: 50%;
+    width: 2px;
+    transform: translateX(-50%);
+  }
+}
+
+.y {
+  height: 10px;
+  cursor: row-resize;
+
+  .grip {
+    left: 12px;
+    right: 12px;
+    top: 50%;
+    height: 2px;
+    transform: translateY(-50%);
+  }
+}
+
+/*
+ * Applied to <body> for the duration of a drag. Without it the pointer picks up
+ * text selection across the page and the cursor flickers back to the default
+ * whenever it leaves the few pixels of the handle.
+ */
+:global(body).draggingX,
+:global(body).draggingY {
+  user-select: none;
+}
+
+:global(body).draggingX,
+:global(body).draggingX * {
+  cursor: col-resize !important;
+}
+
+:global(body).draggingY,
+:global(body).draggingY * {
+  cursor: row-resize !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .handle,
+  .grip {
+    transition: none;
+  }
+}

@@ -32,6 +32,20 @@
   --tracking-tight: #{$tracking-tight};
   --tracking-caps:  #{$tracking-caps};
 
+  // spacing — components reference these as var(--space-N); without the bridge
+  // every `padding: var(--space-5)` is an invalid value and gets dropped, which
+  // is how the modals ended up with no padding at all.
+  --space-1:  #{$space-1};
+  --space-2:  #{$space-2};
+  --space-3:  #{$space-3};
+  --space-4:  #{$space-4};
+  --space-5:  #{$space-5};
+  --space-6:  #{$space-6};
+  --space-8:  #{$space-8};
+  --space-10: #{$space-10};
+  --space-12: #{$space-12};
+  --space-16: #{$space-16};
+
   // radius
   --radius-xs:   #{$radius-xs};
   --radius-sm:   #{$radius-sm};
@@ -85,4 +99,63 @@ html, body {
   background: var(--color-bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+
+///
+/// Mobile foundations.
+///
+/// These are corrections, not decoration: each one fixes something that is
+/// actually broken on a phone rather than merely tight.
+///
+:root {
+  /// The visible height, excluding whatever the browser chrome is currently
+  /// covering. `100vh` on iOS is the height *without* the URL bar, so a
+  /// full-height pane overflows by ~60px until the user scrolls.
+  --app-height: 100vh;
+
+  /// Insets so content clears the notch and the home indicator. Zero on every
+  /// device that has neither.
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+}
+
+@supports (height: 100dvh) {
+  :root {
+    --app-height: 100dvh;
+  }
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  /// Stops the whole page rubber-banding when a pane inside it scrolls.
+  overscroll-behavior-y: none;
+}
+
+///
+/// iOS Safari zooms the page whenever a focused input's font is under 16px,
+/// and never zooms back out. Every control in this app is 13-14px by design,
+/// so on touch they are bumped to 16px — the layout barely notices and the
+/// page stops lurching every time someone taps a field.
+///
+@media (max-width: 640px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
+/// Touch devices get no hover, so a tap-target must not depend on it.
+@media (hover: none), (pointer: coarse) {
+  button,
+  [role='button'],
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
 }

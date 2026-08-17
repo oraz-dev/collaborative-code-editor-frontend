@@ -1,12 +1,12 @@
 import { memo } from 'react';
-import type { AppRoutes } from '@/shared/config/routeConfig/routeConfig';
+import type { AppRoute } from '@/shared/config/routeConfig/routeConfig';
 import { classNames } from '@/shared/lib/classNames/classNames';
 import { Link, type LinkProps } from 'react-router';
 
 interface AppLinkProps extends Omit<LinkProps, 'to'> {
   className?: string;
   children?: React.ReactNode;
-  to: AppRoutes;
+  to: AppRoute | string;
 }
 
 export const AppLink = memo((props: AppLinkProps) => {
@@ -19,7 +19,7 @@ export const AppLink = memo((props: AppLinkProps) => {
 
   return (
     <Link
-      to={to as AppRoutes}
+      to={to}
       className={classNames('', {}, [className])}
       {...otherProps}
     >

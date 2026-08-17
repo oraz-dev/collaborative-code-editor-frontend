@@ -1,60 +1,78 @@
 import { useState, useCallback, memo } from 'react';
+import { useNavigate } from 'react-router';
 import { Icons } from '@/shared/ui/Icon/Icons';
 import { Button } from '@/shared/ui/Button/Button';
 import { AppBar } from '@/widgets/AppBar/AppBar';
+import { CommandPalette } from '@/widgets/CommandPalette/CommandPalette';
+import { useCommandPaletteHotkey } from '@/shared/lib/hotkey/useCommandPaletteHotkey';
 import { GeneralSection } from './ui/GeneralSection';
 import { EditorSection } from './ui/EditorSection';
-import { TeamSection } from './ui/TeamSection';
-import { BillingSection } from './ui/BillingSection';
 import cls from './SettingsPage.module.scss';
-import { useNavigate } from 'react-router';
-import { RoutePaths } from '@/shared/config/routeConfig/routeConfig';
 
-type Section = 'general' | 'editor' | 'team' | 'billing';
+type Section = 'general' | 'editor';
 
 const NAV: { value: Section; label: string; icon: typeof Icons.Settings }[] = [
   { value: 'general', label: 'General', icon: Icons.Settings },
   { value: 'editor', label: 'Editor', icon: Icons.Files },
-  { value: 'team', label: 'Team', icon: Icons.Users },
-  { value: 'billing', label: 'Billing', icon: Icons.Bolt },
 ];
 
-// interface SettingsPageProps {
-//   className?: string;
-// }
-
 export const SettingsPage = memo(() => {
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  const onOpenPalette = useCallback(() => {
+    setPaletteOpen(true);
+  }, []);
+
+  const onClosePalette = useCallback(() => {
+    setPaletteOpen(false);
+  }, []);
+
+  useCommandPaletteHotkey(onOpenPalette);
+
   const [section, setSection] = useState<Section>('general');
-  const router = useNavigate();
+  const navigate = useNavigate();
 
   const handleNavClick = useCallback((value: Section) => {
     setSection(value);
   }, []);
 
+  const onBack = useCallback(() => {
+    navigate(-1);
+  }, [navigate]);
+
   return (
     <div className={cls.canvas}>
-      <AppBar />
+      <AppBar onCmdk={onOpenPalette} />
       <div className={cls.body}>
         <div className={cls.wrap}>
           <div className={cls.sidebar}>
             <div className={cls.sidebarTitle}>Settings</div>
-            {NAV.map(n => (
-              <div key={n.value} className={cls.navItem} data-active={section === n.value} onClick={() => handleNavClick(n.value)}>
-                <n.icon size={16} /> {n.label}
-              </div>
+            {NAV.map((item) => (
+              <button
+                type="button"
+                key={item.value}
+                className={cls.navItem}
+                data-active={section === item.value}
+                onClick={() => handleNavClick(item.value)}
+                aria-current={section === item.value}
+              >
+                <item.icon size={16} /> {item.label}
+              </button>
             ))}
             <div className={cls.sidebarBackWrap}>
-              <Button variant="ghost" size="small" onClick={() => router(-1)}><Icons.Arrow size={14} /> Back to dashboard</Button>
+              <Button variant="ghost" size="small" onClick={onBack} aria-label="Back to dashboard">
+                <Icons.Arrow size={14} /> Back to dashboard
+              </Button>
             </div>
           </div>
           <div className={cls.content}>
             {section === 'general' && <GeneralSection />}
             {section === 'editor' && <EditorSection />}
-            {section === 'team' && <TeamSection />}
-            {section === 'billing' && <BillingSection onUpgrade={() => router(RoutePaths.upgrade)} />}
           </div>
         </div>
       </div>
+
+      <CommandPalette open={paletteOpen} onClose={onClosePalette} />
     </div>
   );
 });

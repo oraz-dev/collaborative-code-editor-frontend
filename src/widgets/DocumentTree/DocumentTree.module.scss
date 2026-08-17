@@ -1,0 +1,150 @@
+.root {
+  display: flex;
+  /* Default only — EditorPage overrides it with the persisted width. */
+  width: 240px;
+  min-height: 0;
+  flex: none;
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2xl);
+  background: var(--color-bg-sunken);
+  box-shadow: var(--shadow-lg), var(--edge);
+  overflow: hidden;
+}
+
+/* "EXPLORER" — the pane title, above the collapsible section header. */
+.paneTitle {
+  display: flex;
+  height: 30px;
+  flex: none;
+  align-items: center;
+  padding: 0 var(--space-3);
+  color: var(--color-text-faint);
+  font: var(--weight-medium) var(--text-2xs) / 1 var(--font-body);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+
+.head {
+  display: flex;
+  height: 26px;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 2px;
+  padding: 0 6px 0 4px;
+  background: var(--color-surface-2);
+  border-top: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.headToggle {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+  padding: 0 2px;
+  border: none;
+  background: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font: var(--weight-semibold) var(--text-2xs) / 1 var(--font-body);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.headToggle:hover {
+  color: var(--color-text);
+}
+
+.headChevron {
+  display: inline-flex;
+  color: var(--color-text-faint);
+}
+
+.count {
+  color: var(--color-text-disabled);
+  font-weight: var(--weight-regular);
+  letter-spacing: 0;
+}
+
+.action {
+  display: inline-flex;
+  padding: 4px;
+  border: none;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--color-text-faint);
+  cursor: pointer;
+  transition: var(--transition-control);
+}
+
+.action:hover {
+  background: var(--color-surface-3);
+  color: var(--color-text);
+}
+
+.action:focus-visible {
+  outline: 1px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+.scroll {
+  min-height: 0;
+  flex: 1;
+  padding: 4px 0 var(--space-4);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+  -webkit-overflow-scrolling: touch;
+  /* Reaching the end of the tree must not start scrolling the drawer behind
+     it, or bounce the whole page on iOS. */
+  overscroll-behavior: contain;
+}
+
+.scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.scroll::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: var(--radius-full);
+  background: var(--color-border-strong);
+  background-clip: content-box;
+}
+
+.center {
+  display: flex;
+  padding: var(--space-5) 0;
+  justify-content: center;
+}
+
+.errorBox,
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-3);
+}
+
+.errorText,
+.emptyText {
+  margin: 0;
+  color: var(--color-text-faint);
+  font-size: var(--text-xs);
+  line-height: var(--leading-snug);
+}
+
+.sectionHead {
+  display: flex;
+  height: 24px;
+  align-items: center;
+  margin-top: var(--space-3);
+  padding: 0 var(--space-3);
+  border-top: 1px solid var(--color-border-subtle);
+  color: var(--color-text-faint);
+  font: var(--weight-semibold) var(--text-2xs) / 1 var(--font-body);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}

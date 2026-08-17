@@ -1,5 +1,4 @@
 import { createElement, type SVGProps } from 'react';
-import { GitHubIcon, GoogleIcon } from './BrandIcons';
 
 type IC = (props: SVGProps<SVGSVGElement> & { size?: number }) => React.JSX.Element;
 
@@ -22,6 +21,7 @@ const navIcons = {
 };
 
 const fileIcons = {
+  Sidebar:    I('M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z', 'M9 5v14'),
   Files:      I('M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v2H3z', 'M3 10h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'),
   Folder:     I('M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'),
   Box:        I('m21 8-9-5-9 5 9 5 9-5z', 'M3 8v8l9 5 9-5V8'),
@@ -91,8 +91,6 @@ export const Icons = {
   ...editorIcons,
   ...gitIcons,
   ...objectIcons,
-  GitHub: GitHubIcon,
-  Google: GoogleIcon,
 };
 
 export type SpaceIconName = keyof typeof Icons;

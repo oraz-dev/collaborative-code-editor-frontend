@@ -1,3 +1,5 @@
+@use '../../../app/styles/breakpoints' as bp;
+
 .scrim {
   position: fixed;
   inset: 0;
@@ -22,12 +24,15 @@
 }
 
 .modal {
+  display: flex;
   width: 400px;
-  max-width: 88%;
+  max-width: calc(100vw - var(--space-8));
+  max-height: calc(var(--app-height) - var(--space-12));
+  flex-direction: column;
   background: var(--color-overlay);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-xl);
   overflow: hidden;
   transform: translateY(8px) scale(0.99);
   transition: transform var(--duration-base) var(--ease);
@@ -39,38 +44,95 @@
 
 .header {
   display: flex;
+  flex: none;
   align-items: center;
-  padding: var(--space-5) var(--space-5) 0;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-5) var(--space-4);
 }
 
 .title {
-  font: var(--weight-medium) var(--text-lg) / 1.2 var(--font-body);
+  overflow: hidden;
   flex: 1;
+  min-width: 0;
+  font: var(--weight-medium) var(--text-lg) / 1.25 var(--font-body);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .closeBtn {
   display: flex;
-  cursor: pointer;
-  color: var(--color-text-faint);
-  background: none;
+  flex: none;
+  padding: 5px;
   border: none;
-  padding: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-faint);
+  cursor: pointer;
+  transition: var(--transition-control);
 
   &:hover {
+    background: var(--color-surface-2);
     color: var(--color-text);
+  }
+
+  &:focus-visible {
+    outline: 1px solid var(--color-primary);
+    outline-offset: 1px;
   }
 }
 
 .body {
-  padding: var(--space-3) var(--space-5) var(--space-5);
+  min-height: 0;
+  flex: 1;
+  padding: 0 var(--space-5) var(--space-5);
   color: var(--color-text-muted);
   font-size: var(--text-sm);
+  overflow-y: auto;
 }
 
 .footer {
   display: flex;
+  flex: none;
   justify-content: flex-end;
   gap: 8px;
   padding: var(--space-4) var(--space-5);
   border-top: 1px solid var(--color-border);
+}
+
+
+/*
+ * On a phone a centred 400px card leaves useless margins and sits under the
+ * on-screen keyboard the moment a field inside it is focused. A bottom sheet
+ * is anchored to the thumb instead, and grows upwards as the keyboard pushes
+ * the viewport (`--app-height` is dynamic).
+ */
+@include bp.phone {
+  .scrim {
+    align-items: flex-end;
+  }
+
+  .modal,
+  .sm,
+  .md,
+  .lg {
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(var(--app-height) - var(--space-8));
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    border-bottom: none;
+    /* Clears the home indicator so the last button is not half-swipeable. */
+    padding-bottom: var(--safe-bottom);
+    transform: translateY(100%);
+  }
+
+  .footer {
+    /* Stacked and full-width: side-by-side buttons at this width are too
+       narrow to hit confidently. */
+    flex-direction: column-reverse;
+    gap: var(--space-2);
+
+    button {
+      width: 100%;
+    }
+  }
 }

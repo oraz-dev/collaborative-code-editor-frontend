@@ -1,3 +1,5 @@
+@use '../../app/styles/breakpoints' as bp;
+
 .root {
   position: absolute;
   inset: 0;
@@ -219,7 +221,68 @@
   a { color: var(--color-text-link); font-weight: var(--weight-medium); cursor: pointer; }
 }
 
-@media (max-width: 880px) {
-  .brand { display: none; }
-  .form { width: 100%; }
+.error {
+  margin-bottom: 12px;
+  padding: 9px 12px;
+  border: 1px solid var(--coral-500, #ef4444);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--coral-500, #ef4444) 10%, transparent);
+  color: var(--coral-300, #fca5a5);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+
+
+/*
+ * Below a tablet the two columns stack. The marketing pitch goes — a narrow
+ * strip of decorative code between the user and the only thing this page is
+ * for — but the wordmark stays, so the page still identifies itself.
+ */
+@include bp.tablet-down {
+  .root {
+    flex-direction: column;
+  }
+
+  .brand {
+    flex: none;
+    padding: max(20px, var(--safe-top)) max(24px, var(--safe-right)) 8px max(24px, var(--safe-left));
+    border-right: none;
+
+    /* The dot grid is masked to a corner that no longer exists. */
+    &::before {
+      display: none;
+    }
+  }
+
+  .pitch,
+  .foot {
+    display: none;
+  }
+
+  .form {
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    padding: 24px max(24px, var(--safe-right)) max(32px, var(--safe-bottom)) max(24px, var(--safe-left));
+    /* Sign-up plus an open keyboard is taller than a phone. */
+    overflow-y: auto;
+  }
+}
+
+@include bp.phone {
+  .brand {
+    padding-left: max(20px, var(--safe-left));
+    padding-right: max(20px, var(--safe-right));
+  }
+
+  .form {
+    justify-content: flex-start;
+    padding-left: max(20px, var(--safe-left));
+    padding-right: max(20px, var(--safe-right));
+  }
+
+  .card {
+    max-width: 100%;
+  }
 }

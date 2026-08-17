@@ -1,10 +1,9 @@
 .selectWrapper {
   position: relative;
   display: flex;
+  min-width: 0;
   flex-direction: column;
   gap: 6px;
-  max-width: 300px;
-  width: 100%;
 }
 
 .label {
@@ -14,29 +13,65 @@
 
 .trigger {
   display: flex;
+  width: 100%;
+  min-width: 0;
+  height: var(--control-md);
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  height: 34px;
-  padding: 0 12px;
+  padding: 0 10px 0 12px;
   background: var(--color-inset);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
-  transition: var(--duration-fast) var(--ease);
+  transition: var(--transition-control), box-shadow var(--duration-fast) var(--ease);
   cursor: pointer;
   color: var(--color-text);
-  font: var(--text-base) / 1 var(--font-body);
-  width: 100%;
+  font: var(--text-sm) / 1 var(--font-body);
   text-align: left;
 
   &:hover:not(.readonly):not(.isError) {
-    border-color: var(--color-text-faint);
+    border-color: var(--color-text-disabled);
   }
 
   &.isOpen {
     border-color: var(--color-primary);
     box-shadow: 0 0 0 3px var(--ring);
   }
+
+  &:focus-visible {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--ring);
+  }
+}
+
+.sm {
+  height: var(--control-sm);
+  padding: 0 6px 0 9px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+}
+
+/* Sits inside a list row: no box until you reach for it. */
+.ghost {
+  background: transparent;
+  border-color: transparent;
+
+  &:hover:not(.readonly) {
+    background: var(--color-surface-2);
+    border-color: var(--color-border);
+  }
+
+  &.isOpen {
+    background: var(--color-surface-2);
+  }
+}
+
+.value {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .placeholder {
@@ -53,56 +88,64 @@
   }
 }
 
+/*
+ * Portalled to `document.body`, so it is positioned in viewport coordinates
+ * and cannot be clipped by a scrolling list or a modal.
+ */
 .dropdown {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  width: 100%;
-  background: var(--color-surface-2);
+  position: fixed;
+  z-index: 200;
+  max-height: 220px;
+  padding: 4px;
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-  padding: 4px;
-  z-index: 100;
-  max-height: 200px;
+  background: var(--color-overlay);
+  box-shadow: var(--shadow-lg);
   overflow-y: auto;
-  
-  /* Smooth slide-in animation */
   animation: dropdownIn var(--duration-fast) var(--ease) forwards;
-  transform-origin: top center;
+}
+
+/* When it opens upwards, `top` is the trigger's top edge. */
+.above {
+  transform: translateY(-100%);
 }
 
 @keyframes dropdownIn {
-  from {
-    opacity: 0;
-    transform: translateY(-4px) scaleY(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scaleY(1);
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .option {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  gap: var(--space-3);
+  padding: 7px 10px;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  color: var(--color-text);
-  font: var(--text-sm) / var(--leading-tight) var(--font-body);
-  transition: background var(--duration-fast) var(--ease);
+  color: var(--color-text-secondary);
+  font: var(--text-sm) / 1.2 var(--font-body);
+  transition: background var(--duration-fast) var(--ease), color var(--duration-fast) var(--ease);
 
   &:hover {
-    background: var(--fill-primary);
+    background: var(--color-surface-2);
+    color: var(--color-text);
   }
 
   &.selected {
-    background: var(--fill-primary);
-    color: var(--color-primary);
+    color: var(--color-text);
     font-weight: var(--weight-medium);
   }
+
+  &.selected:hover {
+    background: var(--fill-primary);
+  }
+}
+
+.optionLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .isError {
@@ -123,4 +166,9 @@
   opacity: 0.7;
   cursor: not-allowed;
   pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dropdown { animation: none; }
+  .icon { transition: none; }
 }
