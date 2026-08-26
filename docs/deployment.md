@@ -73,6 +73,36 @@ reason a real domain is worth having.
 - **`CORS_ALLOWED_ORIGINS` must be passed through in `docker-compose.yml`.**
   The auth stack did not list it under `environment:`, so setting it in `.env`
   alone had no effect.
+- **The whole SPA hangs off one line in someone else's file.** The Caddyfile's
+  site block says `root * /srv/space`, but that path only exists inside the
+  container because `docker-compose.prod.yml` bind-mounts it:
+
+  ```yaml
+  caddy:
+    volumes:
+      - /srv/space:/srv/space:ro   # <- delete this and the site 404s
+  ```
+
+  That file belongs to the backend, and the `caddy` service is defined *only*
+  there — the base `docker-compose.yml` has no caddy at all. A rewrite of it
+  (2026-08-25 was a security-hardening pass adding `read_only`, `cap_drop`,
+  `!reset`) dropped the mount, and the site returned 404 for every path while
+  both APIs kept answering normally. Caddy logs nothing: a missing root is not
+  an error to it, just an empty directory.
+
+  Symptom to recognise: `/` and `/index.html` both 404 with `server: Caddy`,
+  while `/api/v1/...` and `/api/auth/...` still return 401. Check first:
+
+  ```sh
+  docker inspect documents-service-caddy-1 --format '{{range .Mounts}}{{.Source}}{{println}}{{end}}'
+  docker exec documents-service-caddy-1 ls /srv/space
+  ```
+
+  Fix is the one line above plus
+  `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --force-recreate --no-deps caddy`
+  (`--no-deps` keeps the API and database containers untouched).
+- **`docker-compose.prod.yml` has CRLF line endings.** `sed` patterns anchored
+  with `$` silently match nothing and report success. Check with `cat -A`.
 
 ## Rollback
 
