@@ -108,7 +108,7 @@ export const RunOutputPane = memo((props: RunOutputPaneProps) => {
 
       {phase === 'running' && (
         <div className={cls.state} data-testid="run-pending" role="status" aria-live="polite">
-          <Spinner size="large" label="Running your code" />
+          <Spinner size="large" />
           <p>Running{language ? ` ${language.name}` : ''}…</p>
           {/* A run is broadcast to the room, so this pane can be showing
               somebody else's execution. */}

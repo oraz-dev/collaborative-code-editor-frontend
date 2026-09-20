@@ -42,7 +42,7 @@ interface CollaborativeEditorProps {
 
 const loading = (
   <div className={cls.loading} role="status" aria-live="polite" aria-label="Loading editor">
-    <Spinner size="large" label="Connecting to the document" />
+    <Spinner size="large" />
   </div>
 );
 

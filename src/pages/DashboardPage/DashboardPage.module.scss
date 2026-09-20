@@ -51,9 +51,22 @@
 .statePending {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   gap: var(--space-3);
   padding: var(--space-8) 0;
+}
+
+/* `.state` is the error block — a sentence and a retry button, which read as
+   left-aligned prose. */
+.state {
+  align-items: flex-start;
+}
+
+/* `.statePending` holds nothing but the loader. It shared the rule above and
+   so inherited `align-items: flex-start`, which in a column pinned it to the
+   far left of a full-width row while the grid it stands in for is centred
+   content. It gets the centre it always wanted. */
+.statePending {
+  align-items: center;
 }
 
 .stateText {

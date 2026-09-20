@@ -23,7 +23,7 @@ export const RequireAuth = memo((props: RequireAuthProps) => {
   if (isResolving) {
     return (
       <div className={cls.pending} role="status" aria-live="polite" aria-label="Restoring your session">
-        <Spinner size="large" label="Checking your session" />
+        <Spinner size="large" />
       </div>
     );
   }
