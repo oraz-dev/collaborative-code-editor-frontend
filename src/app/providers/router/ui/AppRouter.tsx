@@ -7,7 +7,7 @@ import cls from './AppRouter.module.scss';
 
 const fallback = (
   <div className={cls.fallback} role="status" aria-live="polite" aria-label="Loading page">
-    <Spinner size="large" />
+    <Spinner size="large" label="Loading page" />
   </div>
 );
 

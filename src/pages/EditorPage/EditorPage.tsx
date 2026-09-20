@@ -369,7 +369,7 @@ export const EditorPage = memo((props: EditorPageProps) => {
     }
 
     if (documentQuery.isPending) {
-      return <div className={cls.placeholder}><Spinner size="large" /></div>;
+      return <div className={cls.placeholder}><Spinner size="large" label="Opening the file" /></div>;
     }
 
     if (documentQuery.isError) {
@@ -411,7 +411,7 @@ export const EditorPage = memo((props: EditorPageProps) => {
     }
 
     if (!isReady) {
-      return <div className={cls.placeholder}><Spinner size="large" /></div>;
+      return <div className={cls.placeholder}><Spinner size="large" label="Preparing the editor" /></div>;
     }
 
     return (

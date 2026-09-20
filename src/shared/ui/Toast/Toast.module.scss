@@ -73,19 +73,12 @@
   .icon { color: var(--color-destructive); }
 }
 
+/* Placement only. The mark itself is the shared Spinner — this used to be a
+   second, rotating loader of its own, which is why the app had two. It takes
+   the toast's warning hue through currentColor. */
 .spinner {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 2px solid var(--color-border-strong);
-  border-top-color: var(--color-warning);
-  animation: spin 1s linear infinite;
-  flex: none;
+  color: var(--color-warning);
   margin-top: 2px;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
 }
 
 /* Loading bar for "Reconnecting..." state */
@@ -105,8 +98,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  // Both of these report that work is still in flight, so stopping them would
-  // read as "stalled". Halving the speed keeps the signal without the sweep.
-  .spinner { animation-duration: 2s; }
+  // This reports that work is still in flight, so stopping it would read as
+  // "stalled". Halving the speed keeps the signal without the sweep. (The
+  // loader's own bars are slowed inside Spinner.module.scss.)
   .progressBar { animation-duration: 3s; }
 }
