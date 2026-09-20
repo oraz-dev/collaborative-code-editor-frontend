@@ -1,7 +1,9 @@
 .loader {
   width: 20px;
   height: 20px;
-  border: 2px solid #FFF;
+  /* Was a hardcoded #FFF ring, which is invisible on a light canvas.
+     currentColor lets each caller inherit a visible tone in both themes. */
+  border: 2px solid currentColor;
   border-bottom-color: transparent;
   border-radius: 50%;
   display: inline-block;

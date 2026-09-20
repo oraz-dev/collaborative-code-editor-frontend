@@ -8,7 +8,9 @@
   padding: 3px 9px 3px 3px;
   border-radius: var(--radius-full);
   border: 1px solid var(--color-border-subtle);
-  background: rgba(11, 13, 18, 0.45);
+  /// Was the dark theme's own inset colour inlined as a literal, which painted
+  /// a near-black slab into the light theme's app bar. The token follows.
+  background: var(--color-inset);
   cursor: pointer;
   transition: var(--transition-control);
 
@@ -17,11 +19,11 @@
 
 .chev { color: var(--color-text-faint); display: flex; }
 
-.scrim { position: fixed; inset: 0; z-index: 60; }
+.scrim { position: fixed; inset: 0; z-index: var(--z-scrim); }
 
 .menu {
   position: absolute;
-  z-index: 70;
+  z-index: var(--z-menu);
   min-width: 230px;
   padding: 7px;
   border-radius: var(--radius-lg);
@@ -30,6 +32,22 @@
   box-shadow: var(--shadow-xl);
   top: 46px;
   right: 0;
+
+  /// The menu is mounted by `{open && ...}`, so it used to simply be there on
+  /// the next frame with nothing tying it to the avatar button that produced
+  /// it. Growing from the top-right anchor makes that link legible. The
+  /// duration matches Select's dropdown entrance exactly so the app has one
+  /// menu vocabulary rather than two. Exit stays instant: the scrim unmounts
+  /// it, and this is chrome a developer opens dozens of times a day.
+  transform-origin: top right;
+  transition:
+    opacity var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+
+  @starting-style {
+    opacity: 0;
+    transform: scale(0.97) translateY(-4px);
+  }
 }
 
 .head {
@@ -44,7 +62,7 @@
 }
 
 .headSub {
-  font: 11px/1.3 var(--font-mono);
+  font: var(--text-2xs)/1.3 var(--font-mono);
   color: var(--color-text-faint);
 }
 
@@ -66,8 +84,11 @@
   font-size: var(--text-sm);
   transition: var(--transition-control);
 
+  /// A white overlay is invisible against a light overlay surface, so the row
+  /// had no hover state at all in the light theme. The surface token reads in
+  /// both.
   &:hover {
-    background: rgba(255, 255, 255, 0.045);
+    background: var(--color-surface-2);
     color: var(--color-text);
   }
 }
@@ -92,3 +113,14 @@
 }
 
 .kbd { margin-left: auto; }
+
+@media (prefers-reduced-motion: reduce) {
+  /// Gentler, not absent: the menu still fades in so it does not teleport on
+  /// top of the app bar, but it no longer scales or travels.
+  .menu {
+    @starting-style {
+      opacity: 0;
+      transform: none;
+    }
+  }
+}

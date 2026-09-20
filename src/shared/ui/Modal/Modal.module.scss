@@ -3,12 +3,16 @@
 .scrim {
   position: fixed;
   inset: 0;
+  /* Deliberately not a theme token: a scrim's job is to darken whatever is
+     behind it, so it stays the same near-black in light mode as in dark. Kept
+     byte-identical to the command palette's scrim so the two never read as
+     different depths. */
   background: rgba(6, 8, 12, 0.55);
   backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 90;
+  z-index: var(--z-modal);
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--duration-base) var(--ease);
@@ -76,8 +80,8 @@
   }
 
   &:focus-visible {
-    outline: 1px solid var(--color-primary);
-    outline-offset: 1px;
+    outline: none;
+    box-shadow: var(--ring-focus);
   }
 }
 
@@ -94,7 +98,7 @@
   display: flex;
   flex: none;
   justify-content: flex-end;
-  gap: 8px;
+  gap: var(--space-2);
   padding: var(--space-4) var(--space-5);
   border-top: 1px solid var(--color-border);
 }
@@ -134,5 +138,22 @@
     button {
       width: 100%;
     }
+  }
+}
+
+
+/*
+ * The scrim keeps its fade — a dialog that blinks into existence is harder to
+ * locate than one that resolves — but the dialog itself stops travelling. It
+ * has to come after the phone block: the bottom sheet's `translateY(100%)` is
+ * the same specificity, so only source order un-does it.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .modal,
+  .sm,
+  .md,
+  .lg {
+    transform: none;
+    transition: none;
   }
 }

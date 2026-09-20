@@ -1,8 +1,8 @@
 .listRow {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--color-border);
   transition: background var(--duration-fast) var(--ease);
 
@@ -10,8 +10,10 @@
     border-bottom: none;
   }
 
+  /* Was a 2% white overlay: invisible on a light surface, and under the
+     perceptual threshold on a dark one too. */
   &:hover {
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--color-surface-2);
   }
 }
 

@@ -70,3 +70,26 @@ $control-lg: 42px;
 
 // ---------- Presence palette ----------
 $presence: (#4d9eff, #2fc88e, #9d7cff, #e7ab43, #ef6c5a, #f06ca6, #36c5cf, #b6c25a);
+
+// ---------- Stacking order ----------
+//
+// One ladder for the whole app. Every `z-index` in a component references a
+// rung here. The numbers are deliberately the ones already in use — this is a
+// naming fix, not a re-layering — because 60/70/75/80/90/200/300/1000 had
+// drifted across eight files that each had to guess what the others picked.
+//
+// The two non-obvious rungs:
+//   $z-popover sits *above* $z-modal because Select portals to <body> and has
+//   to stay usable from inside a dialog.
+//   $z-alert is the connectivity banner. Nothing may cover it.
+$z-base:    1;    // content that only needs its own stacking context
+$z-raised:  10;   // presence cursors, in-pane floating affordances
+$z-sticky:  20;   // overlays confined to a single pane
+$z-scrim:   60;   // dismiss-catching backdrop beneath a local menu
+$z-menu:    70;   // menus anchored to their trigger
+$z-drawer:  75;   // the compact-width navigation drawer
+$z-palette: 80;   // command palette
+$z-modal:   90;   // modal scrim and dialog
+$z-popover: 200;  // portalled poppers that must clear a modal
+$z-toast:   300;  // transient confirmations
+$z-alert:   1000; // connectivity banner

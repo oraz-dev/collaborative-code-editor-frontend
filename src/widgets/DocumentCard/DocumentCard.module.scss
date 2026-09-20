@@ -3,27 +3,30 @@
 .card {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 14px;
-  border: 1px solid var(--line-800, #292524);
-  border-radius: 10px;
-  background: var(--surface-900, #1c1917);
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
   cursor: pointer;
-  transition: border-color 0.15s ease, transform 0.15s ease;
+  /* Was 0.15s/ease — the one component in the app running its own curve, which
+     made a grid of cards drift out of step with every other hover in the UI. */
+  transition: border-color var(--duration-fast) var(--ease),
+    transform var(--duration-fast) var(--ease);
 }
 
 /* iOS keeps :hover applied after a tap, so a card stays lifted until you touch
    something else. Confine the lift to real pointers. */
 @include bp.can-hover {
   .card:hover {
-    border-color: var(--line-700, #44403c);
+    border-color: var(--color-border-strong);
     transform: translateY(-1px);
   }
 }
 
 .card:focus-visible {
-  outline: 2px solid var(--accent-500, #6366f1);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--ring-focus);
 }
 
 .pending {
@@ -34,31 +37,31 @@
 .top {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .icon {
   display: inline-flex;
-  color: var(--ink-500, #78716c);
+  color: var(--ink-500);
 }
 
 .name {
   overflow: hidden;
   flex: 1;
-  color: var(--ink-100, #fafaf9);
-  font-size: 13.5px;
-  font-weight: 500;
+  color: var(--ink-100);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .delete {
   display: none;
-  padding: 4px;
+  padding: var(--space-1);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   background: transparent;
-  color: var(--ink-500, #78716c);
+  color: var(--ink-500);
   cursor: pointer;
 }
 
@@ -81,14 +84,14 @@
 }
 
 .delete:hover {
-  background: var(--surface-800, #292524);
-  color: var(--coral-400, #f87171);
+  background: var(--color-surface-2);
+  color: var(--coral-400);
 }
 
 .meta {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--space-1);
   color: var(--color-text-faint);
   font-size: var(--text-xs);
 }

@@ -4,7 +4,7 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: 8px;
+  padding: var(--space-2);
 }
 
 .mini {
@@ -31,14 +31,18 @@
   color: var(--color-text-muted);
   font: var(--weight-medium) var(--text-sm) / 1 var(--font-body);
   cursor: pointer;
-  transition: var(--duration-fast);
+  /* A bare duration is a transition on `all`, which happily animates width and
+     height when the rail collapses to .mini. Scope it to the tint properties. */
+  transition: var(--transition-control);
   background: none;
   border: none;
   width: 100%;
   text-align: left;
 
+  /* White-on-white in light mode; below the perceptual threshold in dark.
+     --color-surface-2 is the theme-aware hover fill used across the app. */
   &:hover {
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--color-surface-2);
     color: var(--color-text);
   }
 }
@@ -61,6 +65,6 @@
 
 .count {
   margin-left: auto;
-  font: 11px / 1 var(--font-mono);
+  font: var(--text-2xs) / 1 var(--font-mono);
   color: var(--color-text-faint);
 }

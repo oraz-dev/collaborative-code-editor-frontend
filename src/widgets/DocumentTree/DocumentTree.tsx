@@ -188,7 +188,8 @@ export const DocumentTree = memo((props: DocumentTreeProps) => {
 
         {isCreatingAtRoot && (
           <InlineNameInput
-            style={{ paddingLeft: INDENT_STEP }}
+            className={cls.rootCreate}
+            style={{ '--indent': `${INDENT_STEP}px` } as CSSProperties}
             ariaLabel={creating.kind === 'folder' ? 'New folder name' : 'New file name'}
             placeholder={creating.kind === 'folder' ? 'folder name' : 'file name'}
             icon={<FileTypeIcon name="" variant={creating.kind === 'folder' ? 'folder' : 'file'} size={15} />}

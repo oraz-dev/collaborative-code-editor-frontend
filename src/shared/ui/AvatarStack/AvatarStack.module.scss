@@ -31,8 +31,11 @@
   justify-content: center;
   font-weight: 600;
   font-family: var(--font-mono);
-  color: #fff;
-  border: 2px solid var(--bg-app);
+  /* Presence hues are bright (amber #e7ab43, olive #b6c25a), so they take
+     dark ink — matching Avatar.hasColor, which already made this call. White
+     here failed contrast on half the palette. */
+  color: #0b0d12;
+  border: 2px solid var(--color-bg);
   position: relative;
   flex-shrink: 0;
   background: var(--avatar-bg, var(--ink-700));
@@ -52,8 +55,8 @@
   justify-content: center;
   font-weight: 600;
   font-family: var(--font-mono);
-  color: var(--text-muted);
-  border: 2px solid var(--bg-app);
+  color: var(--color-text-muted);
+  border: 2px solid var(--color-bg);
   background: var(--ink-700);
   flex-shrink: 0;
   margin-left: var(--avatar-overlap);

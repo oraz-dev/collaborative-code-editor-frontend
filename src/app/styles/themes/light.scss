@@ -2,8 +2,15 @@
   --color-bg:            #f5f7fb;
   --color-bg-sunken:     #eef1f7;
   --color-surface:       #ffffff;
-  --color-surface-2:     #f1f4f9;
-  --color-surface-3:     #f1f4f9;
+  /// These two were the same value, which silently collapsed every component
+  /// that layers one on the other to show state — the selected Tabs pill
+  /// (surface-3 on a surface-2 track) simply vanished in light mode. In dark
+  /// they are distinct (#191c27 / #1f2330), so the ladder only broke here.
+  /// surface-2 is the recessed tone (tracks, hovers); surface-3 is the raised
+  /// one (the selected pill, a secondary button), which on a light canvas
+  /// means lighter, not darker.
+  --color-surface-2:     #e9eef6;
+  --color-surface-3:     #ffffff;
   --color-inset:         #f1f4f9;
   --color-overlay:       #ffffff;
   --color-border:        #dce1ea;

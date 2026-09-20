@@ -14,7 +14,9 @@
   font: var(--weight-medium) var(--text-sm) / 1 var(--font-body);
   cursor: pointer;
   position: relative;
-  transition: var(--duration-fast);
+  /* A bare duration transitions `all`, including the height and padding that
+     change at narrow widths. Scope it to the tint properties. */
+  transition: var(--transition-control);
   background: none;
   border: none;
 
@@ -54,7 +56,7 @@
 }
 
 .pill {
-  height: 28px;
+  height: var(--control-sm);
   padding: 0 14px;
   display: inline-flex;
   align-items: center;
@@ -66,6 +68,9 @@
   cursor: pointer;
 }
 
+/* The raised pill reads against the recessed --color-inset track in both
+   themes now that light mode's surface-3 is no longer the same value as
+   surface-2; --edge supplies the top hairline that separates the two. */
 .pillActive {
   background: var(--color-surface-3);
   color: var(--color-text);

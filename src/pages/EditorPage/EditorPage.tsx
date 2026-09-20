@@ -360,7 +360,7 @@ export const EditorPage = memo((props: EditorPageProps) => {
   const renderEditorArea = () => {
     if (!documentId) {
       return (
-        <div className={cls.placeholder} data-testid="editor-empty">
+        <div className={cls.placeholder} data-animated data-testid="editor-empty">
           <Icons.Files size={28} />
           <p>Pick a file to start editing.</p>
           <span className={cls.placeholderHint}>Everything you type is shared with your team instantly.</span>
@@ -374,7 +374,7 @@ export const EditorPage = memo((props: EditorPageProps) => {
 
     if (documentQuery.isError) {
       return (
-        <div className={cls.placeholder} data-testid="editor-error">
+        <div className={cls.placeholder} data-animated data-testid="editor-error">
           <p>We couldn&apos;t open that file.</p>
           <Button
             size="small"
@@ -391,7 +391,7 @@ export const EditorPage = memo((props: EditorPageProps) => {
 
     if (isFolder) {
       return (
-        <div className={cls.placeholder} data-testid="editor-folder">
+        <div className={cls.placeholder} data-animated data-testid="editor-folder">
           <Icons.Folder size={28} />
           <p>{activeDocument?.name} is a folder.</p>
           <span className={cls.placeholderHint}>Open a file inside it to start editing.</span>
@@ -401,7 +401,7 @@ export const EditorPage = memo((props: EditorPageProps) => {
 
     if (error) {
       return (
-        <div className={cls.placeholder} data-testid="editor-sync-error">
+        <div className={cls.placeholder} data-animated data-testid="editor-sync-error">
           <p>We couldn&apos;t load this document&apos;s history.</p>
           <span className={cls.placeholderHint}>
             Reload the page to try again — your saved work is safe.
@@ -502,7 +502,9 @@ export const EditorPage = memo((props: EditorPageProps) => {
                   people={others.map((peer) => ({
                     id: String(peer.clientId),
                     name: peer.name,
-                    presence: 'online',
+                    // Feeds --avatar-bg, so it has to be a colour: the same one
+                    // this peer's cursor carries, not a status word.
+                    presence: peer.color,
                   }))}
                   max={isPhone ? 2 : 4}
                   size="xs"

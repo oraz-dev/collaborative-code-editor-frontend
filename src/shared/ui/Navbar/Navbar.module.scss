@@ -3,7 +3,7 @@
   align-items: center;
   gap: var(--space-4);
   height: 54px;
-  padding: 0 16px;
+  padding: 0 var(--space-4);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -18,7 +18,7 @@
 
 .links {
   display: flex;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .link {
@@ -32,16 +32,31 @@
   border: none;
   font-family: var(--font-body);
 
+  /* A white overlay is invisible on a white bar, and at 4-5% alpha it was
+     below the perceptual threshold on the dark one too — so the hover fill
+     read as nothing in either theme. --color-surface-2 is the app's recessed
+     hover tone and tracks the theme. */
   &:hover {
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--color-surface-2);
     color: var(--color-text);
     text-decoration: none;
   }
 }
 
+/* The active link cannot share --color-surface-2 with `.link:hover` — that is
+   the same "one state silently impersonates another" failure the hover fills
+   were just fixed for, and `.link:hover` (0,2,0) outranks `.linkActive`
+   (0,1,0), so the selected tab would lose its tint the moment it was pointed
+   at. --fill-primary is the tint SidebarNav's `.itemActive` already uses for
+   exactly this meaning, and it separates from the grey hover in both themes. */
 .linkActive {
   color: var(--color-text);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--fill-primary);
+
+  &:hover {
+    background: var(--fill-primary);
+    color: var(--color-text);
+  }
 }
 
 .spacer {

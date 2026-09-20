@@ -62,7 +62,14 @@
   align-items: center;
   justify-content: center;
   color: var(--color-text-faint);
-  transition: color var(--duration-fast) var(--ease);
+  transition: color var(--duration-fast) var(--ease), transform var(--duration-fast) var(--ease);
+}
+
+/* Expanding a folder turns the chevron rather than swapping it for a second
+   glyph. 100ms on a 12px mark is the most that is defensible on something
+   clicked dozens of times a session. */
+.twisty.open {
+  transform: rotate(90deg);
 }
 
 .row:hover .twisty {
@@ -108,8 +115,8 @@
 
   .action {
     display: inline-flex;
-    min-width: 34px;
-    min-height: 34px;
+    min-width: var(--control-md);
+    min-height: var(--control-md);
     align-items: center;
     justify-content: center;
   }
@@ -123,7 +130,13 @@
   background: transparent;
   color: var(--color-text-faint);
   cursor: pointer;
-  transition: var(--transition-control);
+  transition: var(--transition-control), transform var(--duration-fast) var(--ease);
+}
+
+/* A 22px hit area is small enough that a button-sized dip reads as nothing, so
+   these travel a little further than a full-size control does. */
+.action:active {
+  transform: scale(0.94);
 }
 
 .action:hover {
@@ -136,11 +149,17 @@
   outline-offset: 1px;
 }
 
+/* Depth-driven indent, supplied per node as --indent. */
+.status,
+.indented {
+  padding-left: var(--indent, 0px);
+}
+
 .status {
   display: flex;
   height: 22px;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   font-size: var(--text-xs);
 }
 
@@ -160,4 +179,20 @@
   cursor: pointer;
   font-size: var(--text-xs);
   text-decoration: underline;
+}
+
+/*
+ * A rotation has no opacity half to keep, so the honest reduced-motion fallback
+ * is the snap the tree had before — the chevron still ends up pointing the
+ * right way. The colour transition stays; it is not movement.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .twisty {
+    transition: color var(--duration-fast) var(--ease);
+  }
+
+  .action:active {
+    transform: none;
+    opacity: 0.85;
+  }
 }

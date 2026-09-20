@@ -5,35 +5,54 @@
   border-radius: var(--radius-md);
   border: none;
   cursor: pointer;
-  transition: var(--transition-control);
+  /// --transition-control covers background/border/colour only, so transform
+  /// has to be appended by hand for the press to interpolate rather than snap.
+  transition: var(--transition-control), transform var(--duration-fast) var(--ease);
+}
+
+.iconButton:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
+.iconButton:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .sm {
-  width: 28px;
-  height: 28px;
+  width: var(--control-sm);
+  height: var(--control-sm);
 }
 
 .md {
-  width: 34px;
-  height: 34px;
+  width: var(--control-md);
+  height: var(--control-md);
 }
 
 .default {
   background: transparent;
-  color: var(--text-muted);
+  color: var(--color-text-muted);
 
   &.active {
-    background: var(--accent-soft);
-    color: var(--accent-hover);
+    background: var(--fill-primary);
+    color: var(--color-primary-hover);
   }
 }
 
 .solid {
-  background: var(--surface-raised);
-  color: var(--text-muted);
+  background: var(--color-surface-3);
+  color: var(--color-text-muted);
 
   &.active {
-    background: var(--accent);
-    color: var(--text-on-accent);
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /// Same trade as Button: the press survives as an opacity dip.
+  .iconButton:active:not(:disabled) {
+    transform: none;
+    opacity: 0.85;
   }
 }

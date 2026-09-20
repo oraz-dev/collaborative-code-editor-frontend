@@ -22,6 +22,9 @@
   flex-direction: column;
   gap: 2px;
   flex: 1;
+  // A flex item floors at its content width, so without this a long unbroken
+  // word pushes past the toast and `overflow: hidden` clips it instead of wrapping.
+  min-width: 0;
 }
 
 .title {
@@ -32,6 +35,8 @@
 .description {
   font: var(--text-sm) / var(--leading-normal) var(--font-body);
   color: var(--color-text-muted);
+  // Descriptions carry file paths and ids with no break opportunity in them.
+  overflow-wrap: anywhere;
 }
 
 .closeBtn {
@@ -97,4 +102,11 @@
 @keyframes loading {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  // Both of these report that work is still in flight, so stopping them would
+  // read as "stalled". Halving the speed keeps the signal without the sweep.
+  .spinner { animation-duration: 2s; }
+  .progressBar { animation-duration: 3s; }
 }

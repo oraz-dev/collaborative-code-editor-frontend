@@ -2,27 +2,46 @@
   position: fixed;
   top: 0;
   left: 50%;
-  z-index: 1000;
+  z-index: var(--z-alert);
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  border: 1px solid var(--amber-500, #f59e0b);
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--amber-500);
   border-top: none;
-  border-radius: 0 0 10px 10px;
-  background: var(--surface-900, #1c1917);
-  box-shadow: 0 6px 20px rgb(0 0 0 / 25%);
-  color: var(--ink-100, #fafaf9);
-  font-size: 13px;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+  color: var(--ink-100);
+  font-size: var(--text-sm);
   transform: translateX(-50%);
+
+  /// The banner is mounted by `if (isOnline) return null`, so without an
+  /// entrance it snaps into existence over the editor mid-keystroke. Its dot
+  /// already pulses, so the hard cut reads as a rendering bug rather than a
+  /// status change. Exit is deliberately left instant — reconnecting is good
+  /// news and does not need a farewell.
+  transition:
+    opacity var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
+
+  /// translateX(-50%) has to be restated here: @starting-style replaces the
+  /// whole transform, so omitting the centring makes the banner fly in from
+  /// the left edge instead of dropping out of the top one.
+  @starting-style {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-100%);
+  }
 }
 
 .dot {
+  /// 8px: below the spacing ladder's useful range for a decorative dot, so
+  /// intentionally left raw.
   width: 8px;
   height: 8px;
   flex-shrink: 0;
   border-radius: 50%;
-  background: var(--amber-500, #f59e0b);
+  background: var(--amber-500);
   animation: pulse 1.6s ease-in-out infinite;
 }
 
@@ -33,4 +52,13 @@
 
 @media (prefers-reduced-motion: reduce) {
   .dot { animation: none; }
+
+  /// Gentler, not absent: the banner still fades up rather than teleporting
+  /// on top of whatever the user is reading, but it no longer travels.
+  .banner {
+    @starting-style {
+      opacity: 0;
+      transform: translateX(-50%);
+    }
+  }
 }

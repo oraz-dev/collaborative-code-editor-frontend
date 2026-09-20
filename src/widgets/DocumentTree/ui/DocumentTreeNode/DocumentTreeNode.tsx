@@ -1,4 +1,4 @@
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback, useState, type CSSProperties } from 'react';
 import { Icons } from '@/shared/ui/Icon/Icons';
 import { Spinner } from '@/shared/ui/Spinner/Spinner';
 import { classNames } from '@/shared/lib/classNames/classNames';
@@ -112,11 +112,18 @@ export const DocumentTreeNode = memo((props: DocumentTreeNodeProps) => {
     <span key={level} className={cls.guide} aria-hidden="true" />
   ));
 
+  // The indent depends on the node's depth, so it cannot live in the stylesheet.
+  // Handing it over as a custom property keeps the rule itself in the module
+  // (the same escape hatch AvatarStack uses for its per-person colour).
+  const rowIndent = { '--indent': `${INDENT_STEP * (depth + 1)}px` } as CSSProperties;
+  const childIndent = { '--indent': `${INDENT_STEP * (depth + 2)}px` } as CSSProperties;
+
   return (
     <>
       {isRenaming ? (
         <InlineNameInput
-          style={{ paddingLeft: INDENT_STEP + depth * INDENT_STEP }}
+          className={cls.indented}
+          style={rowIndent}
           ariaLabel={`Rename ${document.name}`}
           placeholder={document.name}
           icon={<FileTypeIcon name={document.name} variant={isFolder ? 'folder' : 'file'} size={15} />}
@@ -135,8 +142,16 @@ export const DocumentTreeNode = memo((props: DocumentTreeNodeProps) => {
           data-testid={`tree-node-${document.name}`}
         >
           {guides}
-          <span className={cls.twisty} aria-hidden="true">
-            {isFolder && (expanded ? <Icons.ChevD size={12} /> : <Icons.ChevR size={12} />)}
+          {/*
+            One chevron that rotates, not two that swap: replacing the glyph
+            outright gave the most abrupt possible read on expand, and it also
+            meant the row carried two different chevron components.
+          */}
+          <span
+            className={classNames(cls.twisty, { [cls.open]: expanded })}
+            aria-hidden="true"
+          >
+            {isFolder && <Icons.ChevR size={12} />}
           </span>
           <FileTypeIcon
             className={cls.fileIcon}
@@ -207,13 +222,13 @@ export const DocumentTreeNode = memo((props: DocumentTreeNodeProps) => {
       {isFolder && expanded && (
         <>
           {childrenQuery.isPending && (
-            <div className={cls.status} style={{ paddingLeft: INDENT_STEP * (depth + 2) }}>
+            <div className={cls.status} style={childIndent}>
               <Spinner />
             </div>
           )}
 
           {childrenQuery.isError && (
-            <div className={cls.status} style={{ paddingLeft: INDENT_STEP * (depth + 2) }}>
+            <div className={cls.status} style={childIndent}>
               <span className={cls.error}>Couldn&apos;t load</span>
               <button
                 type="button"
@@ -249,7 +264,8 @@ export const DocumentTreeNode = memo((props: DocumentTreeNodeProps) => {
 
           {isCreatingHere && (
             <InlineNameInput
-              style={{ paddingLeft: INDENT_STEP * (depth + 2) }}
+              className={cls.indented}
+              style={childIndent}
               ariaLabel={creating.kind === 'folder' ? 'New folder name' : 'New file name'}
               placeholder={creating.kind === 'folder' ? 'folder name' : 'file name'}
               icon={<FileTypeIcon name="" variant={creating.kind === 'folder' ? 'folder' : 'file'} size={15} />}
@@ -262,7 +278,7 @@ export const DocumentTreeNode = memo((props: DocumentTreeNodeProps) => {
             && !childrenQuery.isError
             && childrenQuery.data?.length === 0
             && !isCreatingHere && (
-            <div className={cls.status} style={{ paddingLeft: INDENT_STEP * (depth + 2) }}>
+            <div className={cls.status} style={childIndent}>
               <span className={cls.empty}>Empty</span>
             </div>
           )}

@@ -14,7 +14,9 @@
   font: inherit;
   transition: var(--transition-control);
 
-  &:hover { background: rgba(255, 255, 255, 0.04); }
+  /// A white overlay vanishes against the light theme's app bar, leaving the
+  /// switcher with no hover feedback at all there.
+  &:hover { background: var(--color-surface-2); }
 
   &:focus-visible {
     outline: none;
