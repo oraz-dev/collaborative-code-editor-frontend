@@ -8,7 +8,12 @@ import {
   type Awareness,
 } from 'y-protocols/awareness';
 import { messageYjsSyncStep1, readSyncMessage, writeSyncStep1, writeUpdate } from 'y-protocols/sync';
-import { base64ToBytes } from '@/shared/lib/base64/base64';
+import {
+  RUN,
+  asControlFrame,
+  type ControlFrame,
+  type RunRequestFrame,
+} from '../types/controlFrames';
 import { logger } from '@/shared/lib/logger/logger';
 import { resolveWebSocketUrl } from '@/shared/api';
 import type { WsTicket } from '@/entities/Document';
@@ -36,20 +41,28 @@ export interface RelayProviderOptions {
   onStatusChange?: (status: ConnectionStatus) => void;
   /** Fires when the ticket reveals the caller's access level. */
   onAccessChange?: (access: { role: WsTicket['role']; canEdit: boolean }) => void;
+  /** Fires for every server control frame — run lifecycle and errors. */
+  onControlFrame?: (frame: ControlFrame) => void;
 }
 
 /**
  * Yjs provider for this backend's collaboration socket.
  *
- * The server is a plain broadcast relay: it does not understand Yjs, never
- * answers a sync request itself, and re-emits every frame it receives as a
- * *text* frame. A single non-UTF-8 byte in a payload drops the receiving peer
- * with code 1006 — which raw Yjs updates are full of. So every protocol
- * message is base64-encoded before it goes out and decoded on the way in.
+ * The socket carries two planes, told apart by frame type:
  *
- * Because the relay holds no state, peers sync directly with each other
- * (SyncStep1/SyncStep2 on join) and the document's durable state is loaded
- * and saved separately through the /yjs-state endpoint.
+ * - **binary** — Yjs protocol messages. The server is a plain broadcast relay
+ *   for these: it does not understand Yjs, never answers a sync request
+ *   itself, and forwards them verbatim to the rest of the room. Because it
+ *   holds no state, peers sync directly with each other (SyncStep1/SyncStep2
+ *   on join) and durable state is loaded and saved through /yjs-state.
+ * - **text** — JSON control messages addressed to the *server*, not to peers.
+ *   These are never relayed, so anything arriving as text came from the
+ *   server: run lifecycle broadcasts, or an error meant for this client
+ *   alone. See `model/types/controlFrames.ts`.
+ *
+ * Keeping the split on the frame type rather than on payload contents is what
+ * lets a CRDT update stay opaque: recognising a control message never means
+ * looking inside one.
  */
 export class RelayProvider {
   readonly documentId: string;
@@ -59,6 +72,7 @@ export class RelayProvider {
   private readonly mintTicket: (documentId: string) => Promise<WsTicket>;
   private readonly onStatusChange?: (status: ConnectionStatus) => void;
   private readonly onAccessChange?: (access: { role: WsTicket['role']; canEdit: boolean }) => void;
+  private readonly onControlFrame?: (frame: ControlFrame) => void;
 
   /**
    * A viewer's socket is receive-only — the relay drops anything it sends — so
@@ -82,6 +96,7 @@ export class RelayProvider {
     this.mintTicket = options.mintTicket;
     this.onStatusChange = options.onStatusChange;
     this.onAccessChange = options.onAccessChange;
+    this.onControlFrame = options.onControlFrame;
 
     this.doc.on('update', this.handleDocUpdate);
     this.awareness.on('update', this.handleAwarenessUpdate);
@@ -263,9 +278,9 @@ export class RelayProvider {
 
     try {
       // The relay forwards binary frames byte-exact, so protocol messages go
-      // out as bytes. (It used to stringify every frame, which corrupted any
-      // non-UTF-8 byte and dropped the receiving peer — hence the base64
-      // decoding still accepted in handleMessage.)
+      // out as bytes. Sending them as text is not an option: the relay used to
+      // stringify every frame, which corrupted any non-UTF-8 byte and dropped
+      // the receiving peer — and text now means "control message" anyway.
       //
       // Yjs types its output as Uint8Array<ArrayBufferLike>, which is not a
       // valid BufferSource, so the bytes are copied into a plain buffer —
@@ -296,9 +311,11 @@ export class RelayProvider {
   }
 
   /**
-   * Accepts either frame encoding. Binary is what the relay sends now; the
-   * base64 text path stays so a client still running the previous build stays
-   * interoperable during a rollout, and can be dropped once none are left.
+   * Binary frames only — the CRDT plane.
+   *
+   * There is deliberately no text branch here. Text used to carry base64 Yjs
+   * updates, but the server now owns that plane for its own control messages,
+   * so decoding a string as a CRDT update would feed JSON to the sync reader.
    */
   private decodeFrame(data: unknown): Uint8Array | null {
     if (data instanceof ArrayBuffer) return new Uint8Array(data);
@@ -306,21 +323,64 @@ export class RelayProvider {
       const view = data as ArrayBufferView;
       return new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
     }
-
-    if (typeof data === 'string') {
-      if (data.length === 0) return null;
-      try {
-        return base64ToBytes(data);
-      } catch {
-        logger.warn('Discarded a malformed collaboration frame');
-        return null;
-      }
-    }
-
     return null;
   }
 
+  /**
+   * A text frame came from the server, never from a peer — the relay does not
+   * forward text. Anything unrecognised is dropped rather than guessed at, so
+   * a future message type this build predates cannot corrupt anything.
+   */
+  private handleControlFrame(text: string): void {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      logger.warn('Discarded a control frame that was not valid JSON');
+      return;
+    }
+
+    const frame = asControlFrame(parsed);
+    if (!frame) {
+      logger.warn('Ignored an unrecognised control frame');
+      return;
+    }
+
+    this.onControlFrame?.(frame);
+  }
+
+  /**
+   * Asks the server to run the document's code.
+   *
+   * The source travels with the request rather than being read from the
+   * database: the database only holds what was last flushed, and the live
+   * buffer is ahead of it. Running stale code would be the wrong kind of
+   * surprising.
+   *
+   * Only the document's host is allowed to do this. Rather than guess at the
+   * rule, a rejected request comes back as an `error` control frame with code
+   * `forbidden`, which the caller renders.
+   */
+  sendRun(request: Omit<RunRequestFrame, 'type'>): boolean {
+    const socket = this.ws;
+    if (!socket || socket.readyState !== WebSocket.OPEN) return false;
+
+    try {
+      socket.send(JSON.stringify({ type: RUN, ...request } satisfies RunRequestFrame));
+      return true;
+    } catch (error) {
+      logger.warn('Could not send the run request', error);
+      return false;
+    }
+  }
+
   private handleMessage(data: unknown): void {
+    // Text is the control plane; it is never a document edit.
+    if (typeof data === 'string') {
+      this.handleControlFrame(data);
+      return;
+    }
+
     const payload = this.decodeFrame(data);
     if (!payload || payload.length === 0) return;
 

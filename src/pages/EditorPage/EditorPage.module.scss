@@ -100,7 +100,18 @@
   transition: var(--transition-control), filter var(--duration-fast) var(--ease);
 }
 
-.runBtn:hover { filter: brightness(1.08); }
+@include bp.can-hover {
+  .runBtn:not(:disabled):hover { filter: brightness(1.08); }
+}
+
+/* Shown rather than hidden for a collaborator, so the rule is visible instead
+   of being discovered by being refused. */
+.runBtn:disabled {
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
+  color: var(--color-text-faint);
+  cursor: not-allowed;
+}
 
 .runBtn:focus-visible {
   outline: none;

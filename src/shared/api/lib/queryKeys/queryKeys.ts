@@ -13,4 +13,7 @@ export const queryKeys = {
   documentChildren: (parentId: string) => [...queryKeys.documents, 'children', parentId] as const,
   document: (documentId: string) => [...queryKeys.documents, 'detail', documentId] as const,
   yjsState: (documentId: string) => [...queryKeys.documents, 'yjs-state', documentId] as const,
+
+  /** The sandbox's language list — one per deployment, not per document. */
+  languages: () => ['languages'] as const,
 };

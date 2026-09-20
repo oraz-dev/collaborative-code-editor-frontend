@@ -1,4 +1,4 @@
-import { useState, useCallback, memo, useMemo, useEffect } from 'react';
+import { useState, useCallback, memo, useMemo, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { Icons } from '@/shared/ui/Icon/Icons';
 import { AvatarStack } from '@/shared/ui/AvatarStack/AvatarStack';
@@ -21,6 +21,8 @@ import {
 import { useSession } from '@/features/auth';
 import { useEditorPreferences } from '@/features/preferences';
 import { PreviewPane, isRunnable, type PreviewFile } from '@/features/preview';
+import { useLanguages, resolveLanguage } from '@/entities/Language';
+import { RunOutputPane, chooseRunTarget } from '@/features/codeRun';
 import { useDocument, useDocumentChildren, type WorkspaceDocument } from '@/entities/Document';
 import {
   CollaborativeEditor,
@@ -68,6 +70,7 @@ export const EditorPage = memo((props: EditorPageProps) => {
   const [shareOpen, setShareOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewFiles, setPreviewFiles] = useState<PreviewFile[]>([]);
+  const [outputOpen, setOutputOpen] = useState(false);
 
   const layout = useLayoutPreferences();
 
@@ -130,7 +133,9 @@ export const EditorPage = memo((props: EditorPageProps) => {
       : null
   ), [user]);
 
-  const { text, awareness, status, peers, isReady, error, canEdit } = useCollaborativeDocument({
+  const {
+    text, awareness, status, peers, isReady, error, canEdit, role, runState, run,
+  } = useCollaborativeDocument({
     documentId: isFolder ? null : documentId,
     user: collaborator,
     initialContent: activeDocument?.content,
@@ -139,6 +144,17 @@ export const EditorPage = memo((props: EditorPageProps) => {
   });
 
   const others = useMemo(() => peers.filter((peer) => !peer.isSelf), [peers]);
+
+  /**
+   * Who started the run, when it was not this viewer. The socket carries a
+   * user id; a name only exists for someone currently in the room, so this is
+   * null for a run started by a peer who has since left.
+   */
+  const runRequestedByName = useMemo(() => {
+    const requester = runState.requestedBy;
+    if (!requester || requester === user?.id) return null;
+    return others.find((peer) => peer.userId === requester)?.name ?? null;
+  }, [others, runState.requestedBy, user?.id]);
 
   // Only files get a tab — a folder is a place, not something you edit.
   useEffect(() => {
@@ -200,13 +216,48 @@ export const EditorPage = memo((props: EditorPageProps) => {
     navigate(toEditorPath(segment.id));
   }, [navigate]);
 
-  const canRun = Boolean(activeDocument) && !isFolder && isRunnable(activeDocument?.name ?? '');
+  const fileName = activeDocument?.name ?? '';
+  const isFile = Boolean(activeDocument) && !isFolder;
+
+  // Only asked for once an editor is open — the answer is per deployment, not
+  // per document, and a stalled sandbox must not delay the dashboard.
+  const languagesQuery = useLanguages(isFile);
+
+  const runTarget = useMemo(() => {
+    if (!isFile) return null;
+    return chooseRunTarget({
+      previewable: isRunnable(fileName),
+      language: resolveLanguage(fileName, languagesQuery.data ?? []),
+    });
+  }, [fileName, isFile, languagesQuery.data]);
+
+  // The sandbox runs code as the document's owner and refuses everyone else,
+  // so a collaborator is shown the button disabled rather than left to
+  // discover the rule by being refused. The in-browser preview is local and
+  // has no such rule.
+  const isOwner = role === 'owner';
+  const canTriggerRun = runTarget?.engine === 'preview' || isOwner;
+  const canRun = Boolean(runTarget);
 
   // Siblings supply the modules the open file imports. Same query key the tree
-  // uses, so an expanded folder has usually already paid for it.
+  // uses, so an expanded folder has usually already paid for it. Only the
+  // preview reads them — the sandbox takes a single file.
   const siblingsQuery = useDocumentChildren(
     activeDocument?.parentId ?? null,
-    canRun && Boolean(activeDocument?.parentId),
+    runTarget?.engine === 'preview' && Boolean(activeDocument?.parentId),
+  );
+
+  /**
+   * What is on screen now, not what was last flushed to the database.
+   *
+   * Until the CRDT session is ready the shared buffer is legitimately empty,
+   * and `??` would not fall back through an empty string — so a run fired in
+   * that window would submit nothing and be rejected for a missing source.
+   * Once the buffer is live it is the truth, including when it is empty.
+   */
+  const liveSource = useCallback(
+    () => (isReady && text ? text.toString() : activeDocument?.content ?? ''),
+    [activeDocument, isReady, text],
   );
 
   /**
@@ -214,7 +265,7 @@ export const EditorPage = memo((props: EditorPageProps) => {
    * the document on every keystroke would re-render the frame continuously,
    * and reloading a page mid-keystroke is not what anyone means by "run".
    */
-  const onRun = useCallback(() => {
+  const onRunPreview = useCallback(() => {
     if (!activeDocument) return;
 
     const siblings = (siblingsQuery.data ?? [])
@@ -223,18 +274,62 @@ export const EditorPage = memo((props: EditorPageProps) => {
 
     setPreviewFiles([
       ...siblings,
-      {
-        path: activeDocument.name,
-        // What is on screen now, not what was last saved.
-        content: text?.toString() ?? activeDocument.content,
-      },
+      { path: activeDocument.name, content: liveSource() },
     ]);
     setPreviewOpen(true);
-  }, [activeDocument, siblingsQuery.data, text]);
+  }, [activeDocument, liveSource, siblingsQuery.data]);
+
+  /**
+   * Sends the file to the server's sandbox over the collaboration socket.
+   *
+   * The pane opens immediately rather than on the server's acknowledgement:
+   * the request may be refused, and the refusal is itself something to show.
+   */
+  const onRunSandbox = useCallback(() => {
+    const language = runTarget?.language;
+    if (!language) return;
+
+    setOutputOpen(true);
+    run({ languageId: language.id, sourceCode: liveSource() });
+  }, [liveSource, run, runTarget]);
+
+  const onRun = useCallback(() => {
+    if (runTarget?.engine === 'sandbox') onRunSandbox();
+    else onRunPreview();
+  }, [onRunPreview, onRunSandbox, runTarget]);
 
   const onClosePreview = useCallback(() => {
     setPreviewOpen(false);
   }, []);
+
+  const onCloseOutput = useCallback(() => {
+    setOutputOpen(false);
+  }, []);
+
+  /*
+   * A run is broadcast to the whole room, so a collaborator's pane opens when
+   * the owner presses Run — everyone watches the same execution rather than
+   * only the person who started it.
+   *
+   * It keys on the run's sequence rather than on the phase: React batches, so
+   * a run that starts and finishes in one tick never renders as `running`, and
+   * a watcher looking for that transition would miss the run entirely. Keying
+   * on the sequence also leaves the pane closed for the rest of a run the user
+   * dismissed, while still opening for the next one.
+   */
+  const shownRunSequence = useRef(runState.sequence);
+  useEffect(() => {
+    if (runState.sequence !== shownRunSequence.current) {
+      shownRunSequence.current = runState.sequence;
+      if (runState.sequence > 0) setOutputOpen(true);
+    }
+  }, [runState.sequence]);
+
+  // A pane full of another file's output would be worse than an empty one.
+  useEffect(() => {
+    setOutputOpen(false);
+    setPreviewOpen(false);
+  }, [documentId]);
 
   const handleOpenCmd = useCallback(() => {
     setCmdOpen(true);
@@ -372,11 +467,19 @@ export const EditorPage = memo((props: EditorPageProps) => {
               type="button"
               className={cls.runBtn}
               onClick={onRun}
-              aria-label={`Run ${activeDocument?.name}`}
+              disabled={!canTriggerRun || runState.phase === 'running'}
+              // Spelled out rather than left to a refusal: the sandbox accepts
+              // runs from the owner alone.
+              title={canTriggerRun ? undefined : 'Only the owner can run this file'}
+              aria-label={
+                canTriggerRun
+                  ? `Run ${fileName}`
+                  : `Run ${fileName} — only the owner can run this file`
+              }
               data-testid="run-button"
             >
               <Icons.Play size={12} />
-              Run
+              {runState.phase === 'running' && runTarget?.engine === 'sandbox' ? 'Running…' : 'Run'}
             </button>
           )}
           {activeDocument && (
@@ -505,6 +608,47 @@ export const EditorPage = memo((props: EditorPageProps) => {
 
         {/* Splitting a 390px viewport in two leaves neither half usable, so the
             preview takes the whole work area and the editor waits behind it. */}
+        {outputOpen && activeDocument && !isCompact && (
+          <>
+            <ResizeHandle
+              axis="x"
+              size={layout.previewWidth}
+              min={PREVIEW_WIDTH_RANGE.min}
+              max={PREVIEW_WIDTH_RANGE.max}
+              reversed
+              label="Resize output"
+              onResize={onResizePreview}
+              onReset={onResetPreview}
+            />
+            <RunOutputPane
+              style={{ width: layout.previewWidth }}
+              className={cls.preview}
+              runState={runState}
+              language={runTarget?.language ?? null}
+              fileName={fileName}
+              requestedByName={runRequestedByName}
+              canRerun={isOwner}
+              onRerun={onRunSandbox}
+              onClose={onCloseOutput}
+            />
+          </>
+        )}
+
+        {outputOpen && activeDocument && isCompact && (
+          <div className={cls.previewOverlay} data-testid="output-overlay">
+            <RunOutputPane
+              className={cls.previewSheet}
+              runState={runState}
+              language={runTarget?.language ?? null}
+              fileName={fileName}
+              requestedByName={runRequestedByName}
+              canRerun={isOwner}
+              onRerun={onRunSandbox}
+              onClose={onCloseOutput}
+            />
+          </div>
+        )}
+
         {previewOpen && activeDocument && isCompact && (
           <div className={cls.previewOverlay} data-testid="preview-overlay">
             <PreviewPane

@@ -56,6 +56,29 @@ straight from the bind mount.
 | `/home/deploy/*/.env` | `CORS_ALLOWED_ORIGINS` on both services |
 | `/root/deploy-backups/` | timestamped copies of everything changed |
 
+## Running code
+
+Two engines, chosen per file by `features/codeRun`:
+
+| Engine | Where | Files |
+| --- | --- | --- |
+| browser preview | sandboxed iframe, client-side | `.html` `.css` `.js` `.jsx` `.ts` `.tsx` |
+| Judge0 sandbox | `execution-service` -> `judge0-v1131` on the server | Python, Go, Rust, Java, C/C++, C#, Ruby, PHP, and the rest of `GET /api/v1/languages` |
+
+The sandbox is reached over the **collaboration websocket**, not over HTTP: a
+text frame `{"type":"run","language_id":…,"source_code":…}` goes to the server,
+and `run:started` / `run:result` are broadcast back to everyone in the room.
+Only the document's owner may trigger one; everyone else is answered
+`{"type":"error","code":"forbidden"}`.
+
+That means the websocket now carries two planes — binary for CRDT updates,
+text for control messages — and the client must never decode a text frame as a
+document edit. See `features/collaboration/model/types/controlFrames.ts`.
+
+`execution-service` holds a shared secret (`EXECUTION_AUTH_TOKEN`) and makes no
+decision about users at all, so **it must not be reachable from the public
+internet**: anything that can reach it directly bypasses the owner check.
+
 ## Certificates
 
 Caddy provisions and renews Let's Encrypt certs automatically via HTTP-01 on
@@ -103,6 +126,23 @@ reason a real domain is worth having.
   (`--no-deps` keeps the API and database containers untouched).
 - **`docker-compose.prod.yml` has CRLF line endings.** `sed` patterns anchored
   with `$` silently match nothing and report success. Check with `cat -A`.
+- **A backend redeploy reverts both edits.** It has happened twice now
+  (2026-08-25, 2026-09-20): the two files the web app needs belong to the
+  backend repo, so shipping from there restores their upstream versions and
+  takes the site with them. The second time it also removed the
+  `space.31.57.26.155.nip.io` site block, which is what provisions the
+  certificate — so HTTPS failed at the TLS handshake while plain `:80` kept
+  answering.
+
+  `/root/restore-space-frontend.sh` re-applies both, idempotently, and
+  recreates only the caddy container. Run it after any backend deploy:
+
+  ```sh
+  ssh root@31.57.26.155 /root/restore-space-frontend.sh
+  ```
+
+  **The actual fix is for the backend repo to carry these two edits**, since
+  its stack owns 80/443. Until it does, every deploy there is an outage here.
 
 ## Rollback
 
