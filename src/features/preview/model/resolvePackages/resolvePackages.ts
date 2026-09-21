@@ -17,6 +17,13 @@ const BARE_IMPORT_PATTERNS: RegExp[] = [
 const PACKAGE_SPECIFIER = /^((?:@[^/]+\/)?[^/]+)(\/.*)?$/;
 
 /**
+ * What npm accepts as a package name (uppercase tolerated, as old packages
+ * have it). `@` alone, `~`, `#internal` are not packages: they are the
+ * project's own aliases or subpath imports, and must never reach the CDN.
+ */
+const PACKAGE_NAME = /^(?:@[a-z0-9-][a-z0-9._~-]*\/)?[a-z0-9-][a-z0-9._~-]*$/i;
+
+/**
  * Packages that must always be the same single copy.
  *
  * React keeps its hook state in a module-level singleton: a component
@@ -31,6 +38,11 @@ export interface ResolvedPackages {
   imports: Record<string, string>;
   /** Package names in the order first seen, for display and tests. */
   packages: string[];
+  /**
+   * Bare specifiers that name no valid package — `@/x` with no alias for it,
+   * `#internal` — and so were not sent to the CDN.
+   */
+  unresolved: string[];
 }
 
 export function isBareSpecifier(specifier: string): boolean {
@@ -56,7 +68,7 @@ export function collectBareSpecifiers(sources: string[]): string[] {
 
 export function splitSpecifier(specifier: string): { name: string; subpath: string } | null {
   const match = PACKAGE_SPECIFIER.exec(specifier);
-  if (!match) return null;
+  if (!match || !PACKAGE_NAME.test(match[1])) return null;
   return { name: match[1], subpath: match[2] ?? '' };
 }
 
@@ -107,11 +119,15 @@ export function resolvePackages(
   versions: Record<string, string> = {},
 ): ResolvedPackages {
   const packages: string[] = [];
+  const unresolved: string[] = [];
   const subpaths = new Map<string, Set<string>>();
 
   for (const specifier of specifiers) {
     const parts = splitSpecifier(specifier);
-    if (!parts) continue;
+    if (!parts) {
+      if (!unresolved.includes(specifier)) unresolved.push(specifier);
+      continue;
+    }
     if (!subpaths.has(parts.name)) {
       packages.push(parts.name);
       subpaths.set(parts.name, new Set());
@@ -141,7 +157,7 @@ export function resolvePackages(
     imports[`${name}/`] = `${base}/`;
   }
 
-  return { imports, packages };
+  return { imports, packages, unresolved };
 }
 
 /**

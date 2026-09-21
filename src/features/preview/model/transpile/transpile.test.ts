@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'vitest';
-import { needsTranspile, transpiledPath, transpileWorkspace } from './transpile';
+import {
+  needsTranspile, publishedPath, transpiledPath, transpileWorkspace,
+} from './transpile';
 
 describe('needsTranspile', () => {
   test('only TypeScript and JSX sources need compiling', () => {
@@ -116,5 +118,37 @@ describe('transpileWorkspace', () => {
 
     expect(failures).toHaveLength(1);
     expect(files.find((file) => file.path === 'fine.js')?.content).toContain('export const ok = 1');
+  });
+});
+
+describe('sources that compile to the same name', () => {
+  test('the one Vite picks for ./Button keeps Button.js; the others keep their own names', async () => {
+    const { files } = await transpileWorkspace([
+      { path: 'src/Button.tsx', content: 'export default function Button() { return <b />; }' },
+      { path: 'src/Button.ts', content: "export const kind = 'ts-helper';" },
+    ]);
+
+    const byPath = Object.fromEntries(files.map((file) => [file.path, file.content]));
+    expect(Object.keys(byPath).sort()).toEqual(['src/Button.js', 'src/Button.tsx']);
+    expect(byPath['src/Button.js']).toContain('ts-helper');
+    expect(byPath['src/Button.tsx']).toContain('function Button');
+  });
+
+  test('a plain .js file wins over a .ts of the same name', async () => {
+    const { files } = await transpileWorkspace([
+      { path: 'a.ts', content: 'export const from = "ts";' },
+      { path: 'a.js', content: 'export const from = "js";' },
+    ]);
+
+    expect(files.find((file) => file.path === 'a.js')?.content).toContain('"js"');
+    expect(files.find((file) => file.path === 'a.ts')?.content).toContain('"ts"');
+  });
+
+  test('publishedPath finds each source under its key', () => {
+    const published = new Set(['src/Button.js', 'src/Button.tsx']);
+    expect(publishedPath('src/Button.tsx', published)).toBe('src/Button.tsx');
+    expect(publishedPath('src/Button.ts', published)).toBe('src/Button.js');
+    // No collision: the ordinary .js name, even for input that was never compiled.
+    expect(publishedPath('main.ts', new Set(['main.ts']))).toBe('main.js');
   });
 });

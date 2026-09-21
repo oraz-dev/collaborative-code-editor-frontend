@@ -31,6 +31,30 @@ export function transpiledPath(path: string): string {
   return needsTranspile(path) ? path.replace(COMPILED, '.js') : path;
 }
 
+/** Vite's `resolve.extensions` order, for the files that publish as one `.js` name. */
+const EXTENSION_PRIORITY = ['.js', '.ts', '.jsx', '.tsx'];
+
+function extensionRank(path: string): number {
+  const extension = /\.[^./]+$/.exec(path)?.[0].toLowerCase() ?? '';
+  const rank = EXTENSION_PRIORITY.indexOf(extension);
+  return rank === -1 ? EXTENSION_PRIORITY.length : rank;
+}
+
+/**
+ * The key a module is published under, given every key in the published set.
+ *
+ * Normally `transpiledPath`. The exception is a collision — `Button.ts` and
+ * `Button.tsx` side by side both compile to `Button.js` — where only the file
+ * Vite would pick for `./Button` gets the `.js` name and each other keeps its
+ * own (see `transpileWorkspace`). So a source path that is itself published,
+ * next to its `.js` spelling, is its own key.
+ */
+export function publishedPath(sourcePath: string, published: ReadonlySet<string>): string {
+  const output = transpiledPath(sourcePath);
+  if (output !== sourcePath && published.has(sourcePath) && published.has(output)) return sourcePath;
+  return output;
+}
+
 /** Sucrase reports the offset but not the line; this makes it clickable-ish. */
 function describeError(error: unknown, source: string): string {
   if (!(error instanceof Error)) return String(error);
@@ -72,6 +96,22 @@ export async function transpileWorkspace(files: PreviewFile[]): Promise<Transpil
   const output: PreviewFile[] = [];
   const failures: TranspileFailure[] = [];
 
+  // Several sources can compile to one `.js` name (`Button.ts`, `Button.tsx`,
+  // a plain `Button.js`). The one Vite resolves `./Button` to keeps it; the
+  // others are published under their own names, so none silently replaces
+  // another — the entry included.
+  const owners = new Map<string, string>();
+  for (const file of files) {
+    if (!needsTranspile(file.path) && !/\.js$/i.test(file.path)) continue;
+    const target = transpiledPath(file.path);
+    const owner = owners.get(target);
+    if (owner === undefined || extensionRank(file.path) < extensionRank(owner)) owners.set(target, file.path);
+  }
+  const publishAs = (path: string) => {
+    const target = transpiledPath(path);
+    return owners.get(target) === path ? target : path;
+  };
+
   for (const file of files) {
     if (!needsTranspile(file.path)) {
       output.push(file);
@@ -92,12 +132,12 @@ export async function transpileWorkspace(files: PreviewFile[]): Promise<Transpil
         disableESTransforms: true,
         filePath: file.path,
       });
-      output.push({ path: transpiledPath(file.path), content: code });
+      output.push({ path: publishAs(file.path), content: code });
     } catch (error) {
       failures.push({ path: file.path, message: describeError(error, file.content) });
       // Publish an empty module so an importer fails on the missing export
       // rather than on a missing module, which is the more useful error.
-      output.push({ path: transpiledPath(file.path), content: '' });
+      output.push({ path: publishAs(file.path), content: '' });
     }
   }
 

@@ -130,3 +130,18 @@ describe('resolvePackages', () => {
     expect(resolvePackages(['react', 'react/jsx-runtime']).packages).toEqual(['react']);
   });
 });
+
+describe('specifiers that are not packages', () => {
+  test('an unmapped @/ alias is never sent to the CDN as a package named "@"', () => {
+    const { imports, packages, unresolved } = resolvePackages(['@/components/Button', '~/x', '#internal', 'react']);
+
+    expect(packages).toEqual(['react']);
+    expect(unresolved).toEqual(['@/components/Button', '~/x', '#internal']);
+    expect(Object.values(imports).some((url) => url.includes('@@'))).toBe(false);
+  });
+
+  test('scoped packages still resolve', () => {
+    expect(splitSpecifier('@scope/pkg/sub')).toEqual({ name: '@scope/pkg', subpath: '/sub' });
+    expect(splitSpecifier('@/sub')).toBeNull();
+  });
+});
