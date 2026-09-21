@@ -91,6 +91,19 @@
 
   // ring focus
   --ring-focus: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--ring);
+
+  // stacking order
+  --z-base:    #{$z-base};
+  --z-raised:  #{$z-raised};
+  --z-sticky:  #{$z-sticky};
+  --z-scrim:   #{$z-scrim};
+  --z-menu:    #{$z-menu};
+  --z-drawer:  #{$z-drawer};
+  --z-palette: #{$z-palette};
+  --z-modal:   #{$z-modal};
+  --z-popover: #{$z-popover};
+  --z-toast:   #{$z-toast};
+  --z-alert:   #{$z-alert};
 }
 
 html, body {
@@ -159,3 +172,45 @@ body {
     -webkit-tap-highlight-color: transparent;
   }
 }
+
+
+///
+/// Light-mode elevation.
+///
+/// The shadow ladder in globals.scss is authored for a dark canvas: 32-55%
+/// black reads as depth against #0b0d12 and as a dirty smear against #f5f7fb.
+/// `--edge` has the mirror problem — a 4%-white inset highlight is simply
+/// invisible on white, so in light mode every surface that leans on it loses
+/// its top edge.
+///
+/// These come after the `:root` block above deliberately: both selectors carry
+/// the same specificity, so source order is what makes the override land.
+///
+[data-theme='light'] {
+  --shadow-sm: 0 1px 2px rgba(17, 20, 27, 0.06), 0 1px 3px rgba(17, 20, 27, 0.08);
+  --shadow-md: 0 2px 4px -2px rgba(17, 20, 27, 0.06), 0 4px 10px -2px rgba(17, 20, 27, 0.10);
+  --shadow-lg: 0 4px 8px -4px rgba(17, 20, 27, 0.06), 0 12px 28px -6px rgba(17, 20, 27, 0.12);
+  --shadow-xl: 0 8px 16px -6px rgba(17, 20, 27, 0.08), 0 24px 48px -12px rgba(17, 20, 27, 0.16);
+
+  /// A white inset would vanish; on a light surface the edge that defines the
+  /// top of a card is a faint dark hairline instead.
+  --edge: inset 0 1px 0 rgba(17, 20, 27, 0.04);
+}
+
+
+///
+/// Reduced motion.
+///
+/// Handled per component rather than with a blanket `* { animation: none }`,
+/// because the two cases are genuinely different:
+///
+///   - Decorative motion (entrances, slides, presses) is removed, but the
+///     opacity half is kept wherever it was the bridge, so a surface still
+///     *appears* rather than teleporting.
+///   - Motion that IS the message — a spinner, an indeterminate progress bar,
+///     a skeleton — must not stop. A frozen spinner does not read as
+///     "respecting your preference", it reads as "this app has hung". Those
+///     are slowed to roughly half speed in their own module instead.
+///
+/// The policy lives here; each `@media (prefers-reduced-motion: reduce)` block
+/// sits next to the animation it answers for, so the two can never drift apart.

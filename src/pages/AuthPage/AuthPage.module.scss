@@ -19,7 +19,7 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 48px 56px;
+  padding: var(--space-12) 56px;
   border-right: 1px solid var(--color-border-subtle);
 
   &::before {
@@ -34,7 +34,7 @@
   }
 }
 
-.top { display: flex; align-items: center; gap: 12px; position: relative; }
+.top { display: flex; align-items: center; gap: var(--space-3); position: relative; }
 .logo { width: 34px; height: 34px; }
 .word { font: var(--weight-light) 26px/1 var(--font-display); letter-spacing: -0.5px; }
 
@@ -42,7 +42,7 @@
 .pitch h1 {
   font: var(--weight-light) clamp(38px, 4vw, 54px)/1.08 var(--font-display);
   letter-spacing: -0.02em;
-  margin: 0 0 20px;
+  margin: 0 0 var(--space-5);
   max-width: 15ch;
   text-wrap: balance;
 }
@@ -69,7 +69,7 @@
 .vigBar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   height: 38px;
   padding: 0 14px;
   border-bottom: 1px solid var(--color-border-subtle);
@@ -95,7 +95,7 @@
   left: 250px;
   top: 80px;
 }
-.vigName { margin-left: 6px; font: 11px/1 var(--font-mono); color: var(--color-text-faint); }
+.vigName { margin-left: 6px; font: var(--text-2xs)/1 var(--font-mono); color: var(--color-text-faint); }
 .vigLive {
   margin-left: auto;
   display: inline-flex;
@@ -127,7 +127,7 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 48px 64px;
+  padding: var(--space-12) var(--space-16);
 }
 
 .card { width: 100%; max-width: 332px; margin: 0 auto; }
@@ -143,7 +143,7 @@
 .h2 {
   font: var(--weight-medium) var(--text-3xl)/1.1 var(--font-body);
   letter-spacing: -0.02em;
-  margin: 0 0 8px;
+  margin: 0 0 var(--space-2);
 }
 
 .sub {
@@ -157,7 +157,7 @@
 .fieldLabel {
   font: var(--type-label);
   color: var(--color-text-secondary);
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
 }
 
 .fieldInput {
@@ -165,7 +165,7 @@
   align-items: center;
   gap: 9px;
   height: var(--control-lg);
-  padding: 0 8px 0 13px;
+  padding: 0 var(--space-2) 0 13px;
   background: var(--color-inset);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -188,10 +188,10 @@
 .divider {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   margin: 22px 0;
   color: var(--color-text-faint);
-  font: 11px/1 var(--font-mono);
+  font: var(--text-2xs)/1 var(--font-mono);
   text-transform: uppercase;
   letter-spacing: var(--tracking-caps);
 
@@ -212,7 +212,7 @@
 
 .switch {
   margin-top: 22px;
-  padding-top: 20px;
+  padding-top: var(--space-5);
   border-top: 1px solid var(--color-border-subtle);
   text-align: center;
   font-size: var(--text-sm);
@@ -222,14 +222,39 @@
 }
 
 .error {
-  margin-bottom: 12px;
-  padding: 9px 12px;
-  border: 1px solid var(--coral-500, #ef4444);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--coral-500, #ef4444) 10%, transparent);
-  color: var(--coral-300, #fca5a5);
-  font-size: 13px;
+  margin-bottom: var(--space-3);
+  padding: 9px var(--space-3);
+  border: 1px solid var(--coral-500);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--coral-500) 10%, transparent);
+  color: var(--coral-400);
+  font-size: var(--text-sm);
   line-height: 1.45;
+
+  /* A wrong password made this box exist mid-form with no bridge: it opened a
+     gap under the password field, shoved the submit button down, and arrived
+     already looking like it had always been there. The reflow itself stays
+     instant — pretending the gap grows would be a lie about a layout that has
+     already changed — but the banner drops into it. Negative Y on purpose: it
+     should read as falling from the field it belongs to, not as rising out of
+     the button it just displaced. */
+  animation: alert-in var(--duration-base) var(--ease-out);
+}
+
+@keyframes alert-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Fade only, and faster — the travel goes, the bridge stays. Removing the
+     animation outright would restore the teleport this exists to fix. */
+  .error { animation: alert-fade var(--duration-fast) var(--ease-out); }
+}
+
+@keyframes alert-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 
@@ -246,7 +271,11 @@
 
   .brand {
     flex: none;
-    padding: max(20px, var(--safe-top)) max(24px, var(--safe-right)) 8px max(24px, var(--safe-left));
+    padding:
+      max(var(--space-5), var(--safe-top))
+      max(var(--space-6), var(--safe-right))
+      var(--space-2)
+      max(var(--space-6), var(--safe-left));
     border-right: none;
 
     /* The dot grid is masked to a corner that no longer exists. */
@@ -264,7 +293,11 @@
     width: 100%;
     flex: 1;
     min-height: 0;
-    padding: 24px max(24px, var(--safe-right)) max(32px, var(--safe-bottom)) max(24px, var(--safe-left));
+    padding:
+      var(--space-6)
+      max(var(--space-6), var(--safe-right))
+      max(var(--space-8), var(--safe-bottom))
+      max(var(--space-6), var(--safe-left));
     /* Sign-up plus an open keyboard is taller than a phone. */
     overflow-y: auto;
   }
@@ -272,14 +305,14 @@
 
 @include bp.phone {
   .brand {
-    padding-left: max(20px, var(--safe-left));
-    padding-right: max(20px, var(--safe-right));
+    padding-left: max(var(--space-5), var(--safe-left));
+    padding-right: max(var(--space-5), var(--safe-right));
   }
 
   .form {
     justify-content: flex-start;
-    padding-left: max(20px, var(--safe-left));
-    padding-right: max(20px, var(--safe-right));
+    padding-left: max(var(--space-5), var(--safe-left));
+    padding-right: max(var(--space-5), var(--safe-right));
   }
 
   .card {

@@ -158,12 +158,32 @@ export const MODULE_LOADER = String.raw`
       + encodeURIComponent(files[path])] = path;
   });
 
+  // npm packages, already resolved to CDN URLs when the document was built.
+  var packageNode = document.getElementById('__packages__');
+  var packages = packageNode ? JSON.parse(packageNode.textContent) : {};
+  Object.keys(packages).forEach(function (specifier) {
+    imports[specifier] = packages[specifier];
+  });
+
   var map = document.createElement('script');
   map.type = 'importmap';
   map.textContent = JSON.stringify({ imports: imports });
   document.head.appendChild(map);
 
+  // A component file that does not mount itself gets its default export
+  // rendered into #root. React is resolved through the same map, so it is the
+  // one copy the component's own hooks come from.
+  function mountDefault(module) {
+    if (node.dataset.mount !== 'default') return;
+    if (!module || typeof module.default !== 'function') return;
+    return Promise.all([import('react'), import('react-dom/client')]).then(function (libs) {
+      var root = document.getElementById('root');
+      libs[1].createRoot(root).render(libs[0].createElement(module.default));
+    });
+  }
+
   import(imports['workspace:' + entry])
+    .then(mountDefault)
     .then(function () { window.__spacePost('ready', { drew: window.__spaceDrew() }); })
     .catch(function (error) {
       var text = window.__spaceRender(error);

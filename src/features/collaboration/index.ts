@@ -8,6 +8,14 @@ export type {
   CollaborativeDocument,
   UseCollaborativeDocumentOptions,
 } from './model/useCollaborativeDocument/useCollaborativeDocument';
+export type {
+  ControlFrame,
+  RunResult,
+  RunErrorCode,
+} from './model/types/controlFrames';
+export { RUN_STATUS_ACCEPTED, RUN_STATUS_COMPILE_ERROR } from './model/types/controlFrames';
+export { describeFailure, IDLE_RUN_STATE } from './model/runState/runState';
+export type { RunState, RunPhase, RunFailure } from './model/runState/runState';
 export { presenceColorFor, readPeers } from './model/presence/presence';
 export type { AwarenessUser, PresencePeer } from './model/presence/presence';
 export { CollaborativeEditor } from './ui/CollaborativeEditor/CollaborativeEditor';

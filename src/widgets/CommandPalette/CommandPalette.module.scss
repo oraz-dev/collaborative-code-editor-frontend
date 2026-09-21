@@ -3,19 +3,25 @@
 .scrim {
   position: absolute;
   inset: 0;
-  background: rgba(6, 8, 12, 0.5);
+  /* Same near-black as the Modal scrim, on purpose: a scrim darkens what is
+     behind it in either theme, and the two must not read as different depths
+     when a dialog is opened from the palette. */
+  background: rgba(6, 8, 12, 0.55);
   backdrop-filter: blur(3px);
   display: flex;
   justify-content: center;
   align-items: flex-start;
+  /* An optical offset, not a spacing step: the palette is parked in the upper
+     third of the viewport rather than aligned to the grid. */
   padding-top: 104px;
-  z-index: 80;
+  z-index: var(--z-palette);
   animation: fade var(--duration-fast) var(--ease-out);
 }
 
 @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
 
 .palette {
+  /* Wide enough for a path plus its shortcut without wrapping; not a token. */
   width: 580px;
   max-width: 90%;
   background: var(--color-overlay);
@@ -23,7 +29,10 @@
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-xl);
   overflow: hidden;
-  animation: rise var(--duration-base) var(--ease-out);
+  /* Fast, not base: this opens on Cmd-K dozens of times a session, and at that
+     frequency a 200ms entrance reads as the shortcut having lagged. 100ms is
+     still enough to show where the surface came from. */
+  animation: rise var(--duration-fast) var(--ease-out);
 }
 
 @keyframes rise { from { opacity: 0; transform: translateY(-10px) scale(0.99) } to { opacity: 1; transform: none } }
@@ -31,8 +40,8 @@
 .input {
   display: flex;
   align-items: center;
-  gap: 11px;
-  padding: 16px 18px;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
   border-bottom: 1px solid var(--color-border-subtle);
 
   input {
@@ -52,7 +61,7 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  padding: 8px;
+  padding: var(--space-2);
 }
 
 .group {
@@ -66,7 +75,7 @@
 .row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   padding: 10px;
   border-radius: var(--radius-md);
   cursor: pointer;
@@ -96,6 +105,20 @@
 .meta {
   color: var(--color-text-faint);
   font: var(--text-xs)/1 var(--font-mono);
+}
+
+/*
+ * Gentler, not absent: the palette still fades up out of nothing so it is
+ * obvious a new surface took focus, it just stops travelling to get there.
+ * Reusing `fade` is what drops the transform half of `rise`.
+ *
+ * The [data-active] row is deliberately untouched here and above — arrow-key
+ * selection re-fires on every keypress, so any transition on it would smear.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .palette {
+    animation: fade var(--duration-fast) var(--ease-out);
+  }
 }
 
 

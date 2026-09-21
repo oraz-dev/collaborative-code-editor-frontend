@@ -1,23 +1,115 @@
+/*
+ * Three carets on a baseline.
+ *
+ * The logo is two rounded bars standing on a rule (azure and mint, each capped
+ * with a dot), and EmptyState draws the same mark — so a rotating ring was the
+ * one loading affordance in the app that referenced nothing else in it. These
+ * are those bars, rising and falling in sequence: a row of collaborators' text
+ * cursors, which is what the product actually is.
+ *
+ * Only transform and opacity animate. The bars grow from their baseline
+ * (`transform-origin: bottom`) rather than their centre, so the row stays
+ * optically anchored on the line it sits on instead of breathing around it.
+ *
+ * The bar widths and gaps here are deliberately off the 4px spacing grid: this
+ * is a glyph at icon scale, not layout, and snapping a 3px bar to 4px would
+ * make the mark read as a bar chart rather than as carets.
+ */
 .loader {
-  width: 20px;
+  --bar-width: 3px;
+
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
   height: 20px;
-  border: 2px solid #FFF;
-  border-bottom-color: transparent;
-  border-radius: 50%;
-  display: inline-block;
-  box-sizing: border-box;
-  animation: rotation 1s linear infinite;
+  /* Inside a flex row — a button, a tree row — the mark must keep its size
+     rather than being squashed with the label beside it. */
+  flex: none;
+}
+
+.bar {
+  width: var(--bar-width);
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: currentcolor;
+  transform-origin: bottom;
+  animation: caret 1.05s var(--ease) infinite;
+
+  /* A keystroke travels left to right. The offsets are small enough that the
+     three bars read as one gesture rather than as three separate pulses. */
+  &:nth-child(2) {
+    animation-delay: 130ms;
   }
 
-  @keyframes rotation {
-  0% {
-      transform: rotate(0deg);
+  &:nth-child(3) {
+    animation-delay: 260ms;
   }
+}
+
+@keyframes caret {
+  0%,
   100% {
-      transform: rotate(360deg);
+    transform: scaleY(0.32);
+    opacity: 0.4;
   }
-} 
+
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+/*
+ * The logo's own hues — azure and mint — with the accent violet completing the
+ * row. Legible only on a neutral surface, which is why `current` stays the
+ * default for the inline size: that one renders inside filled buttons, where
+ * brand azure on a brand-azure background would disappear.
+ */
+.brand {
+  .bar:nth-child(1) {
+    background: var(--color-primary);
+  }
+
+  .bar:nth-child(2) {
+    background: var(--color-success);
+  }
+
+  .bar:nth-child(3) {
+    background: var(--color-accent);
+  }
+}
+
+/* Sized to sit on the same optical line as 14px body text. */
+.small {
+  --bar-width: 2.5px;
+
+  height: 16px;
+}
 
 .large {
-  height: 40px;
+  --bar-width: 4px;
+
+  height: 34px;
+  gap: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Motion is the message here, so it must not stop — a frozen loader reads as
+     a hung app rather than as a respected preference. The travel goes; the
+     pulse stays, at roughly half speed. */
+  .bar {
+    animation-name: caret-rest;
+    animation-duration: 2.1s;
+  }
+}
+
+@keyframes caret-rest {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+
+  50% {
+    opacity: 1;
+  }
 }

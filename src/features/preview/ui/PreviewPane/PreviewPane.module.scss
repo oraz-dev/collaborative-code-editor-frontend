@@ -69,7 +69,7 @@
   height: 26px;
   flex: none;
   align-items: center;
-  padding: 0 var(--space-2) 0 4px;
+  padding: 0 var(--space-2) 0 var(--space-1);
   border-top: 1px solid var(--color-border);
   background: var(--color-bg-sunken);
 }
@@ -137,7 +137,11 @@
   padding: 2px var(--space-3);
   color: var(--color-text-secondary);
   white-space: pre-wrap;
-  word-break: break-word;
+  /* `break-word` only breaks a word once the line has no other option, which
+     it always has here — so a bundled URL or a minified stack frame pushed the
+     console sideways and the tail scrolled out of reach. `anywhere` lets the
+     break happen at the pane's edge. */
+  overflow-wrap: anywhere;
 }
 
 .line + .line {
@@ -180,6 +184,29 @@
   box-shadow: var(--shadow-lg);
   color: var(--color-destructive);
   font: var(--text-xs) / var(--leading-snug) var(--font-mono);
+
+  /* Against the frame's white background this banner had no entrance at all,
+     so it read as part of the pane's furniture rather than as the report of a
+     run that just died. It enters downward out of the top bar it is anchored
+     to, and stays absolutely positioned so the previewed page underneath
+     never reflows around it. */
+  animation: banner-in var(--duration-base) var(--ease-out);
+}
+
+@keyframes banner-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The travel goes, the fade stays — without it the banner is back to
+     appearing fully formed on a white frame. */
+  .failure { animation: banner-fade var(--duration-fast) var(--ease-out); }
+}
+
+@keyframes banner-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .failureText {
@@ -188,7 +215,9 @@
   /* A stack can be long; keep the banner from swallowing the frame. */
   max-height: 4.5em;
   overflow-y: auto;
-  word-break: break-word;
+  /* Scrolling vertically is the plan; a single unbroken module path must not
+     turn that into a sideways scroll the banner has no room for. */
+  overflow-wrap: anywhere;
 }
 
 /*

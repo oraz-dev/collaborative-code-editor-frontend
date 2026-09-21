@@ -2,8 +2,8 @@
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  font: 500 11px/1 var(--font-mono);
-  color: var(--text-faint);
+  font: var(--weight-medium) var(--text-2xs) / 1 var(--font-mono);
+  color: var(--color-text-faint);
 }
 
 .key {
@@ -14,8 +14,8 @@
   height: 18px;
   padding: 0 5px;
   border-radius: var(--radius-xs);
-  background: var(--surface-inset);
-  border: 1px solid var(--border-subtle);
+  background: var(--color-inset);
+  border: 1px solid var(--color-border-subtle);
   font: inherit;
   color: inherit;
 }

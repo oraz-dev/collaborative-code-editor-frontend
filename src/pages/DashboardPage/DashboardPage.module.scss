@@ -16,16 +16,16 @@
 }
 
 .dash { flex: 1; min-height: 0; overflow-y: auto; }
-.wrap { max-width: 1180px; margin: 0 auto; padding: 8px 8px 56px; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: var(--space-2) var(--space-2) 56px; }
 
-.hero { padding: 30px 8px 26px; display: flex; align-items: flex-end; gap: 20px; }
+.hero { padding: 30px var(--space-2) 26px; display: flex; align-items: flex-end; gap: var(--space-5); }
 .greeting { flex: 1; }
 .eyebrow {
   font: var(--weight-medium) var(--text-xs)/1 var(--font-mono);
   letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
   color: var(--color-primary);
-  margin-bottom: 12px;
+  margin-bottom: var(--space-3);
 }
 .h1 {
   font: var(--weight-light) clamp(32px, 4vw, 46px)/1.05 var(--font-display);
@@ -38,19 +38,35 @@
 .cols { display: grid; grid-template-columns: 1fr 320px; gap: 26px; align-items: start; }
 @include bp.tablet-down { .cols { grid-template-columns: 1fr; } }
 
-.secHead { display: flex; align-items: center; gap: 12px; margin: 14px 0 16px; padding: 0 2px; }
+.secHead { display: flex; align-items: center; gap: var(--space-3); margin: 14px 0 var(--space-4); padding: 0 2px; }
 .secTitle { font: var(--weight-medium) var(--text-lg)/1 var(--font-body); letter-spacing: -0.01em; }
-.secCt { font: var(--weight-medium) 11px/1 var(--font-mono); color: var(--color-text-faint); }
+.secCt { font: var(--weight-medium) var(--text-2xs)/1 var(--font-mono); color: var(--color-text-faint); }
 .secSp { flex: 1; }
 
 /* The loading / failed-to-load block for the projects grid. Also never
-   declared, so the retry copy and its button sat flush against the heading. */
-.state {
+   declared, so the retry copy and its button sat flush against the heading.
+   `.statePending` is the same box without the entrance below: a spinner that
+   fades in before it starts spinning reads as a second helping of lag. */
+.state,
+.statePending {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   gap: var(--space-3);
   padding: var(--space-8) 0;
+}
+
+/* `.state` is the error block — a sentence and a retry button, which read as
+   left-aligned prose. */
+.state {
+  align-items: flex-start;
+}
+
+/* `.statePending` holds nothing but the loader. It shared the rule above and
+   so inherited `align-items: flex-start`, which in a column pinned it to the
+   far left of a full-width row while the grid it stands in for is centred
+   content. It gets the centre it always wanted. */
+.statePending {
+  align-items: center;
 }
 
 .stateText {
@@ -62,6 +78,21 @@
 .projgrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
 @include bp.phone { .projgrid { grid-template-columns: 1fr; } }
 
+/* Whichever of the two resolves, it lands in the spinner's place all at once.
+   One container-level fade is the bridge between "loading" and "here it is".
+   Deliberately no per-card stagger: these cells carry the project names the
+   user came here to scan, and staggering eight of them puts the last name half
+   a second out of reach to buy nothing. */
+.projgrid,
+.state {
+  animation: region-in var(--duration-base) var(--ease-out);
+}
+
+@keyframes region-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
 /*
  * The name-it field takes the slot the new card will occupy, so it has to be
  * a card too. Referenced but never defined, it used to render as a bare
@@ -71,12 +102,23 @@
   display: flex;
   min-height: 178px;
   align-items: center;
-  gap: 12px;
-  padding: 0 16px;
+  gap: var(--space-3);
+  padding: 0 var(--space-4);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
   box-shadow: var(--edge);
+
+  /* The dashed tile is hard-swapped for this card in the same grid cell, and
+     both carry the same min-height, so nothing moves and the only evidence the
+     click registered is a caret appearing. The settle gives the swap an
+     author. Centre origin is right — it replaces the tile in place. */
+  animation: card-in var(--duration-base) var(--ease-out);
+}
+
+@keyframes card-in {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: none; }
 }
 
 // new project card
@@ -137,16 +179,19 @@
   display: flex;
   align-items: center;
   gap: 11px;
-  padding: 12px 15px;
+  padding: var(--space-3) 15px;
   cursor: pointer;
   transition: var(--transition-control);
 
   & + & { border-top: 1px solid var(--color-border-subtle); }
-  &:hover { background: rgba(255, 255, 255, 0.03); }
+
+  /* A white wash is invisible on a light surface; `.actrow` below already had
+     the theme-aware answer. */
+  &:hover { background: var(--color-surface-2); }
 }
 .sessTxt { flex: 1; min-width: 0; }
 .sessT { font: var(--weight-medium) var(--text-sm)/1.3 var(--font-body); }
-.sessS { font: 11px/1.3 var(--font-mono); color: var(--color-text-faint); }
+.sessS { font: var(--text-2xs)/1.3 var(--font-mono); color: var(--color-text-faint); }
 
 .actrow {
   display: flex;
@@ -196,7 +241,7 @@
   }
 }
 
-.actSub { font: 11px/1.3 var(--font-mono); color: var(--color-text-faint); }
+.actSub { font: var(--text-2xs)/1.3 var(--font-mono); color: var(--color-text-faint); }
 .actTarget { color: var(--color-text-link); }
 .actTime { font: 10px/1.5 var(--font-mono); color: var(--color-text-disabled); flex: none; }
 
@@ -213,28 +258,28 @@
 
 @include bp.tablet-down {
   .wrap {
-    padding: 4px 0 40px;
+    padding: var(--space-1) 0 var(--space-10);
   }
 
   .hero {
-    padding: 18px 2px 16px;
+    padding: 18px 2px var(--space-4);
   }
 }
 
 @include bp.phone {
   .hero {
-    padding: 12px 2px 14px;
+    padding: var(--space-3) 2px 14px;
   }
 
   .eyebrow {
-    margin-bottom: 8px;
+    margin-bottom: var(--space-2);
   }
 
   /* The side rail is no longer beside anything, so pinning it does nothing but
      confuse the scroll. */
   .side {
     position: static;
-    gap: 16px;
+    gap: var(--space-4);
   }
 
   /* 178px of empty card is a whole phone screen for two projects. */
@@ -248,4 +293,20 @@
        are not touching. */
     min-height: 52px;
   }
+}
+
+/* Reduced motion keeps both entrances, just gentler: the surface still has to
+   arrive rather than teleport, so the fade stays and only the travel goes. */
+@media (prefers-reduced-motion: reduce) {
+  .projgrid,
+  .state,
+  .createCard {
+    animation-name: region-fade;
+    animation-duration: var(--duration-fast);
+  }
+}
+
+@keyframes region-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }

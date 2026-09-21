@@ -1,16 +1,18 @@
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 3px 9px;
-  border-radius: 999px;
-  background: var(--surface-800, #292524);
-  color: var(--ink-300, #d6d3d1);
-  font-size: 12px;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--color-surface-2);
+  color: var(--ink-300);
+  font-size: var(--text-xs);
   white-space: nowrap;
 }
 
 .dot {
+  /// 7px is off the spacing ladder; a status dot is sized by eye against the
+  /// 12px label, so this stays raw rather than being rounded to a token.
   width: 7px;
   height: 7px;
   flex-shrink: 0;
@@ -18,10 +20,10 @@
   background: currentcolor;
 }
 
-.connected .dot { background: var(--mint-500, #10b981); }
-.connecting .dot { background: var(--amber-500, #f59e0b); }
+.connected .dot { background: var(--mint-500); }
+.connecting .dot { background: var(--amber-500); }
 .offline .dot,
-.error .dot { background: var(--coral-500, #ef4444); }
+.error .dot { background: var(--coral-500); }
 
 .connecting .dot,
 .offline .dot,
@@ -30,9 +32,9 @@
 }
 
 .peers {
-  padding-left: 6px;
-  border-left: 1px solid var(--line-700, #44403c);
-  color: var(--ink-400, #a8a29e);
+  padding-left: var(--space-2);
+  border-left: 1px solid var(--color-border-strong);
+  color: var(--ink-400);
 }
 
 @keyframes blink {

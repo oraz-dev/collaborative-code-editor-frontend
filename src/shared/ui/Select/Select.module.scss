@@ -18,8 +18,8 @@
   height: var(--control-md);
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 0 10px 0 12px;
+  gap: var(--space-2);
+  padding: 0 10px 0 var(--space-3);
   background: var(--color-inset);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
@@ -94,9 +94,9 @@
  */
 .dropdown {
   position: fixed;
-  z-index: 200;
+  z-index: var(--z-popover);
   max-height: 220px;
-  padding: 4px;
+  padding: var(--space-1);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
   background: var(--color-overlay);
@@ -110,6 +110,9 @@
   transform: translateY(-100%);
 }
 
+/* Opacity only, deliberately: `.above` owns the transform to flip the menu on
+   to the trigger's top edge, so a transform here would cancel that and the
+   upward-opening menu would land over its own trigger. */
 @keyframes dropdownIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -120,7 +123,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: 7px 10px;
+  padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-sm);
   cursor: pointer;
   color: var(--color-text-secondary);
@@ -169,6 +172,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dropdown { animation: none; }
+  /* The fade stays — it is already transform-free, and cutting it is the one
+     change that would make the menu teleport rather than appear. Only the
+     chevron's rotation, which is pure decoration, is dropped. */
   .icon { transition: none; }
 }

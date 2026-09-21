@@ -10,7 +10,12 @@
   border-radius: var(--radius-full);
   border: 1px solid var(--color-border-subtle);
   box-shadow: var(--shadow-md), var(--edge);
-  background: rgba(18, 20, 29, 0.66);
+  /* This was rgba(18, 20, 29, 0.66) — the dark theme's own surface colour
+     inlined — so in light mode the bar stayed a near-black slab while its
+     contents switched to near-black text. The translucency is load-bearing
+     (the bar floats over scrolling content behind a backdrop blur), so it is
+     preserved via color-mix rather than dropped for a flat token. */
+  background: color-mix(in srgb, var(--color-surface) 66%, transparent);
   backdrop-filter: blur(16px) saturate(1.15);
   -webkit-backdrop-filter: blur(16px) saturate(1.15);
 }
@@ -29,7 +34,7 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  height: 34px;
+  height: var(--control-md);
   padding: 0 7px 0 12px;
   width: 240px;
   background: var(--color-inset);
@@ -58,7 +63,7 @@
 @include bp.tablet-down {
   .root {
     gap: 10px;
-    padding: 0 8px;
+    padding: 0 var(--space-2);
   }
 
   /* A fixed 240px search field is most of a tablet's remaining width. */
@@ -73,7 +78,7 @@
 @include bp.phone {
   .root {
     height: 48px;
-    gap: 8px;
+    gap: var(--space-2);
     padding: 0 6px;
     border-radius: var(--radius-xl);
   }
@@ -85,7 +90,7 @@
   /* Down to the magnifier: the label and the ⌘K hint are both dead weight on a
      device with no keyboard. */
   .cmdPill {
-    width: 34px;
+    width: var(--control-md);
     flex: none;
     padding: 0;
     justify-content: center;

@@ -1,4 +1,4 @@
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, waitForElementToBeRemoved } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ToastProvider } from './ToastProvider';
 import { useToast } from './toastContext';
@@ -29,7 +29,9 @@ describe('ToastProvider', () => {
     await user.click(screen.getByRole('button', { name: 'notify' }));
     await user.click(screen.getByRole('button', { name: 'Close' }));
 
-    expect(screen.queryByText('Shared with you')).not.toBeInTheDocument();
+    // A dismissed toast stays mounted for its exit animation, so it leaves the
+    // DOM a tick after the click rather than during it.
+    await waitForElementToBeRemoved(() => screen.queryByText('Shared with you'));
   });
 
   test('clears itself after its duration', async () => {

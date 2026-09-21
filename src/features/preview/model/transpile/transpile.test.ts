@@ -2,9 +2,10 @@ import { describe, expect, test } from 'vitest';
 import { needsTranspile, transpiledPath, transpileWorkspace } from './transpile';
 
 describe('needsTranspile', () => {
-  test('only TypeScript sources need compiling', () => {
+  test('only TypeScript and JSX sources need compiling', () => {
     expect(needsTranspile('a.ts')).toBe(true);
     expect(needsTranspile('a.tsx')).toBe(true);
+    expect(needsTranspile('a.jsx')).toBe(true);
     expect(needsTranspile('a.js')).toBe(false);
     expect(needsTranspile('a.css')).toBe(false);
   });
@@ -15,6 +16,10 @@ describe('transpiledPath', () => {
     expect(transpiledPath('util.ts')).toBe('util.js');
     expect(transpiledPath('App.tsx')).toBe('App.js');
     expect(transpiledPath('lib/math.ts')).toBe('lib/math.js');
+  });
+
+  test('JSX is published as .js too', () => {
+    expect(transpiledPath('App.jsx')).toBe('App.js');
   });
 
   test('leaves anything else alone', () => {
@@ -66,7 +71,27 @@ describe('transpileWorkspace', () => {
     ]);
 
     expect(files[0].path).toBe('App.js');
-    expect(files[0].content).toContain('createElement');
+    expect(files[0].content).not.toContain('<div');
+  });
+
+  test('compiles JSX in a .jsx file, which the browser cannot parse', async () => {
+    const { files, failures } = await transpileWorkspace([
+      { path: 'App.jsx', content: 'export const App = () => <p>hi</p>;' },
+    ]);
+
+    expect(failures).toEqual([]);
+    expect(files[0].path).toBe('App.js');
+    expect(files[0].content).not.toContain('<p>');
+  });
+
+  test('needs no React in scope: JSX imports the automatic runtime itself', async () => {
+    const { files } = await transpileWorkspace([
+      { path: 'App.tsx', content: 'export default function App() { return <h1>hi</h1>; }' },
+    ]);
+
+    expect(files[0].content).toMatch(/from ['"]react\/jsx-runtime['"]/);
+    // The production runtime: no `__self: this`, which is undefined in a module.
+    expect(files[0].content).not.toContain('__self');
   });
 
   test('reports a syntax error against the file it came from', async () => {

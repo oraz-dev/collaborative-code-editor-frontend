@@ -56,6 +56,29 @@ straight from the bind mount.
 | `/home/deploy/*/.env` | `CORS_ALLOWED_ORIGINS` on both services |
 | `/root/deploy-backups/` | timestamped copies of everything changed |
 
+## Running code
+
+Two engines, chosen per file by `features/codeRun`:
+
+| Engine | Where | Files |
+| --- | --- | --- |
+| browser preview | sandboxed iframe, client-side | `.html` `.css` `.js` `.jsx` `.ts` `.tsx` |
+| Judge0 sandbox | `execution-service` -> `judge0-v1131` on the server | Python, Go, Rust, Java, C/C++, C#, Ruby, PHP, and the rest of `GET /api/v1/languages` |
+
+The sandbox is reached over the **collaboration websocket**, not over HTTP: a
+text frame `{"type":"run","language_id":…,"source_code":…}` goes to the server,
+and `run:started` / `run:result` are broadcast back to everyone in the room.
+Only the document's owner may trigger one; everyone else is answered
+`{"type":"error","code":"forbidden"}`.
+
+That means the websocket now carries two planes — binary for CRDT updates,
+text for control messages — and the client must never decode a text frame as a
+document edit. See `features/collaboration/model/types/controlFrames.ts`.
+
+`execution-service` holds a shared secret (`EXECUTION_AUTH_TOKEN`) and makes no
+decision about users at all, so **it must not be reachable from the public
+internet**: anything that can reach it directly bypasses the owner check.
+
 ## Certificates
 
 Caddy provisions and renews Let's Encrypt certs automatically via HTTP-01 on
@@ -73,6 +96,53 @@ reason a real domain is worth having.
 - **`CORS_ALLOWED_ORIGINS` must be passed through in `docker-compose.yml`.**
   The auth stack did not list it under `environment:`, so setting it in `.env`
   alone had no effect.
+- **The whole SPA hangs off one line in someone else's file.** The Caddyfile's
+  site block says `root * /srv/space`, but that path only exists inside the
+  container because `docker-compose.prod.yml` bind-mounts it:
+
+  ```yaml
+  caddy:
+    volumes:
+      - /srv/space:/srv/space:ro   # <- delete this and the site 404s
+  ```
+
+  That file belongs to the backend, and the `caddy` service is defined *only*
+  there — the base `docker-compose.yml` has no caddy at all. A rewrite of it
+  (2026-08-25 was a security-hardening pass adding `read_only`, `cap_drop`,
+  `!reset`) dropped the mount, and the site returned 404 for every path while
+  both APIs kept answering normally. Caddy logs nothing: a missing root is not
+  an error to it, just an empty directory.
+
+  Symptom to recognise: `/` and `/index.html` both 404 with `server: Caddy`,
+  while `/api/v1/...` and `/api/auth/...` still return 401. Check first:
+
+  ```sh
+  docker inspect documents-service-caddy-1 --format '{{range .Mounts}}{{.Source}}{{println}}{{end}}'
+  docker exec documents-service-caddy-1 ls /srv/space
+  ```
+
+  Fix is the one line above plus
+  `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --force-recreate --no-deps caddy`
+  (`--no-deps` keeps the API and database containers untouched).
+- **`docker-compose.prod.yml` has CRLF line endings.** `sed` patterns anchored
+  with `$` silently match nothing and report success. Check with `cat -A`.
+- **A backend redeploy reverts both edits.** It has happened twice now
+  (2026-08-25, 2026-09-20): the two files the web app needs belong to the
+  backend repo, so shipping from there restores their upstream versions and
+  takes the site with them. The second time it also removed the
+  `space.31.57.26.155.nip.io` site block, which is what provisions the
+  certificate — so HTTPS failed at the TLS handshake while plain `:80` kept
+  answering.
+
+  `/root/restore-space-frontend.sh` re-applies both, idempotently, and
+  recreates only the caddy container. Run it after any backend deploy:
+
+  ```sh
+  ssh root@31.57.26.155 /root/restore-space-frontend.sh
+  ```
+
+  **The actual fix is for the backend repo to carry these two edits**, since
+  its stack owns 80/443. Until it does, every deploy there is an outage here.
 
 ## Rollback
 

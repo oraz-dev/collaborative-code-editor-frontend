@@ -122,12 +122,12 @@
 }
 
 .danger {
-  border-color: var(--coral-800);
+  border-color: var(--coral-600);
 }
 
 .dangerSection {
   composes: section;
-  border-color: var(--coral-800);
+  border-color: var(--coral-600);
 }
 
 

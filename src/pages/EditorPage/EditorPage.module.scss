@@ -25,12 +25,18 @@
   border-radius: var(--radius-full);
   border: 1px solid var(--color-border-subtle);
   box-shadow: var(--shadow-md), var(--edge);
-  background: rgba(18, 20, 29, 0.66);
+  /* Was rgba(18, 20, 29, 0.66): a hardcoded near-black, so in light mode this
+     bar stayed a dark slab under near-black text. The translucency is
+     load-bearing — the bar floats over the editor behind a backdrop blur — so
+     it is preserved via color-mix rather than flattened to a solid token, at
+     the same 66% the literal carried. AppBar.module.scss is the identical bar
+     and must carry the identical percentage. */
+  background: color-mix(in srgb, var(--color-surface) 66%, transparent);
   backdrop-filter: blur(16px) saturate(1.15);
   -webkit-backdrop-filter: blur(16px) saturate(1.15);
 }
 
-.div { width: 1px; height: 24px; background: var(--color-border); flex: none; }
+.div { width: 1px; height: var(--space-6); background: var(--color-border); flex: none; }
 
 
 // restyle segmented control for pill shape
@@ -39,8 +45,8 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  height: 34px;
-  padding: 0 7px 0 12px;
+  height: var(--control-md);
+  padding: 0 7px 0 var(--space-3);
   background: var(--color-inset);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-full);
@@ -59,13 +65,15 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  padding: 4px 4px 4px 10px;
+  padding: var(--space-1) var(--space-1) var(--space-1) 10px;
   border-radius: var(--radius-full);
-  background: rgba(11, 13, 18, 0.45);
+  /* Same inlined-dark-value problem as .topnav; --color-inset is the recessed
+     tone in both themes, and matches the search pill sitting beside it. */
+  background: var(--color-inset);
   border: 1px solid var(--color-border-subtle);
 }
 
-.hereLbl { font: var(--weight-medium) 11px/1 var(--font-mono); color: var(--color-text-muted); }
+.hereLbl { font: var(--weight-medium) var(--text-2xs)/1 var(--font-mono); color: var(--color-text-muted); }
 
 /* No gap: the resize handles sit between the panes and supply the spacing.
    Positioned so the compact preview overlay covers the panes and not the
@@ -94,13 +102,24 @@
   border: 1px solid transparent;
   border-radius: var(--radius-full);
   background: var(--color-success);
-  color: #06210f;
+  color: var(--color-on-primary);
   cursor: pointer;
   font: var(--weight-medium) var(--text-xs) / 1 var(--font-body);
   transition: var(--transition-control), filter var(--duration-fast) var(--ease);
 }
 
-.runBtn:hover { filter: brightness(1.08); }
+@include bp.can-hover {
+  .runBtn:not(:disabled):hover { filter: brightness(1.08); }
+}
+
+/* Shown rather than hidden for a collaborator, so the rule is visible instead
+   of being discovered by being refused. */
+.runBtn:disabled {
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
+  color: var(--color-text-faint);
+  cursor: not-allowed;
+}
 
 .runBtn:focus-visible {
   outline: none;
@@ -151,6 +170,21 @@
   line-height: var(--leading-normal);
 }
 
+/* The empty state is the front door of the editor, and the only thing on the
+   screen when it shows — no keystroke is waiting on it, so it can afford the
+   long duration. Scoped to [data-animated] because `.placeholder` is also the
+   wrapper for the bare loading spinners, and a spinner that fades in reads as
+   lag rather than as an entrance. One block, one beat: staggering the icon and
+   the text apart would turn a greeting into a sequence. */
+.placeholder[data-animated] {
+  animation: placeholder-in var(--duration-slow) var(--ease-out);
+}
+
+@keyframes placeholder-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
 .viewOnly {
   padding: 3px 9px;
   border: 1px solid var(--color-border);
@@ -168,8 +202,8 @@
 .drawerRoot {
   position: fixed;
   inset: 0;
-  /* Under the command palette (80) and Modal (90), so either can open on top. */
-  z-index: 75;
+  /* Under the command palette and Modal, so either can open on top. */
+  z-index: var(--z-drawer);
   display: flex;
 }
 
@@ -193,7 +227,7 @@
   background: var(--color-surface);
   border-right: 1px solid var(--color-border);
   box-shadow: var(--shadow-lg);
-  animation: drawer-in 180ms var(--ease);
+  animation: drawer-in var(--duration-base) var(--ease);
 }
 
 .drawerBar {
@@ -236,13 +270,6 @@
   to { opacity: 1; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .drawer,
-  .scrim {
-    animation: none;
-  }
-}
-
 /* ------------------------------------------------------------------ *
  * Preview as a full-width sheet
  * ------------------------------------------------------------------ */
@@ -252,7 +279,18 @@
   inset: 0;
   display: flex;
   /* Sits over the editor, under the drawer and the command palette. */
-  z-index: 20;
+  z-index: var(--z-sticky);
+  /* Its sibling overlay — the file tree drawer — has always slid in, while this
+     one covering the same surface hard-cut. A short rise rather than a
+     full-height travel: the sheet is not swipe-dismissible, so it must not
+     advertise a gesture it does not have. Absolutely positioned, so nothing in
+     layout moves and the editor underneath is untouched. */
+  animation: sheet-in var(--duration-base) var(--ease-out);
+}
+
+@keyframes sheet-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
 }
 
 /* Same reason as `.drawer .drawerTree` above. */
@@ -265,6 +303,24 @@
   overflow: hidden;
 }
 
+/* Gentler, not absent: the sheet and the empty state keep the fade that makes
+   them appear and lose only the travel, so neither teleports into place.
+   `drawer-fade` is already exactly that opacity-only half. */
+@media (prefers-reduced-motion: reduce) {
+  .drawer,
+  .scrim {
+    animation: none;
+  }
+
+  .previewOverlay {
+    animation: drawer-fade var(--duration-fast) var(--ease-out);
+  }
+
+  .placeholder[data-animated] {
+    animation: drawer-fade var(--duration-base) var(--ease-out);
+  }
+}
+
 /* ------------------------------------------------------------------ *
  * Compact chrome
  * ------------------------------------------------------------------ */
@@ -275,8 +331,8 @@
   }
 
   .topnav {
-    gap: 8px;
-    padding: 0 8px 0 8px;
+    gap: var(--space-2);
+    padding: 0 var(--space-2);
   }
 
   /* A search field cannot compete with the actions for the little width left. */
@@ -297,7 +353,7 @@
 
   .topnav {
     height: 48px;
-    gap: 4px;
+    gap: var(--space-1);
     padding: 0 6px;
     /* Rounded pill corners waste the width a phone does not have. */
     border-radius: var(--radius-xl);
@@ -311,7 +367,8 @@
   }
 
   .cmdPill {
-    width: 34px;
+    /* Square: the label is gone, so the icon keeps the control's own height. */
+    width: var(--control-md);
     padding: 0;
     justify-content: center;
   }

@@ -29,12 +29,19 @@
   border-bottom: none;
 }
 
+/* Both of these were white overlays: invisible on a light theme, and at 1.5-2%
+   alpha invisible on the dark one too. They also have to stay distinguishable
+   from each other — `.table tbody tr:hover td` outranks `.striped td` on
+   specificity, so if both resolved to the same tone the hover would silently
+   do nothing on every other row. Hover takes --color-surface-2, the app's
+   standard hover tone; the zebra takes --color-inset, which sits on the other
+   side of the table surface in both themes, so the two never converge. */
 .table tbody tr:hover td {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--color-surface-2);
 }
 
 .striped td {
-  background: rgba(255, 255, 255, 0.015);
+  background: var(--color-inset);
 }
 
 .table td b {

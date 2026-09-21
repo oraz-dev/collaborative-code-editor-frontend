@@ -127,7 +127,7 @@ export const DashboardPage = memo(() => {
               </div>
 
               {rootsQuery.isPending && (
-                <div className={cls.state}><Spinner size="large" /></div>
+                <div className={cls.statePending}><Spinner size="large" label="Loading your documents" /></div>
               )}
 
               {rootsQuery.isError && (

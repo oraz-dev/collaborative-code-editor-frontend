@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Y from 'yjs';
 import { Awareness } from 'y-protocols/awareness';
 import {
@@ -9,6 +9,14 @@ import {
   type DocumentRole,
 } from '@/entities/Document';
 import { logger } from '@/shared/lib/logger/logger';
+import {
+  IDLE_RUN_STATE,
+  beginLocalRun,
+  localRunFailure,
+  reduceRunState,
+  type RunState,
+} from '../runState/runState';
+import type { ControlFrame } from '../types/controlFrames';
 import { RelayProvider, type ConnectionStatus } from '../RelayProvider/RelayProvider';
 import { readPeers, type AwarenessUser, type PresencePeer } from '../presence/presence';
 
@@ -62,6 +70,20 @@ export interface CollaborativeDocument {
   /** The caller's access level, learned from the ws-ticket. */
   role: DocumentRole;
   canEdit: boolean;
+  /**
+   * The document's execution state. Shared by the whole room, not per viewer:
+   * the server broadcasts a run's lifecycle to everyone watching, so a
+   * collaborator sees the owner's output as it lands.
+   */
+  runState: RunState;
+  /**
+   * Asks the server to run the document. Only the owner may; anyone else gets
+   * a `forbidden` failure back rather than silence.
+   *
+   * Returns false when the socket was not open, in which case nothing was
+   * sent and `runState` reports it.
+   */
+  run: (request: { languageId: number; sourceCode: string; stdin?: string }) => boolean;
 }
 
 export function useCollaborativeDocument(
@@ -80,6 +102,12 @@ export function useCollaborativeDocument(
     role: 'editor',
     canEdit: true,
   });
+  const [runState, setRunState] = useState<RunState>(IDLE_RUN_STATE);
+
+  // The provider is not render state — nothing re-renders when it changes —
+  // but `run` has to reach the live one, so it is held in a ref rather than
+  // threaded through `session`.
+  const providerRef = useRef<RelayProvider | null>(null);
 
   // Read once during bootstrap; kept in refs so a changing identity or a
   // late-arriving content string never tears the live document down.
@@ -119,6 +147,9 @@ export function useCollaborativeDocument(
       onAccessChange: (next) => {
         canPersist = next.canEdit;
         if (!disposed) setAccess(next);
+      },
+      onControlFrame: (frame: ControlFrame) => {
+        if (!disposed) setRunState((current) => reduceRunState(current, frame));
       },
     });
 
@@ -241,6 +272,7 @@ export function useCollaborativeDocument(
 
     // Publishing the freshly created Yjs handles is what makes them reachable
     // from render; the objects are external resources this effect owns.
+    providerRef.current = provider;
     setSession({ doc: ydoc, text: ytext, awareness: yawareness });
     setIsReady(false);
     setError(null);
@@ -262,6 +294,7 @@ export function useCollaborativeDocument(
         void persistNow();
       }
 
+      providerRef.current = null;
       provider.destroy();
       yawareness.destroy();
       ydoc.destroy();
@@ -273,6 +306,24 @@ export function useCollaborativeDocument(
     if (!session || !user) return;
     session.awareness.setLocalStateField('user', user);
   }, [session, user]);
+
+  const run = useCallback((request: { languageId: number; sourceCode: string; stdin?: string }) => {
+    const provider = providerRef.current;
+
+    // Optimistic: the button should react to the click, not to the round
+    // trip. The server's own `run:started` overwrites this a moment later
+    // with the authoritative requester.
+    setRunState((current) => beginLocalRun(current, request.languageId, userRef.current?.id ?? null));
+
+    const sent = provider?.sendRun({
+      language_id: request.languageId,
+      source_code: request.sourceCode,
+      stdin: request.stdin,
+    }) ?? false;
+
+    if (!sent) setRunState(localRunFailure);
+    return sent;
+  }, []);
 
   // While inactive the stale session is simply not surfaced, which avoids
   // resetting state from inside an effect.
@@ -286,5 +337,7 @@ export function useCollaborativeDocument(
     error: isActive ? error : null,
     role: access.role,
     canEdit: access.canEdit,
+    runState: isActive ? runState : IDLE_RUN_STATE,
+    run,
   };
 }

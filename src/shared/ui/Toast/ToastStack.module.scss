@@ -14,6 +14,18 @@
 .item {
   pointer-events: auto;
   animation: toastIn var(--duration-base) var(--ease) forwards;
+  transition: opacity var(--duration-base) var(--ease),
+    transform var(--duration-base) var(--ease);
+}
+
+// The exit mirrors toastIn — same axis, same 12px, same duration — so a toast
+// leaves by the edge it arrived from instead of blinking out mid-read.
+.leaving {
+  // toastIn is `forwards`, and a filling animation outranks these declarations,
+  // so the exit would never paint unless the entrance is released first.
+  animation: none;
+  opacity: 0;
+  transform: translateX(12px);
 }
 
 @keyframes toastIn {
@@ -29,4 +41,11 @@
 
 @media (prefers-reduced-motion: reduce) {
   .item { animation: none; }
+
+  // Gentler, not absent: the slide goes, the fade stays, so the toast still
+  // visibly leaves rather than vanishing between two frames.
+  .leaving {
+    transform: none;
+    transition: opacity var(--duration-fast) var(--ease);
+  }
 }

@@ -2,6 +2,7 @@ import { memo, type ReactNode } from 'react';
 import cls from './Toast.module.scss';
 import { classNames } from '@/shared/lib/classNames/classNames';
 import { Icon, type IconName } from '@/shared/ui/Icon/Icon';
+import { Spinner } from '@/shared/ui/Spinner/Spinner';
 
 type ToastVariant = 'info' | 'success' | 'warning' | 'error';
 
@@ -27,7 +28,7 @@ export const Toast = memo((props: ToastProps) => {
   return (
     <div className={classNames(cls.toast,  { [cls[variant]]: !!variant  }, [className])}>
       {isLoading ? (
-        <div className={cls.spinner} />
+        <Spinner className={cls.spinner} />
       ) : (
         <Icon name={iconMap[variant]} size={16} className={cls.icon} />
       )}
