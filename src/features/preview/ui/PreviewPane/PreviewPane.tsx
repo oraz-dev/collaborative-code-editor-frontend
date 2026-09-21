@@ -1,4 +1,6 @@
-import { memo, useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+import {
+  memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties,
+} from 'react';
 import { classNames } from '@/shared/lib/classNames/classNames';
 import { ResizeHandle } from '@/shared/ui/ResizeHandle/ResizeHandle';
 import {
@@ -9,12 +11,16 @@ import {
 } from '@/features/preferences';
 import { Icons } from '@/shared/ui/Icon/Icons';
 import { IconButton } from '@/shared/ui/IconButton/IconButton';
+import { Button } from '@/shared/ui/Button/Button';
+import { Spinner } from '@/shared/ui/Spinner/Spinner';
 import {
   buildPreviewDocument,
   whyNotRunnable,
   type PreviewFile,
 } from '../../model/buildPreviewDocument/buildPreviewDocument';
 import { transpileWorkspace } from '../../model/transpile/transpile';
+import { chooseRunEntry, detectProjectEntry } from '../../model/projectEntry/projectEntry';
+import { useRunScope } from '../../model/runScope/useRunScope';
 import cls from './PreviewPane.module.scss';
 
 export type ConsoleLevel = 'log' | 'info' | 'warn' | 'error' | 'debug';
@@ -30,7 +36,22 @@ interface PreviewPaneProps {
   /** Set by the resizable layout in EditorPage. */
   style?: CSSProperties;
   files: PreviewFile[];
+  /**
+   * The open file's path in the project. When the project has an entry of its
+   * own (see `detectProjectEntry`), that is what runs instead, unless the
+   * user switches to this file in the header.
+   */
   entry: string;
+  /** The project is still being fetched; nothing from an earlier run is shown. */
+  loading?: boolean;
+  /** Why the project could not be fetched. Takes the place of the frame. */
+  loadError?: string | null;
+  /**
+   * Things the load wants the user to know — a folder it could not open, a
+   * project cut short at the file cap. Shown as warnings at the top of the
+   * console, above anything the code itself prints.
+   */
+  notices?: string[];
   /** Lets the owner re-snapshot the buffer so a replay picks up new edits. */
   onRerun?: () => void;
   onClose?: () => void;
@@ -38,6 +59,8 @@ interface PreviewPaneProps {
 
 const CHANNEL = '__space_preview__';
 const MAX_LINES = 500;
+/** Stable, so an omitted prop does not re-run the effects keyed on it. */
+const NO_NOTICES: string[] = [];
 
 /**
  * Runs the workspace in a sandboxed frame.
@@ -50,7 +73,10 @@ const MAX_LINES = 500;
  * equivalent to no sandbox at all.
  */
 export const PreviewPane = memo((props: PreviewPaneProps) => {
-  const { className, style, files, entry, onRerun, onClose } = props;
+  const {
+    className, style, files, entry, loading = false, loadError = null, notices, onRerun, onClose,
+  } = props;
+  const loadNotices = notices ?? NO_NOTICES;
 
   const { consoleHeight } = useLayoutPreferences();
 
@@ -71,7 +97,20 @@ export const PreviewPane = memo((props: PreviewPaneProps) => {
   const [runError, setRunError] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<'pending' | 'drew' | 'silent'>('pending');
 
-  const blocked = whyNotRunnable(entry);
+  /*
+   * One Run is the whole app: a Vite project starts from its index.html or
+   * main.tsx wherever in it you happen to be editing. Running the open file
+   * alone stays one press away, and the choice holds for the session.
+   */
+  const [runScope, setRunScope] = useRunScope();
+  const projectEntry = useMemo(() => detectProjectEntry(files), [files]);
+  const { entry: runEntry, runsProject, canChoose } = chooseRunEntry({
+    openFile: entry,
+    projectEntry,
+    scope: runScope,
+  });
+
+  const blocked = whyNotRunnable(runEntry);
 
   const [document_, setDocument] = useState('');
   const [buildErrors, setBuildErrors] = useState<string[]>([]);
@@ -79,7 +118,9 @@ export const PreviewPane = memo((props: PreviewPaneProps) => {
   // Stripping types is async — sucrase is only fetched the first time a
   // workspace actually contains TypeScript.
   useEffect(() => {
-    if (blocked) {
+    // Nothing to build yet, or nothing to build from: either way the previous
+    // run's document must not stay behind the loading or error state.
+    if (blocked || loading || loadError) {
       setDocument('');
       setBuildErrors([]);
       return;
@@ -96,7 +137,7 @@ export const PreviewPane = memo((props: PreviewPaneProps) => {
           setRunError(`${messages.length} file${messages.length === 1 ? '' : 's'} failed to compile.`);
           setShowConsole(true);
         }
-        setDocument(buildPreviewDocument({ files: compiled, entry }));
+        setDocument(buildPreviewDocument({ files: compiled, entry: runEntry }));
       })
       .catch((error: unknown) => {
         if (cancelled) return;
@@ -107,7 +148,7 @@ export const PreviewPane = memo((props: PreviewPaneProps) => {
     return () => {
       cancelled = true;
     };
-  }, [blocked, files, entry, runCount]);
+  }, [blocked, loading, loadError, files, runEntry, runCount]);
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
@@ -150,6 +191,12 @@ export const PreviewPane = memo((props: PreviewPaneProps) => {
     setOutcome('pending');
   }, [document_]);
 
+  // A partial load is easy to miss in a frame that renders fine; the console
+  // is where its notices are, so it must not be collapsed.
+  useEffect(() => {
+    if (loadNotices.length > 0 || loadError) setShowConsole(true);
+  }, [loadNotices, loadError]);
+
   const handleRerun = useCallback(() => {
     // Re-mounting the frame is what actually replays it: an unchanged `srcDoc`
     // is not a change, so React would leave the existing document running.
@@ -160,6 +207,10 @@ export const PreviewPane = memo((props: PreviewPaneProps) => {
     onRerun?.();
   }, [onRerun]);
 
+  const onToggleRunScope = useCallback(() => {
+    setRunScope(runsProject ? 'file' : 'project');
+  }, [runsProject, setRunScope]);
+
   const onClear = useCallback(() => {
     setLines([]);
   }, []);
@@ -168,14 +219,106 @@ export const PreviewPane = memo((props: PreviewPaneProps) => {
     setShowConsole((visible) => !visible);
   }, []);
 
-  const errorCount = lines.filter((line) => line.level === 'error').length + buildErrors.length;
+  const errorCount = lines.filter((line) => line.level === 'error').length
+    + buildErrors.length
+    + (loadError ? 1 : 0);
+
+  const renderStage = () => {
+    if (blocked) {
+      return (
+        <div className={cls.blocked} data-testid="preview-blocked">
+          <Icons.Files size={24} />
+          <p>{blocked}</p>
+        </div>
+      );
+    }
+
+    if (loading) {
+      return (
+        // Visual only: the pane's persistent status region (below) is what
+        // announces it, so it is hidden from assistive technology here rather
+        // than read twice.
+        <div className={cls.blocked} aria-hidden="true" data-testid="preview-loading">
+          <Spinner size="large" />
+          <p>Loading project…</p>
+        </div>
+      );
+    }
+
+    if (loadError) {
+      return (
+        <div className={cls.blocked} data-testid="preview-load-error">
+          <p className={cls.loadError} role="alert">{loadError}</p>
+          {/* The accessible name starts with the visible text, so "click Try again" works by voice. */}
+          <Button size="small" variant="secondary" onClick={handleRerun} aria-label="Try again: load the project">
+            Try again
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className={cls.stage}>
+        <iframe
+          key={runCount}
+          ref={frameRef}
+          className={cls.frame}
+          title="Preview"
+          // See the component comment: allow-scripts alone is the boundary.
+          sandbox="allow-scripts"
+          srcDoc={document_}
+          data-testid="preview-frame"
+        />
+
+        {/* A failed run leaves the frame blank; without this it just looks
+            like the button did nothing. */}
+        {runError && (
+          <div className={cls.failure} role="alert" data-testid="preview-failure">
+            <Icons.X size={14} />
+            <span className={cls.failureText}>{runError}</span>
+          </div>
+        )}
+
+        {/* Ran fine but rendered nothing — the usual cause of "nothing
+            happened" for a script that only logs. */}
+        {!runError && outcome === 'silent' && (
+          <div className={cls.silent} data-testid="preview-silent">
+            <p>Ran without rendering anything.</p>
+            <span>
+              {lines.length > 0
+                ? `Output is in the Console below (${lines.length} line${lines.length === 1 ? '' : 's'}).`
+                : 'This code produced no output. Add console.log(…) or write to document.body.'}
+            </span>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className={classNames(cls.pane, {}, [className])} style={style} data-testid="preview-pane">
       <div className={cls.bar}>
         <span className={cls.title}>Preview</span>
-        <span className={cls.entry} title={entry}>{entry}</span>
+        <span className={cls.entry} title={runEntry} data-testid="preview-entry">{runEntry}</span>
         <span className={cls.spacer} />
+        {canChoose && (
+          <Button
+            size="small"
+            variant="ghost"
+            className={classNames(cls.scopeToggle, { [cls.scopeToggleOn]: !runsProject })}
+            onClick={onToggleRunScope}
+            // A toggle's name stays put; aria-pressed carries the state.
+            aria-pressed={!runsProject}
+            // Starts with the visible text, so "click This file" works by voice.
+            aria-label={`This file: run only ${entry} instead of the project from ${projectEntry}`}
+            title={runsProject
+              ? `Running the project from ${projectEntry}. Press to run only ${entry}.`
+              : `Running only ${entry}. Press to run the project from ${projectEntry}.`}
+            data-testid="preview-scope-toggle"
+          >
+            This file
+          </Button>
+        )}
         <IconButton size="sm" onClick={handleRerun} aria-label="Re-run preview">
           <Icons.Play size={13} />
         </IconButton>
@@ -184,47 +327,15 @@ export const PreviewPane = memo((props: PreviewPaneProps) => {
         </IconButton>
       </div>
 
-      {blocked ? (
-        <div className={cls.blocked} data-testid="preview-blocked">
-          <Icons.Files size={24} />
-          <p>{blocked}</p>
-        </div>
-      ) : (
-        <div className={cls.stage}>
-          <iframe
-            key={runCount}
-            ref={frameRef}
-            className={cls.frame}
-            title="Preview"
-            // See the component comment: allow-scripts alone is the boundary.
-            sandbox="allow-scripts"
-            srcDoc={document_}
-            data-testid="preview-frame"
-          />
+      {/* Always mounted, so a screen reader has registered the live region
+          before its text changes — a region inserted with its text already
+          in it is often never announced. No aria-busy: that would tell it
+          to hold the announcement back. */}
+      <p className={cls.srOnly} role="status" data-testid="preview-status">
+        {loading ? 'Loading project…' : ''}
+      </p>
 
-          {/* A failed run leaves the frame blank; without this it just looks
-              like the button did nothing. */}
-          {runError && (
-            <div className={cls.failure} role="alert" data-testid="preview-failure">
-              <Icons.X size={14} />
-              <span className={cls.failureText}>{runError}</span>
-            </div>
-          )}
-
-          {/* Ran fine but rendered nothing — the usual cause of "nothing
-              happened" for a script that only logs. */}
-          {!runError && outcome === 'silent' && (
-            <div className={cls.silent} data-testid="preview-silent">
-              <p>Ran without rendering anything.</p>
-              <span>
-                {lines.length > 0
-                  ? `Output is in the Console below (${lines.length} line${lines.length === 1 ? '' : 's'}).`
-                  : 'This code produced no output. Add console.log(…) or write to document.body.'}
-              </span>
-            </div>
-          )}
-        </div>
-      )}
+      {renderStage()}
 
       <div className={cls.consoleBar}>
         <button
@@ -269,13 +380,26 @@ export const PreviewPane = memo((props: PreviewPaneProps) => {
           style={{ height: consoleHeight }}
           data-testid="preview-console"
         >
+          {/* How the project was loaded comes before anything it printed. */}
+          {loadError && (
+            <div className={classNames(cls.line, { [cls.error]: true })}>{loadError}</div>
+          )}
+          {loadNotices.map((message) => (
+            <div
+              className={classNames(cls.line, { [cls.warn]: true })}
+              key={message}
+              data-testid="preview-notice"
+            >
+              {message}
+            </div>
+          ))}
           {/* Compile failures first: nothing ran, so they explain the empty frame. */}
           {buildErrors.map((message) => (
             <div className={classNames(cls.line, { [cls.error]: true })} key={message}>
               {message}
             </div>
           ))}
-          {lines.length === 0 && buildErrors.length === 0 && (
+          {lines.length === 0 && buildErrors.length === 0 && loadNotices.length === 0 && !loadError && (
             <div className={cls.empty}>No output yet.</div>
           )}
           {lines.map((line) => (

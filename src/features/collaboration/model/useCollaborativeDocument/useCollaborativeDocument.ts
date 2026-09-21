@@ -9,6 +9,7 @@ import {
   type DocumentRole,
 } from '@/entities/Document';
 import { logger } from '@/shared/lib/logger/logger';
+import { trackPendingWrite } from '@/shared/lib/pendingWrites/pendingWrites';
 import {
   IDLE_RUN_STATE,
   beginLocalRun,
@@ -178,12 +179,14 @@ export function useCollaborativeDocument(
       if (!canPersist) return;
 
       try {
-        await Promise.all([
+        // Registered, so a reader of the text mirror — the preview loading the
+        // project on Run — can wait for this save instead of overtaking it.
+        await trackPendingWrite(Promise.all([
           saveYjsState(documentId, Y.encodeStateAsUpdate(ydoc)),
           // Mirror the plain text too, so previews and first-time readers see
           // real content without having to decode CRDT state.
           updateDocumentContent(documentId, ytext.toString()),
-        ]);
+        ]));
       } catch (persistError) {
         // A failed save is not fatal: the CRDT still holds the edit and the
         // next debounce (or another peer) will write it again.

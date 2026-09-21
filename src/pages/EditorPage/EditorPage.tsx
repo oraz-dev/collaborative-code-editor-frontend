@@ -7,6 +7,7 @@ import { IconButton } from '@/shared/ui/IconButton/IconButton';
 import { Spinner } from '@/shared/ui/Spinner/Spinner';
 import { Button } from '@/shared/ui/Button/Button';
 import { classNames } from '@/shared/lib/classNames/classNames';
+import { logger } from '@/shared/lib/logger/logger';
 import { toEditorPath, RoutePaths } from '@/shared/config/routeConfig/routeConfig';
 import { useCommandPaletteHotkey } from '@/shared/lib/hotkey/useCommandPaletteHotkey';
 import { useIsCompact, useIsPhone } from '@/shared/lib/media/useMediaQuery';
@@ -20,10 +21,10 @@ import {
 } from '@/features/preferences';
 import { useSession } from '@/features/auth';
 import { useEditorPreferences } from '@/features/preferences';
-import { PreviewPane, isRunnable, type PreviewFile } from '@/features/preview';
+import { PreviewPane, isRunnable, useProjectLoader } from '@/features/preview';
 import { useLanguages, resolveLanguage } from '@/entities/Language';
 import { RunOutputPane, chooseRunTarget } from '@/features/codeRun';
-import { useDocument, useDocumentChildren, type WorkspaceDocument } from '@/entities/Document';
+import { useDocument, type WorkspaceDocument } from '@/entities/Document';
 import {
   CollaborativeEditor,
   ConnectionBadge,
@@ -69,7 +70,6 @@ export const EditorPage = memo((props: EditorPageProps) => {
   const [cmdOpen, setCmdOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewFiles, setPreviewFiles] = useState<PreviewFile[]>([]);
   const [outputOpen, setOutputOpen] = useState(false);
 
   const layout = useLayoutPreferences();
@@ -239,13 +239,15 @@ export const EditorPage = memo((props: EditorPageProps) => {
   const canTriggerRun = runTarget?.engine === 'preview' || isOwner;
   const canRun = Boolean(runTarget);
 
-  // Siblings supply the modules the open file imports. Same query key the tree
-  // uses, so an expanded folder has usually already paid for it. Only the
-  // preview reads them — the sandbox takes a single file.
-  const siblingsQuery = useDocumentChildren(
-    activeDocument?.parentId ?? null,
-    runTarget?.engine === 'preview' && Boolean(activeDocument?.parentId),
+  /**
+   * The preview runs the open file's whole project, so an import from any
+   * folder in it resolves. Loaded per Run — see `onRunPreview`.
+   */
+  const { state: projectState, load: loadPreviewProject, cancel: cancelPreviewProject } = (
+    useProjectLoader()
   );
+  const loadedProject = projectState.status === 'ready' ? projectState.project : null;
+  const previewFiles = useMemo(() => loadedProject?.files ?? [], [loadedProject]);
 
   /**
    * What is on screen now, not what was last flushed to the database.
@@ -264,20 +266,25 @@ export const EditorPage = memo((props: EditorPageProps) => {
    * A run takes a snapshot rather than tracking the buffer live: recomputing
    * the document on every keystroke would re-render the frame continuously,
    * and reloading a page mid-keystroke is not what anyone means by "run".
+   *
+   * The rest of the project is fetched fresh on every Run, as last saved:
+   * your own edits to another file are waited for (see `useProjectLoader`),
+   * and a teammate's are picked up once their editor has saved them — a
+   * couple of seconds after they stop typing. The pane opens straight away and
+   * shows the load, then its outcome; a newer Run cancels an older one. The
+   * loader settles every failure into its state, so nothing escapes here —
+   * the catch is for the unexpected, which must still reach the pane.
    */
-  const onRunPreview = useCallback(() => {
+  const onRunPreview = useCallback(async () => {
     if (!activeDocument) return;
 
-    const siblings = (siblingsQuery.data ?? [])
-      .filter((document) => document.kind === 'file' && document.id !== activeDocument.id)
-      .map((document) => ({ path: document.name, content: document.content }));
-
-    setPreviewFiles([
-      ...siblings,
-      { path: activeDocument.name, content: liveSource() },
-    ]);
     setPreviewOpen(true);
-  }, [activeDocument, liveSource, siblingsQuery.data]);
+    try {
+      await loadPreviewProject(activeDocument, liveSource());
+    } catch (loadError) {
+      logger.error('Preview project load failed', loadError);
+    }
+  }, [activeDocument, liveSource, loadPreviewProject]);
 
   /**
    * Sends the file to the server's sandbox over the collaboration socket.
@@ -295,12 +302,14 @@ export const EditorPage = memo((props: EditorPageProps) => {
 
   const onRun = useCallback(() => {
     if (runTarget?.engine === 'sandbox') onRunSandbox();
-    else onRunPreview();
+    else void onRunPreview();
   }, [onRunPreview, onRunSandbox, runTarget]);
 
   const onClosePreview = useCallback(() => {
     setPreviewOpen(false);
-  }, []);
+    // Nobody is waiting for it any more.
+    cancelPreviewProject();
+  }, [cancelPreviewProject]);
 
   const onCloseOutput = useCallback(() => {
     setOutputOpen(false);
@@ -329,7 +338,8 @@ export const EditorPage = memo((props: EditorPageProps) => {
   useEffect(() => {
     setOutputOpen(false);
     setPreviewOpen(false);
-  }, [documentId]);
+    cancelPreviewProject();
+  }, [documentId, cancelPreviewProject]);
 
   const handleOpenCmd = useCallback(() => {
     setCmdOpen(true);
@@ -601,7 +611,10 @@ export const EditorPage = memo((props: EditorPageProps) => {
               style={{ width: layout.previewWidth }}
               className={cls.preview}
               files={previewFiles}
-              entry={activeDocument.name}
+              entry={loadedProject?.entry ?? activeDocument.name}
+              loading={projectState.status === 'loading'}
+              loadError={projectState.status === 'error' ? projectState.message : null}
+              notices={loadedProject?.warnings}
               onRerun={onRun}
               onClose={onClosePreview}
             />
@@ -656,7 +669,10 @@ export const EditorPage = memo((props: EditorPageProps) => {
             <PreviewPane
               className={cls.previewSheet}
               files={previewFiles}
-              entry={activeDocument.name}
+              entry={loadedProject?.entry ?? activeDocument.name}
+              loading={projectState.status === 'loading'}
+              loadError={projectState.status === 'error' ? projectState.message : null}
+              notices={loadedProject?.warnings}
               onRerun={onRun}
               onClose={onClosePreview}
             />

@@ -1,3 +1,5 @@
+import { VITE_ENV, VITE_ENV_GLOBAL } from '../viteShim/viteShim';
+
 /**
  * The scripts that run inside the preview frame.
  *
@@ -5,8 +7,9 @@
  * frame with an opaque origin, which cannot fetch anything this app serves —
  * everything it runs has to be inlined in the document itself.
  *
- * Two parts, because an HTML entry needs only the first: a page brings its own
- * scripts, while a bare module entry also needs the loader.
+ * Two parts, because a plain HTML entry needs only the first: a page brings
+ * its own scripts, while a module entry — or a page with module scripts, such
+ * as a Vite `index.html` — also needs the loader's import map.
  */
 
 /** Mirrors console output, errors and would-be modals back to the editor. */
@@ -107,12 +110,12 @@ export const CONSOLE_BRIDGE = String.raw`
   // A modal raised in here would freeze the whole tab, editor included, and the
   // sandbox gives no way to dismiss it. They become log lines instead.
   // A page entry runs its own scripts; with no loader to report for it, it
-  // says when it has finished settling.
-  if (!document.getElementById('__workspace__')) {
-    window.addEventListener('load', function () {
-      post('ready', { drew: window.__spaceDrew() });
-    });
-  }
+  // says when it has finished settling. Checked at load, not now: the bridge
+  // runs first, before the loader's islands further down have been parsed.
+  window.addEventListener('load', function () {
+    if (document.getElementById('__workspace__')) return;
+    post('ready', { drew: window.__spaceDrew() });
+  });
 
   window.alert = function (m) { post('console', { level: 'info', text: 'alert: ' + render(m) }); };
   window.confirm = function (m) { post('console', { level: 'info', text: 'confirm: ' + render(m) }); return false; };
@@ -121,28 +124,46 @@ export const CONSOLE_BRIDGE = String.raw`
 `;
 
 /**
- * Turns the inlined workspace into blob modules plus an import map, then
- * imports the entry.
+ * Turns the inlined workspace into data: modules plus an import map, then
+ * runs the entries.
  *
- * The map must be in the document before the first module resolves, which is
- * why the entry is pulled in with a dynamic `import()` on the following line
- * rather than through a `<script type="module">` tag.
+ * The map is added synchronously, before any module resolves — a map added
+ * after the first module load is ignored.
+ *
+ * A module entry (`data-entry`) is then imported once the document is parsed,
+ * and its default export mounted when `data-mount` asks for it. A page's
+ * module scripts (`data-run="native"`) are already in the page as real
+ * `<script type="module">` tags that import their workspace module, so the
+ * browser runs them natively, in document order, before DOMContentLoaded; the
+ * loader only reports when the page has loaded.
+ *
+ * Each module's source ends with a `sourceURL` naming its path. That makes
+ * every data: URL unique to its file — the browser keys module instances by
+ * URL, so two files with identical text would otherwise share one instance
+ * and its state — and gives stack traces the file's name.
  */
 export const MODULE_LOADER = String.raw`
 (function () {
   var node = document.getElementById('__workspace__');
   var files = JSON.parse(node.textContent);
-  var entry = node.dataset.entry;
+  var entries = node.dataset.entries ? JSON.parse(node.dataset.entries) : [node.dataset.entry];
   var aliasNode = document.getElementById('__aliases__');
   var aliases = aliasNode ? JSON.parse(aliasNode.textContent) : {};
   var imports = {};
+  var urls = {};
+
+  // What import.meta.env copies once rewritten (see viteShim). Defined before
+  // any module can run, and frozen, so one module cannot change another's.
+  window.${VITE_ENV_GLOBAL} = Object.freeze(${JSON.stringify(VITE_ENV)});
 
   Object.keys(files).forEach(function (path) {
     // data: rather than blob: — the frame has an opaque origin, where blob URL
     // access is inconsistent between browsers, while a data: module is always
     // loadable by the document that built it.
-    imports['workspace:' + path] =
-      'data:text/javascript;charset=utf-8,' + encodeURIComponent(files[path]);
+    var name = 'workspace:' + path.replace(/[\r\n\u2028\u2029]/g, ' ');
+    urls[path] = 'data:text/javascript;charset=utf-8,'
+      + encodeURIComponent(files[path] + '\n//# sourceURL=' + name);
+    imports['workspace:' + path] = urls[path];
   });
 
   // './util' and './util.ts' both have to reach the module published as
@@ -153,9 +174,8 @@ export const MODULE_LOADER = String.raw`
   });
 
   // Lets the bridge turn a data: URL in a stack back into the file it came from.
-  Object.keys(files).forEach(function (path) {
-    window.__spaceModuleNames['data:text/javascript;charset=utf-8,'
-      + encodeURIComponent(files[path])] = path;
+  Object.keys(urls).forEach(function (path) {
+    window.__spaceModuleNames[urls[path]] = path;
   });
 
   // npm packages, already resolved to CDN URLs when the document was built.
@@ -165,10 +185,24 @@ export const MODULE_LOADER = String.raw`
     imports[specifier] = packages[specifier];
   });
 
+  // A page's own import-map scopes, carried over with its imports.
+  var scopeNode = document.getElementById('__scopes__');
+  var importMap = { imports: imports };
+  if (scopeNode) importMap.scopes = JSON.parse(scopeNode.textContent);
+
   var map = document.createElement('script');
   map.type = 'importmap';
-  map.textContent = JSON.stringify({ imports: imports });
+  map.textContent = JSON.stringify(importMap);
   document.head.appendChild(map);
+
+  // The page runs its own module scripts; a failure among them reaches the
+  // bridge as an error event. What is left is saying when it is done.
+  if (node.dataset.run === 'native') {
+    window.addEventListener('load', function () {
+      window.__spacePost('ready', { drew: window.__spaceDrew() });
+    });
+    return;
+  }
 
   // A component file that does not mount itself gets its default export
   // rendered into #root. React is resolved through the same map, so it is the
@@ -182,15 +216,33 @@ export const MODULE_LOADER = String.raw`
     });
   }
 
-  import(imports['workspace:' + entry])
-    .then(mountDefault)
-    .then(function () { window.__spacePost('ready', { drew: window.__spaceDrew() }); })
-    .catch(function (error) {
-      var text = window.__spaceRender(error);
-      window.__spacePost('console', { level: 'error', text: text });
-      // Distinct from a logged error: nothing ran at all, so the pane can say so.
-      window.__spacePost('failed', { text: text });
+  function report(error) {
+    var text = window.__spaceRender(error);
+    window.__spacePost('console', { level: 'error', text: text });
+    // Distinct from a logged error: this entry did not run, so the pane can say so.
+    window.__spacePost('failed', { text: text });
+  }
+
+  function runEntry(entry) {
+    var url = imports['workspace:' + entry];
+    if (!url) {
+      return Promise.reject(new Error('Cannot run "' + entry + '": there is no such file in this project.'));
+    }
+    return import(url).then(mountDefault);
+  }
+
+  function start() {
+    entries.reduce(function (chain, entry) {
+      return chain.then(function () { return runEntry(entry).catch(report); });
+    }, Promise.resolve()).then(function () {
       window.__spacePost('ready', { drew: window.__spaceDrew() });
     });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start);
+  } else {
+    start();
+  }
 })();
 `;
