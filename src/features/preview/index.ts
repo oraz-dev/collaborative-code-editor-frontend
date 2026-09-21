@@ -15,3 +15,7 @@ export type {
 } from './model/loadProject/loadProject';
 export { useProjectLoader } from './model/useProjectLoader/useProjectLoader';
 export type { ProjectLoadState } from './model/useProjectLoader/useProjectLoader';
+export { useProjectSnapshot } from './model/useProjectSnapshot/useProjectSnapshot';
+export type { ProjectSnapshot } from './model/useProjectSnapshot/useProjectSnapshot';
+export { projectTypeInfo } from './model/projectTypeInfo/projectTypeInfo';
+export type { ProjectPackage, ProjectTypeInfo } from './model/projectTypeInfo/projectTypeInfo';

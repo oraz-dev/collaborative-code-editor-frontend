@@ -15,6 +15,11 @@ import {
   useResolvedTheme,
 } from '@/features/preferences';
 import { RemoteCursorStyles } from '../RemoteCursorStyles/RemoteCursorStyles';
+import { projectUri } from '../../model/typeSupport/editorLibs/editorLibs';
+import {
+  useTypeSupport,
+  type EditorProject,
+} from '../../model/typeSupport/useTypeSupport/useTypeSupport';
 import type { PresencePeer } from '../../model/presence/presence';
 import {
   defineEditorThemes,
@@ -35,6 +40,12 @@ interface CollaborativeEditorProps {
   text: Y.Text | null;
   awareness: Awareness | null;
   fileName: string;
+  /**
+   * The project around the file, when it is one the type checker can use.
+   * Gives the model its real path, so imports of the project's other files
+   * and packages resolve, and the editor stops reporting them as missing.
+   */
+  project?: EditorProject | null;
   readOnly?: boolean;
   peers?: PresencePeer[];
   onCursorChange?: (cursor: EditorCursor) => void;
@@ -58,11 +69,13 @@ export const CollaborativeEditor = memo((props: CollaborativeEditorProps) => {
     text,
     awareness,
     fileName,
+    project = null,
     readOnly = false,
     peers = NO_PEERS,
     onCursorChange,
   } = props;
   const [editorInstance, setEditorInstance] = useState<editor.IStandaloneCodeEditor | null>(null);
+  const [model, setModel] = useState<editor.ITextModel | null>(null);
 
   const preferences = useEditorPreferences();
   const collaboration = useCollaborationPreferences();
@@ -76,8 +89,19 @@ export const CollaborativeEditor = memo((props: CollaborativeEditorProps) => {
 
   const handleMount: OnMount = useCallback((instance, monaco) => {
     setEditorInstance(instance);
+    setModel(instance.getModel());
     setMonacoApi(monaco);
   }, []);
+
+  useTypeSupport(monacoApi, project, model);
+
+  // The model changes when the file does, and again when its project path
+  // becomes known; the binding below has to follow it each time.
+  useEffect(() => {
+    if (!editorInstance) return;
+    const subscription = editorInstance.onDidChangeModel(() => setModel(editorInstance.getModel()));
+    return () => subscription.dispose();
+  }, [editorInstance]);
 
   /**
    * Monaco caches the width of a character when it lays out. A webfont that
@@ -161,10 +185,7 @@ export const CollaborativeEditor = memo((props: CollaborativeEditorProps) => {
   }, [editorInstance, onCursorChange]);
 
   useEffect(() => {
-    if (!editorInstance || !text) return;
-
-    const model = editorInstance.getModel();
-    if (!model) return;
+    if (!editorInstance || !text || !model || model.isDisposed()) return;
 
     // Withholding awareness is what actually turns remote cursors off — the
     // binding renders selections only for the awareness it is given.
@@ -177,8 +198,17 @@ export const CollaborativeEditor = memo((props: CollaborativeEditorProps) => {
 
     return () => {
       binding.destroy();
+      // A model left behind keeps its last text and, being a model, outranks
+      // the fresher copy of that file the type checker is given — so once no
+      // binding feeds it, it goes. Only after the binding is gone, or a late
+      // remote edit would be applied to a disposed model.
+      if (editorInstance.getModel() !== model && !model.isDisposed()) model.dispose();
     };
-  }, [editorInstance, text, awareness, collaboration.liveCursors]);
+  }, [editorInstance, model, text, awareness, collaboration.liveCursors]);
+
+  // Under its project path, a file's imports resolve the way the project's
+  // own tooling resolves them; a file outside any project keeps its name.
+  const modelPath = project ? projectUri(project.key, project.path) : fileName;
 
   return (
     <div className={classNames(cls.root, {}, [className])} data-testid="collaborative-editor">
@@ -188,7 +218,7 @@ export const CollaborativeEditor = memo((props: CollaborativeEditorProps) => {
       <Editor
         // `path` gives each document its own model, so switching files does not
         // leak undo history or bindings between them.
-        path={fileName}
+        path={modelPath}
         defaultLanguage={languageFromFileName(fileName)}
         theme={theme === 'light' ? EDITOR_THEME_LIGHT : EDITOR_THEME_DARK}
         loading={loading}

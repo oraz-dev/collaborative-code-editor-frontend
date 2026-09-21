@@ -44,6 +44,8 @@ export interface LoadedProject {
   entry: string;
   /** Name of the project root folder; empty when there is no folder above. */
   rootName: string;
+  /** Id of the project root folder; null for a root-level file's project. */
+  rootId: string | null;
   /** True when the file cap stopped the walk before the project was exhausted. */
   truncated: boolean;
   fileCount: number;
@@ -184,7 +186,7 @@ export async function loadProject(input: LoadProjectInput): Promise<LoadedProjec
   if (truncated) warnings.push(truncationWarning(maxFiles));
 
   return {
-    files, entry, rootName, truncated, fileCount: files.length, warnings,
+    files, entry, rootName, rootId, truncated, fileCount: files.length, warnings,
   };
 }
 
@@ -328,7 +330,7 @@ async function loadRootLevel(
   if (truncated) warnings.push(truncationWarning(maxFiles));
 
   return {
-    files, entry, rootName: '', truncated, fileCount: files.length, warnings,
+    files, entry, rootName: '', rootId: null, truncated, fileCount: files.length, warnings,
   };
 }
 

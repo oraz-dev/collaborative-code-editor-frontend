@@ -29,19 +29,13 @@ export type ProjectLoadState =
 const ANCESTOR_STALE_MS = 5 * 60_000;
 
 /**
- * Loads the open file's project for the preview, one load at a time.
- *
- * Starting a load aborts the one before it, so pressing Run twice cannot let a
- * slow first walk land on top of the second; unmounting aborts too. A load
- * that fails for any reason other than being cancelled ends in `error` with a
- * message for the pane — never silently in the previous project.
+ * How a project load reaches the document service: ancestors through the
+ * cache, folder contents fresh.
  */
-export function useProjectLoader() {
+export function useProjectFetchers(): ProjectFetchers {
   const queryClient = useQueryClient();
-  const [state, setState] = useState<ProjectLoadState>({ status: 'idle' });
-  const controllerRef = useRef<AbortController | null>(null);
 
-  const fetchers = useMemo((): ProjectFetchers => ({
+  return useMemo((): ProjectFetchers => ({
     fetchDocument: (id) => queryClient.fetchQuery({
       queryKey: queryKeys.document(id),
       queryFn: ({ signal }) => fetchDocument(id, signal),
@@ -58,6 +52,20 @@ export function useProjectLoader() {
     fetchChildren: (folderId, signal) => fetchChildDocuments(folderId, signal),
     fetchRoots: (signal) => fetchRootDocuments(signal),
   }), [queryClient]);
+}
+
+/**
+ * Loads the open file's project for the preview, one load at a time.
+ *
+ * Starting a load aborts the one before it, so pressing Run twice cannot let a
+ * slow first walk land on top of the second; unmounting aborts too. A load
+ * that fails for any reason other than being cancelled ends in `error` with a
+ * message for the pane — never silently in the previous project.
+ */
+export function useProjectLoader() {
+  const fetchers = useProjectFetchers();
+  const [state, setState] = useState<ProjectLoadState>({ status: 'idle' });
+  const controllerRef = useRef<AbortController | null>(null);
 
   /**
    * Abandons the load in flight, if any. The state goes back to idle with it:
