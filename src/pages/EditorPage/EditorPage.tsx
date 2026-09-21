@@ -21,7 +21,13 @@ import {
 } from '@/features/preferences';
 import { useSession } from '@/features/auth';
 import { useEditorPreferences } from '@/features/preferences';
-import { PreviewPane, isRunnable, useProjectLoader } from '@/features/preview';
+import {
+  PreviewPane,
+  isRunnable,
+  projectTypeInfo,
+  useProjectLoader,
+  useProjectSnapshot,
+} from '@/features/preview';
 import { useLanguages, resolveLanguage } from '@/entities/Language';
 import { RunOutputPane, chooseRunTarget } from '@/features/codeRun';
 import { useDocument, type WorkspaceDocument } from '@/entities/Document';
@@ -31,6 +37,7 @@ import {
   presenceColorFor,
   useCollaborativeDocument,
   type EditorCursor,
+  type EditorProject,
 } from '@/features/collaboration';
 import {
   EditorBreadcrumbs,
@@ -50,6 +57,9 @@ import cls from './EditorPage.module.scss';
 interface EditorPageProps {
   className?: string;
 }
+
+/** Files the editor's TypeScript service checks: it reads JS and TS alike. */
+const TYPE_CHECKED_FILE = /\.(?:[cm]?[jt]s|[jt]sx)$/i;
 
 export const EditorPage = memo((props: EditorPageProps) => {
   const { className } = props;
@@ -262,6 +272,24 @@ export const EditorPage = memo((props: EditorPageProps) => {
     [activeDocument, isReady, text],
   );
 
+  // The editor's type checker sees the files the open one imports, and the
+  // packages it uses, the way the preview resolves them.
+  const typeCheckable = Boolean(activeDocument && !isFolder && TYPE_CHECKED_FILE.test(activeDocument.name));
+  const projectSnapshot = useProjectSnapshot(activeDocument ?? null, liveSource, typeCheckable);
+  const editorProject = useMemo((): EditorProject | null => {
+    if (!projectSnapshot) return null;
+    const info = projectTypeInfo(projectSnapshot.files);
+    return {
+      key: projectSnapshot.rootId ?? 'workspace',
+      path: projectSnapshot.entry,
+      files: projectSnapshot.files,
+      packages: info.packages,
+      paths: info.paths,
+      strict: info.strict,
+      usesJsx: info.usesJsx,
+    };
+  }, [projectSnapshot]);
+
   /**
    * A run takes a snapshot rather than tracking the buffer live: recomputing
    * the document on every keystroke would re-render the frame continuously,
@@ -429,6 +457,7 @@ export const EditorPage = memo((props: EditorPageProps) => {
         text={text}
         awareness={awareness}
         fileName={activeDocument?.name ?? 'untitled'}
+        project={editorProject}
         readOnly={!canEdit}
         peers={peers}
         onCursorChange={setCursor}
