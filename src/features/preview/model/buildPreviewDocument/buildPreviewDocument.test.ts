@@ -124,4 +124,65 @@ describe('buildPreviewDocument', () => {
     const island = html.slice(html.indexOf('id="__workspace__"'));
     expect(island.slice(0, island.indexOf('</script>'))).not.toContain('README.md');
   });
+
+  test('resolves npm imports through the import map, with no CDN URL in the code', () => {
+    const html = buildPreviewDocument({
+      files: [{ path: entry, content: "import { useState } from 'react';" }],
+      entry,
+    });
+    const packages = packagesIn(html);
+
+    expect(packages.react).toBe('https://esm.sh/react@19');
+  });
+
+  test('gives a React app somewhere to mount', () => {
+    const html = buildPreviewDocument({ files: [{ path: entry, content: '' }], entry });
+
+    expect(html).toContain('<div id="root"></div>');
+  });
+
+  test('mounts the default export of a component file', () => {
+    const html = buildPreviewDocument({
+      files: [{ path: 'App.js', content: 'export default function App() {}' }],
+      entry: 'App.tsx',
+    });
+
+    expect(html).toContain('data-mount="default"');
+    // The loader imports these itself, so they must be mapped even unimported.
+    expect(packagesIn(html)['react-dom/client']).toContain('esm.sh/react-dom@19/client');
+  });
+
+  test('does not mount a component file that renders itself', () => {
+    const html = buildPreviewDocument({
+      files: [{
+        path: 'App.js',
+        content: "import { createRoot } from 'react-dom/client';\ncreateRoot(el).render(x);\nexport default 1;",
+      }],
+      entry: 'App.tsx',
+    });
+
+    expect(html).not.toContain('data-mount');
+  });
+
+  test('never mounts a plain script’s default export', () => {
+    const html = buildPreviewDocument({
+      files: [{ path: entry, content: 'export default function main() {}' }],
+      entry,
+    });
+
+    expect(html).not.toContain('data-mount');
+  });
+
+  test('paints its own background, so dark-scheme text is never white on white', () => {
+    const html = buildPreviewDocument({ files: [{ path: entry, content: '' }], entry });
+
+    expect(html).toContain('background: Canvas');
+    expect(html).toContain('color: CanvasText');
+  });
 });
+
+function packagesIn(html: string): Record<string, string> {
+  const start = html.indexOf('id="__packages__"');
+  const island = html.slice(html.indexOf('>', start) + 1);
+  return JSON.parse(island.slice(0, island.indexOf('</script>'))) as Record<string, string>;
+}

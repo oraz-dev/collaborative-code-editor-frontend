@@ -1,7 +1,10 @@
+import type { Transform } from 'sucrase';
 import type { PreviewFile } from '../buildPreviewDocument/buildPreviewDocument';
 
 const TYPESCRIPT = /\.tsx?$/i;
 const JSX_SOURCE = /\.(tsx|jsx)$/i;
+/** Everything the compiler has to see before a browser can run it. */
+const COMPILED = /\.(tsx?|jsx)$/i;
 
 export interface TranspileFailure {
   path: string;
@@ -14,7 +17,7 @@ export interface TranspileResult {
 }
 
 export function needsTranspile(path: string): boolean {
-  return TYPESCRIPT.test(path);
+  return COMPILED.test(path);
 }
 
 /**
@@ -25,7 +28,7 @@ export function needsTranspile(path: string): boolean {
  * `.js` is what makes the ordinary spelling resolve without any aliasing.
  */
 export function transpiledPath(path: string): string {
-  return needsTranspile(path) ? path.replace(TYPESCRIPT, '.js') : path;
+  return needsTranspile(path) ? path.replace(COMPILED, '.js') : path;
 }
 
 /** Sucrase reports the offset but not the line; this makes it clickable-ish. */
@@ -42,8 +45,14 @@ function describeError(error: unknown, source: string): string {
   return `${error.message} (line ${line})`;
 }
 
+function transformsFor(path: string): Transform[] {
+  const transforms: Transform[] = TYPESCRIPT.test(path) ? ['typescript'] : [];
+  if (JSX_SOURCE.test(path)) transforms.push('jsx');
+  return transforms;
+}
+
 /**
- * Strips types so the sandbox can run TypeScript.
+ * Strips types and compiles JSX so the sandbox can run TypeScript and React.
  *
  * Transpile-only, deliberately: it removes annotations and rewrites the few
  * TS-specific constructs, but it does **not** type-check. `const x: number =
@@ -71,7 +80,14 @@ export async function transpileWorkspace(files: PreviewFile[]): Promise<Transpil
 
     try {
       const { code } = transform(file.content, {
-        transforms: JSX_SOURCE.test(file.path) ? ['typescript', 'jsx'] : ['typescript'],
+        transforms: transformsFor(file.path),
+        // The automatic runtime imports `react/jsx-runtime` itself, so a
+        // component file needs no `import React` just to have JSX in scope.
+        // The package resolver maps that import like any other.
+        jsxRuntime: 'automatic',
+        // The dev runtime would stamp every element with a `this` that is
+        // undefined in a module, and adds nothing the console can show.
+        production: true,
         // Keeps `import type` erasure honest without a full type graph.
         disableESTransforms: true,
         filePath: file.path,
