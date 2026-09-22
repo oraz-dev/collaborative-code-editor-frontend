@@ -90,6 +90,12 @@ describe('resolveDeclaration', () => {
     expect(resolveDeclaration(from, specifier, files)).toBe(expected);
   });
 
+  test('a .cjs import lands on its .d.cts twin, never on the JavaScript beside it', () => {
+    const cjs = new Set(['v4/external.cjs', 'v4/external.d.cts', 'index.d.cts']);
+    expect(resolveDeclaration('index.d.cts', './v4/external.cjs', cjs)).toBe('v4/external.d.cts');
+    expect(resolveDeclaration('index.d.cts', './v4/missing.cjs', new Set(['v4/missing.cjs']))).toBeNull();
+  });
+
   test('null when the package has no such declaration', () => {
     expect(resolveDeclaration('index.d.ts', './missing', files)).toBeNull();
   });
