@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, type ReactNode } from 'react';
 import { classNames } from '@/shared/lib/classNames/classNames';
 import { Icons } from '@/shared/ui/Icon/Icons';
 import { fileTypeFor } from '@/shared/lib/fileType/fileType';
@@ -20,6 +20,8 @@ interface EditorStatusBarProps {
   /** Number of other people in the document right now. */
   peerCount?: number;
   encoding?: string;
+  /** Extra items at the start of the bar, e.g. background work in progress. */
+  addonLeft?: ReactNode;
 }
 
 /** The bar along the bottom of the editor: position, indentation, language. */
@@ -32,6 +34,7 @@ export const EditorStatusBar = memo((props: EditorStatusBarProps) => {
     readOnly = false,
     peerCount = 0,
     encoding = 'UTF-8',
+    addonLeft,
   } = props;
 
   const language = fileTypeFor(fileName).label;
@@ -44,6 +47,7 @@ export const EditorStatusBar = memo((props: EditorStatusBarProps) => {
       data-testid="editor-status-bar"
     >
       <span className={cls.left}>
+        {addonLeft}
         {peerCount > 0 && (
           <span className={cls.item} title={`${peerCount} other people are editing this file`}>
             <Icons.Users size={12} />

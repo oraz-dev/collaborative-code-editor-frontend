@@ -39,3 +39,10 @@ describe('EditorStatusBar', () => {
     expect(screen.getByTestId('editor-status-bar')).toHaveTextContent('Read only');
   });
 });
+
+describe('EditorStatusBar addons', () => {
+  test('renders an item passed in at the start of the bar', () => {
+    render(<EditorStatusBar fileName="a.ts" cursor={null} tabSize={2} addonLeft={<span>types</span>} />);
+    expect(screen.getByText('types')).toBeInTheDocument();
+  });
+});

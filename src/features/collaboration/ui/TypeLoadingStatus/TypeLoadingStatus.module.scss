@@ -1,0 +1,302 @@
+@use '../../../../app/styles/breakpoints' as bp;
+
+/*
+ * The item folds in and out of the status bar horizontally. A grid track
+ * animating from 0fr to 1fr is the one way to transition to an intrinsic
+ * width, so neighbours slide aside instead of jumping.
+ */
+.slot {
+  display: inline-grid;
+  grid-template-columns: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-columns var(--duration-slow) var(--ease-out),
+    opacity var(--duration-base) var(--ease);
+}
+
+.shown {
+  grid-template-columns: 1fr;
+  opacity: 1;
+}
+
+.slotInner {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 18px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: var(--transition-control);
+
+  &:hover {
+    background: var(--color-surface-2);
+    color: var(--color-text-secondary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 1px;
+  }
+
+  &[aria-expanded='true'] {
+    background: var(--color-surface-2);
+    color: var(--color-text);
+  }
+}
+
+.triggerDone {
+  color: var(--color-success);
+}
+
+.triggerWarn {
+  color: var(--color-warning);
+}
+
+.miniBar {
+  width: 48px;
+}
+
+.count {
+  font-variant-numeric: tabular-nums;
+}
+
+.panel {
+  position: fixed;
+  z-index: 60;
+  left: var(--panel-left, 8px);
+  bottom: var(--panel-bottom, 32px);
+  display: flex;
+  width: min(320px, calc(100vw - 16px));
+  max-height: min(420px, calc(100vh - 96px));
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-overlay);
+  box-shadow: var(--shadow-xl);
+  color: var(--color-text);
+  font: var(--weight-regular) var(--text-xs) / 1.4 var(--font-body);
+  opacity: 0;
+  transform: translateY(4px) scale(0.98);
+  transform-origin: bottom left;
+
+  &:focus {
+    outline: none;
+  }
+}
+
+/* Revealed once measured, so it never flashes at the fallback position. */
+.placed {
+  animation: panel-in var(--duration-base) var(--ease-out) forwards;
+}
+
+@keyframes panel-in {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3) var(--space-2);
+}
+
+.title {
+  font-weight: var(--weight-semibold);
+}
+
+.headerCount {
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.overall {
+  margin: 0 var(--space-3) var(--space-2);
+}
+
+.list {
+  margin: 0;
+  padding: var(--space-1) 0;
+  overflow-y: auto;
+  border-top: 1px solid var(--color-border-subtle);
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: 7px var(--space-3);
+  transition: background var(--duration-fast) var(--ease);
+
+  &:hover {
+    background: var(--color-surface-2);
+  }
+}
+
+.rowIcon {
+  display: inline-flex;
+  width: 16px;
+  height: 18px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.rowSpinner {
+  height: 12px;
+  color: var(--color-primary);
+}
+
+.ok {
+  color: var(--color-success);
+  animation: settle var(--duration-base) var(--ease-out);
+}
+
+.muted {
+  color: var(--color-text-faint);
+}
+
+.warn {
+  color: var(--color-warning);
+}
+
+@keyframes settle {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+.rowMain {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rowTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.name {
+  overflow: hidden;
+  font-family: var(--font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detail {
+  flex: none;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+
+  [data-status='untyped'] & {
+    color: var(--color-text-faint);
+  }
+
+  [data-status='failed'] & {
+    color: var(--color-warning);
+  }
+}
+
+.meta {
+  color: var(--color-text-faint);
+  font-size: var(--text-2xs);
+}
+
+.rowBar {
+  margin-top: 3px;
+}
+
+.retry {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  align-self: center;
+  padding: 2px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  cursor: pointer;
+  transition: var(--transition-control);
+
+  &:hover {
+    border-color: var(--color-border-strong);
+    color: var(--color-text);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 1px;
+  }
+}
+
+.empty,
+.footer {
+  margin: 0;
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  color: var(--color-text-faint);
+  font-size: var(--text-2xs);
+}
+
+.footer {
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* On a phone the words go; the icon, bar and count carry it. */
+@include bp.phone {
+  .triggerText {
+    display: none;
+  }
+
+  .shown .triggerDone .triggerText,
+  .shown .triggerWarn .triggerText {
+    display: inline;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Appearing still fades; it no longer slides or scales. */
+  .slot {
+    transition: opacity var(--duration-base) var(--ease);
+  }
+
+  .panel {
+    transform: none;
+  }
+
+  .ok {
+    animation: none;
+  }
+}

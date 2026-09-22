@@ -22,4 +22,5 @@ export { CollaborativeEditor } from './ui/CollaborativeEditor/CollaborativeEdito
 export type { EditorCursor } from './ui/CollaborativeEditor/CollaborativeEditor';
 export { RemoteCursorStyles } from './ui/RemoteCursorStyles/RemoteCursorStyles';
 export { ConnectionBadge } from './ui/ConnectionBadge/ConnectionBadge';
+export { TypeLoadingStatus } from './ui/TypeLoadingStatus/TypeLoadingStatus';
 export type { EditorProject } from './model/typeSupport/useTypeSupport/useTypeSupport';
