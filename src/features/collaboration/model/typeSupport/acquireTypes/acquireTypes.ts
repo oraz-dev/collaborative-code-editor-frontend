@@ -37,6 +37,24 @@ export interface TypeFetcher {
   text: (url: string) => Promise<string>;
 }
 
+/**
+ * How far an acquisition has got. `filesFound` only grows: declarations are
+ * discovered by reading the ones before them, so the total is not known
+ * until the walk ends — `done` says when it has.
+ */
+export interface AcquireProgress {
+  /** The package that supplies the types, e.g. `@types/react` for `react`. */
+  source: string | null;
+  version: string | null;
+  filesDone: number;
+  filesFound: number;
+}
+
+export interface AcquireOptions {
+  signal?: AbortSignal;
+  onProgress?: (progress: AcquireProgress) => void;
+}
+
 const DECLARATION = /\.d\.[cm]?ts$/;
 /** A bound per package, far above any real package's reachable declarations. */
 const MAX_FILES_PER_PACKAGE = 1500;
@@ -263,9 +281,13 @@ interface PackageState {
 export async function acquireTypes(
   requests: TypeRequest[],
   fetcher: TypeFetcher,
-  signal?: AbortSignal,
+  options: AcquireOptions = {},
 ): Promise<AcquiredTypes> {
+  const { signal, onProgress } = options;
   const run = limiter(CONCURRENCY);
+  const progress: AcquireProgress = { source: null, version: null, filesDone: 0, filesFound: 0 };
+  const report = () => onProgress?.({ ...progress });
+  const primary = new Set(requests.map((request) => request.name));
   const output = new Map<string, string>();
   const packages = new Map<string, Promise<PackageState | null>>();
   const pinned = new Map(requests.map((request) => [request.name, request.range]));
@@ -298,6 +320,11 @@ export async function acquireTypes(
       state = (async () => {
         try {
           const chosen = await chooseTypes(name, range);
+          if (chosen && primary.has(name) && !progress.source) {
+            progress.source = chosen.directory;
+            progress.version = chosen.version;
+            report();
+          }
           // Only the package that supplies the types gets a manifest: react's
           // own, which has none, would otherwise stand in front of @types/react.
           if (chosen) output.set(`node_modules/${chosen.directory}/package.json`, JSON.stringify(chosen.manifest));
@@ -326,12 +353,19 @@ export async function acquireTypes(
   async function walk(state: PackageState, entries: string[], ranges: Record<string, string>): Promise<void> {
     const queue = entries.filter((entry) => !state.walked.has(entry));
     queue.forEach((entry) => state.walked.add(entry));
+    progress.filesFound += queue.length;
+    report();
     const pending: Promise<unknown>[] = [];
 
     while (queue.length > 0) {
       const batch = queue.splice(0, queue.length);
       const sources = await Promise.all(batch.map((file) =>
-        text(`${PACKAGE_CDN}/${state.directory}@${state.version}/${file}`).catch(() => null)));
+        text(`${PACKAGE_CDN}/${state.directory}@${state.version}/${file}`)
+          .catch(() => null)
+          .finally(() => {
+            progress.filesDone += 1;
+            report();
+          })));
       if (signal?.aborted) return;
 
       batch.forEach((file, index) => {
@@ -345,6 +379,7 @@ export async function acquireTypes(
             if (target && !state.walked.has(target) && state.walked.size < MAX_FILES_PER_PACKAGE) {
               state.walked.add(target);
               queue.push(target);
+              progress.filesFound += 1;
             }
             continue;
           }

@@ -30,6 +30,8 @@ const fileIcons = {
 const actionIcons = {
   Plus:       I('M5 12h14', 'M12 5v14'),
   Minus:      I('M5 12h14'),
+  Warning:    I('M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z', 'M12 9v4', 'M12 17h.01'),
+  Retry:      I('M21 12a9 9 0 1 1-2.64-6.36L21 8', 'M21 3v5h-5'),
   X:          I('M18 6 6 18', 'M6 6l12 12'),
   Check:      I('M20 6 9 17l-5-5'),
   CheckCircle: I('M22 11.1V12a10 10 0 1 1-5.9-9.1', 'm9 11 3 3L22 4'),

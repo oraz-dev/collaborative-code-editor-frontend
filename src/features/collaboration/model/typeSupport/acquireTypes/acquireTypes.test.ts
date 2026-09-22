@@ -192,4 +192,20 @@ describe('acquireTypes', () => {
     expect(result.typed).toEqual([]);
     expect(result.files).toEqual([]);
   });
+
+  test('reports progress: where the types come from, and files done against files found', async () => {
+    const { fetcher } = fakeRegistry(registry);
+    const events: { source: string | null; filesDone: number; filesFound: number }[] = [];
+    await acquireTypes([{ name: 'react', range: '19' }], fetcher, { onProgress: (event) => events.push(event) });
+
+    const last = events[events.length - 1];
+    expect(last.source).toBe('@types/react');
+    expect(last.filesDone).toBe(last.filesFound);
+    expect(last.filesFound).toBeGreaterThan(0);
+    // Counts only ever grow.
+    for (let index = 1; index < events.length; index += 1) {
+      expect(events[index].filesFound).toBeGreaterThanOrEqual(events[index - 1].filesFound);
+      expect(events[index].filesDone).toBeGreaterThanOrEqual(events[index - 1].filesDone);
+    }
+  });
 });

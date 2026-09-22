@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import type { editor } from 'monaco-editor';
 import type { Monaco } from '@monaco-editor/react';
 import { logger } from '@/shared/lib/logger/logger';
@@ -11,6 +11,7 @@ import {
 import { compilerOptions, projectLibs, type ProjectSource } from '../editorLibs/editorLibs';
 import { createTypeFetcher } from '../typeFetcher/typeFetcher';
 import { TypeRegistry, type LanguageDefaults } from '../typeRegistry/typeRegistry';
+import { TypeProgressStore, type TypeProgressSnapshot } from '../typeProgress/typeProgress';
 
 /**
  * The project around the open file, as the editor's type checker needs it.
@@ -60,6 +61,14 @@ const typed = new Set<string>();
 /** Acquisitions started, by package and subpaths, so none is fetched twice. */
 const started = new Map<string, Promise<void>>();
 let wanted: string[] = [];
+/** The latest request per package, so a failed one can be retried as it was asked. */
+const lastRequest = new Map<string, TypeRequest>();
+const progress = new TypeProgressStore();
+
+function setWanted(names: string[]): void {
+  wanted = names;
+  progress.setWanted(names);
+}
 
 /**
  * How long typing must pause before the open file's imports are re-read.
@@ -106,21 +115,44 @@ function markUntyped(): void {
 function acquire(request: TypeRequest): void {
   const key = requestKey(request);
   if (started.has(key)) return;
+  lastRequest.set(request.name, request);
+
+  // A new subpath of a package that already has types fills in quietly: the
+  // package is usable meanwhile, and a bar restarting at 0 would say it is not.
+  const visible = !typed.has(request.name);
+  if (visible) progress.start(request.name);
 
   fetcher ??= createTypeFetcher();
-  const job = acquireTypes([request], fetcher)
+  const job = acquireTypes([request], fetcher, {
+    onProgress: visible ? (update) => progress.update(request.name, update) : undefined,
+  })
     .then((result) => {
       registry.addPackageFiles(result.files);
       result.typed.forEach((name) => typed.add(name));
       markUntyped();
+      if (visible) progress.finish(request.name, result.typed.includes(request.name) ? 'ready' : 'untyped');
     })
     .catch((error: unknown) => {
-      // Offline, or the CDN is down: the package stays typed as `any`, and a
-      // later project open tries again.
+      // Offline, or the CDN is down: the package stays typed as `any` and
+      // can be retried from the status bar, or on the next project open.
       started.delete(key);
+      if (visible) progress.finish(request.name, 'failed');
       logger.warn(`Could not load types for ${request.name}`, error);
     });
   started.set(key, job);
+}
+
+/** Tries a package whose download failed again, as it was last requested. */
+export function retryTypes(name: string): void {
+  const request = lastRequest.get(name);
+  if (!request) return;
+  started.delete(requestKey(request));
+  acquire(request);
+}
+
+/** Package type downloads for the open project, for the status bar. */
+export function useTypeProgress(): TypeProgressSnapshot {
+  return useSyncExternalStore(progress.subscribe, progress.getSnapshot, progress.getSnapshot);
 }
 
 /**
@@ -143,7 +175,7 @@ export function useTypeSupport(
     if (!monaco || !project) return;
 
     const requests = typeRequests(project);
-    wanted = requests.map((request) => request.name);
+    setWanted(requests.map((request) => request.name));
 
     registry.setProject(
       projectLibs(project.key, project.files, project.path),
@@ -162,7 +194,7 @@ export function useTypeSupport(
       const fresh = liveRequests(model.getValue(), project)
         .filter((request) => !started.has(requestKey(request)));
       if (fresh.length === 0) return;
-      wanted = [...new Set([...wanted, ...fresh.map((request) => request.name)])];
+      setWanted([...new Set([...wanted, ...fresh.map((request) => request.name)])]);
       markUntyped();
       fresh.forEach(acquire);
     };

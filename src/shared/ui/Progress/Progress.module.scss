@@ -1,15 +1,31 @@
 .progress {
-  height: 7px;
+  --progress-height: 7px;
+  --progress-fill: var(--color-primary);
+
+  position: relative;
+  height: var(--progress-height);
   border-radius: var(--radius-full);
   background: var(--color-surface-3);
   overflow: hidden;
 }
 
+.xs { --progress-height: 3px; }
+.sm { --progress-height: 4px; }
+.md { --progress-height: 7px; }
+
+.primary { --progress-fill: var(--color-primary); }
+.success { --progress-fill: var(--color-success); }
+.warning { --progress-fill: var(--color-warning); }
+
 .bar {
+  width: 100%;
   height: 100%;
-  border-radius: var(--radius-full);
-  background: var(--color-primary);
-  transition: width var(--duration-base) var(--ease);
+  border-radius: inherit;
+  background: var(--progress-fill);
+  transform-origin: left center;
+  /* Long enough to glide between the bursts a download reports in, short
+     enough that the bar never trails behind the count beside it. */
+  transition: transform 320ms var(--ease-out), background var(--duration-base) var(--ease);
 }
 
 .indeterminate .bar {
@@ -18,6 +34,17 @@
 }
 
 @keyframes indet {
-  0% { margin-left: -36%; }
-  100% { margin-left: 100%; }
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(280%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Progress is the message, so the fill still moves — it just stops gliding. */
+  .bar {
+    transition: none;
+  }
+
+  .indeterminate .bar {
+    animation-duration: 2.8s;
+  }
 }

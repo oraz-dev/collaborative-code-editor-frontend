@@ -35,6 +35,7 @@ import {
   CollaborativeEditor,
   ConnectionBadge,
   presenceColorFor,
+  TypeLoadingStatus,
   useCollaborativeDocument,
   type EditorCursor,
   type EditorProject,
@@ -619,6 +620,7 @@ export const EditorPage = memo((props: EditorPageProps) => {
               tabSize={editorPreferences.tabSize}
               readOnly={!canEdit}
               peerCount={others.length}
+              addonLeft={typeCheckable ? <TypeLoadingStatus /> : null}
             />
           )}
         </div>
