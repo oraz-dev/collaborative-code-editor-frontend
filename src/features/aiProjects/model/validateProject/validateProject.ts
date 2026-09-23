@@ -64,6 +64,32 @@ const PAGE = 'index.html';
 const MAX_LINES = 150;
 
 /**
+ * Below these, a file is not a file.
+ *
+ * Measured against a real failure: a model answered with a 27-byte
+ * `<!doctype html><html></html>` and stopped, and the pipeline counted it as
+ * file 1 of 5 — so the one file that decides whether anything renders was
+ * never asked for again. The smallest page that can actually start a project
+ * — a doctype, a mount point and a module script — is around 150 bytes, and
+ * the smallest script that can do anything is a line of code.
+ */
+const MIN_PAGE_BYTES = 120;
+const MIN_SCRIPT_BYTES = 40;
+
+/** Anything a page could mount into, and anything it could load. */
+const ANY_MOUNT_POINT = /\bid\s*=\s*["'][^"']+["']/;
+const ANY_SCRIPT = /<script\b/i;
+
+/**
+ * Something being declared, imported, called or assigned.
+ *
+ * The size rule alone is too blunt for scripts: `export const total = 1;` is
+ * 24 bytes and a perfectly real module, while `export {};` is 10 and is the
+ * model stalling. A short file is only a stub when it also does nothing.
+ */
+const DOES_SOMETHING = /\b(?:const|let|var|function|class|import|from|return|new|await|throw)\b|=>|=[^=>]|\w\s*\(/;
+
+/**
  * Packages that only ever exist to build something. There is no build step
  * here, so listing one is not a harmless extra: it is the model telling us it
  * wrote the project for a toolchain this runtime does not have, and the rest
@@ -176,6 +202,40 @@ function readManifest(files: ProjectFile[]): Manifest {
   }
 }
 
+/**
+ * A file too small or too empty to be one, or null when it is real.
+ *
+ * Exported because two places need the same answer: validation reports it as
+ * an error the model must fix, and the generator's top-up treats such a file
+ * as one that was never written — the whole failure was a stub counting as
+ * done. One function, so the two can never disagree about what a stub is.
+ */
+export function stubFileProblem(file: ProjectFile): ProjectProblem | null {
+  const { path, content } = file;
+
+  if (content.trim() === '') {
+    return problem(path, 'This file is empty.', `Write "${path}" in full — an empty file is not an answer. Either write its complete contents or do not write the file at all.`);
+  }
+  if (
+    path === PAGE
+    && content.length < MIN_PAGE_BYTES
+    && !ANY_MOUNT_POINT.test(content)
+    && !ANY_SCRIPT.test(content)
+  ) {
+    return problem(path, `Only ${content.length} bytes, with nothing to mount into and nothing to load: this is a stub, not a page.`, `Write "index.html" in full: a complete page with <div id="root"></div> in the <body> and <script type="module" src="/src/main.tsx"></script>.`);
+  }
+  if (SCRIPT.test(path) && content.length < MIN_SCRIPT_BYTES && !DOES_SOMETHING.test(content)) {
+    return problem(path, `Only ${content.length} bytes, and none of it does anything: this file was left as a stub.`, `Write "${path}" in full — its complete contents, not a placeholder.`);
+  }
+
+  return null;
+}
+
+/** Whether a file is too small or too empty to count as written. */
+export function isStubFile(file: ProjectFile): boolean {
+  return stubFileProblem(file) !== null;
+}
+
 /** Paths that cannot become documents, or cannot be reached once they are. */
 function checkPaths(files: ProjectFile[], errors: ProjectProblem[], warnings: ProjectProblem[]): void {
   const seen = new Set<string>();
@@ -195,9 +255,12 @@ function checkPaths(files: ProjectFile[], errors: ProjectProblem[], warnings: Pr
     if (BINARY.test(path)) {
       errors.push(problem(path, 'Binary files cannot exist in this editor.', `Delete "${path}" and draw it with inline SVG, CSS or an emoji instead — binary assets cannot be stored or imported here.`));
     }
-    if (content.trim() === '') {
-      warnings.push(problem(path, 'This file is empty.', `Write the full contents of "${path}" or leave it out altogether.`));
-    }
+    // An error, not a warning: a file the model left as a stub is a file the
+    // project does not have, and the run that proved it only survived because
+    // the truncation top-up happened to ask for the rest.
+    const stub = stubFileProblem({ path, content });
+    if (stub) errors.push(stub);
+
     if (SCRIPT.test(path) && lineCount(content) > MAX_LINES) {
       warnings.push(problem(path, `${lineCount(content)} lines — long enough to be hard to read.`, `Split "${path}" into smaller files, each under ${MAX_LINES} lines.`));
     }

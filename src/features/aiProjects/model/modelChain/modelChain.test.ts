@@ -85,7 +85,7 @@ describe('nextModel', () => {
 
 describe('modelLabel and findModel', () => {
   test('names a known model, and falls back to the id', () => {
-    expect(modelLabel(DEFAULT_MODEL)).toBe('Qwen3.8 27B');
+    expect(modelLabel(DEFAULT_MODEL)).toBe('Nex-N2.5 Mini');
     expect(modelLabel('someone/else:free')).toBe('someone/else:free');
     expect(findModel('someone/else:free')).toBeNull();
     expect(findModel(DEFAULT_MODEL)?.structured).toBe(true);
@@ -110,7 +110,7 @@ describe('rankFreeModels', () => {
 
     expect(rankFreeModels(live)[0]).toMatchObject({
       id: DEFAULT_MODEL,
-      label: 'Qwen3.8 27B',
+      label: 'Nex-N2.5 Mini',
       structured: false,
       maxOutput: 16_384,
       contextLength: 32_768,

@@ -6,6 +6,7 @@ import {
   type ChatResult,
   type JsonSchemaSpec,
   type OpenRouterClient,
+  type StreamActivity,
 } from '../openrouter/openrouter';
 import {
   FREE_MODEL_CHAIN,
@@ -28,7 +29,12 @@ import {
   repairMessages,
   type ProjectPlan,
 } from '../prompts/prompts';
-import { repairHints, validateProject, type ValidationReport } from '../validateProject/validateProject';
+import {
+  isStubFile,
+  repairHints,
+  validateProject,
+  type ValidationReport,
+} from '../validateProject/validateProject';
 import {
   createProjectDocuments,
   isProjectCreationError,
@@ -84,6 +90,25 @@ export interface StreamProgress {
   path: string | null;
   /** Characters of response received, which is all the size there is to show. */
   bytes: number;
+  /**
+   * Whether the model has said a single word of the answer yet.
+   *
+   * False through the whole reasoning phase — four minutes of it, in the run
+   * this exists for — which is the difference between "thinking" and "writing"
+   * and the only honest reason to show an indeterminate bar.
+   */
+  contentStarted: boolean;
+  /** When the request went out, by the injected clock; null before it did. */
+  startedAt: number | null;
+  /**
+   * The last sign of life of any kind — a keep-alive counts.
+   *
+   * The connection being alive is a fact worth showing, and during a long
+   * reasoning phase it is the only fact there is.
+   */
+  lastActivityAt: number | null;
+  /** Content characters received, counted as they arrive rather than scanned. */
+  contentBytes: number;
 }
 
 export type AttemptOutcome = 'answered' | 'busy' | 'failed' | 'unusable';
@@ -147,6 +172,13 @@ export interface ProjectGeneratorOptions {
   existingNames?: string[];
   /** Stream guards; the defaults are the ones measured against a real loop. */
   limits?: StreamLimits;
+  /**
+   * The clock, injected the way `relativeTime` takes its `now`.
+   *
+   * Progress carries timestamps now — when the request went out, when the last
+   * sign of life arrived — and a test cannot assert on a clock it does not own.
+   */
+  now?: () => number;
 }
 
 /** What `useProjectGenerator` hands back: the UI is written against this, not the hook. */
@@ -164,7 +196,15 @@ export interface ProjectGenerator {
   reset: () => void;
 }
 
-const EMPTY_PROGRESS: StreamProgress = { files: 0, path: null, bytes: 0 };
+const EMPTY_PROGRESS: StreamProgress = {
+  files: 0,
+  path: null,
+  bytes: 0,
+  contentStarted: false,
+  startedAt: null,
+  lastActivityAt: null,
+  contentBytes: 0,
+};
 
 const INITIAL_STATE: GeneratorState = {
   phase: 'idle',
@@ -282,6 +322,17 @@ export function readPlan(text: string): ProjectPlan | null {
   };
 }
 
+/**
+ * The files worth telling the model it has already written.
+ *
+ * A stub is not one of them. Shown in "FILES WRITTEN SO FAR" it reads as done,
+ * and the prompt's own rule — "do not repeat a file that is already correct" —
+ * then talks the model out of writing the one file that has to be rewritten.
+ */
+function realFiles(files: ProjectFile[]): ProjectFile[] {
+  return files.filter((file) => !isStubFile(file));
+}
+
 /** Later files win, and order is kept — a repair replaces, it does not append twice. */
 export function mergeFiles(existing: ProjectFile[], incoming: ProjectFile[]): ProjectFile[] {
   const merged = [...existing];
@@ -293,12 +344,27 @@ export function mergeFiles(existing: ProjectFile[], incoming: ProjectFile[]): Pr
   return merged;
 }
 
-/** What the plan promised and the response never delivered. */
+/**
+ * What the plan promised and the response never delivered.
+ *
+ * A stub counts as undelivered. The failure this rule comes from: a model
+ * wrote a 27-byte `index.html` and stopped, the file was counted as written,
+ * and the top-up asked only for the four that were missing outright — so the
+ * one file that decides whether anything renders was never asked for again.
+ */
 export function missingPaths(plan: ProjectPlan | null, finished: FinishResult): string[] {
-  const written = new Set(finished.files.map((file) => file.path));
+  const stubs = finished.files.filter(isStubFile).map((file) => file.path);
+  const written = new Set(
+    finished.files.map((file) => file.path).filter((path) => !stubs.includes(path)),
+  );
   const missing = (plan?.files ?? [])
     .map((file) => file.path)
     .filter((path) => !written.has(path));
+
+  // A stub the plan never named is still a file that has to be written again.
+  for (const path of stubs) {
+    if (!missing.includes(path)) missing.push(path);
+  }
 
   // The file it was cut off inside was dropped for being incomplete, and it is
   // not always one the plan named.
@@ -317,6 +383,8 @@ interface AttemptOptions<T> {
   onStart?: (model: ChainModel) => void;
   /** Each delta. Returning false stops this attempt and keeps what arrived. */
   onDelta?: (delta: string) => boolean;
+  /** Every sign of life, content or not — including the keep-alives. */
+  onActivity?: (activity: StreamActivity) => void;
   /**
    * Turns an attempt into a value, or null to move down the chain. `result` is
    * null when `onDelta` stopped the attempt deliberately.
@@ -342,6 +410,7 @@ export function useProjectGenerator(options: ProjectGeneratorOptions): ProjectGe
     createDocument,
     existingNames,
     limits,
+    now = Date.now,
   } = options;
 
   const [state, setState] = useState<GeneratorState>(INITIAL_STATE);
@@ -386,7 +455,7 @@ export function useProjectGenerator(options: ProjectGeneratorOptions): ProjectGe
    * model is cut off while the generation carries on with what it sent.
    */
   const attempt = useCallback(async <T,>(config: AttemptOptions<T>): Promise<AttemptResult<T>> => {
-    const { messages, schema, maxTokens, signal, onStart, onDelta, read } = config;
+    const { messages, schema, maxTokens, signal, onStart, onDelta, onActivity, read } = config;
     const attempts: ModelAttempt[] = [];
     const tried: string[] = [];
     let preferStructured = true;
@@ -419,6 +488,7 @@ export function useProjectGenerator(options: ProjectGeneratorOptions): ProjectGe
           maxTokens: Math.min(maxTokens, current.maxOutput),
           temperature: TEMPERATURE,
           signal: child.signal,
+          onActivity,
           onDelta: onDelta && ((delta: string) => {
             if (stopped || onDelta(delta) !== false) return;
             stopped = true;
@@ -514,15 +584,30 @@ export function useProjectGenerator(options: ProjectGeneratorOptions): ProjectGe
     let stream = createFileStream(guards);
     let lastTick = 0;
 
+    // Liveness, kept beside the scanner's own numbers: the two answer different
+    // questions — "how much of the project is written" and "is anything
+    // happening at all" — and during a reasoning phase only the second has an
+    // answer.
+    let startedAt: number | null = null;
+    let lastActivityAt: number | null = null;
+    let contentStarted = false;
+    let contentBytes = 0;
+
+    const snapshot = (): StreamProgress => ({
+      files: stream.files.length,
+      path: stream.pending,
+      bytes: stream.text.length,
+      contentStarted,
+      startedAt,
+      lastActivityAt,
+      contentBytes,
+    });
+
     const report = (force: boolean) => {
-      const now = Date.now();
-      if (!force && now - lastTick < PROGRESS_INTERVAL_MS) return;
-      lastTick = now;
-      onFiles?.(stream.files, {
-        files: stream.files.length,
-        path: stream.pending,
-        bytes: stream.text.length,
-      });
+      const at = now();
+      if (!force && at - lastTick < PROGRESS_INTERVAL_MS) return;
+      lastTick = at;
+      onFiles?.(stream.files, snapshot());
     };
 
     const { value, attempts, model } = await attempt<FinishResult>({
@@ -532,10 +617,27 @@ export function useProjectGenerator(options: ProjectGeneratorOptions): ProjectGe
       signal: controller.signal,
       onStart: () => {
         // A new model starts from nothing: half a project from the busy one
-        // would merge into this one's answer.
+        // would merge into this one's answer — and its clock starts here too,
+        // since the elapsed time on screen is this model's, not the run's.
         stream = createFileStream(guards);
         lastTick = 0;
-        onFiles?.([], EMPTY_PROGRESS);
+        startedAt = now();
+        lastActivityAt = startedAt;
+        contentStarted = false;
+        contentBytes = 0;
+        onFiles?.([], snapshot());
+      },
+      onActivity: (activity) => {
+        lastActivityAt = now();
+        const first = activity.kind === 'content' && !contentStarted;
+        if (activity.kind === 'content') {
+          contentStarted = true;
+          contentBytes += activity.bytes;
+        }
+        // Forced on the first content: "thinking" becoming "writing" is the one
+        // change the user has been waiting minutes for, and it must not sit in
+        // the throttle. Everything else — keep-alives, reasoning — is a tick.
+        report(first);
       },
       onDelta: (delta) => {
         const pushed = stream.push(delta);
@@ -550,7 +652,7 @@ export function useProjectGenerator(options: ProjectGeneratorOptions): ProjectGe
 
     report(true);
     return { finished: value, attempts, model };
-  }, [attempt, limits]);
+  }, [attempt, limits, now]);
 
   const fail = useCallback((controller: AbortController, error: unknown) => {
     if (!owns(controller)) return;
@@ -654,9 +756,9 @@ export function useProjectGenerator(options: ProjectGeneratorOptions): ProjectGe
           patch({ notice: 'The answer was cut off — asking for the last files.' });
           try {
             const top = await streamProject(
-              repairMessages(request, files, [
-                `The answer was cut off before these files were written: ${missing.join(', ')}.`,
-                'Return only those files, each one complete. Do not repeat the files that are already written.',
+              repairMessages(request, realFiles(files), [
+                `The answer was cut off before these files were written in full: ${missing.join(', ')}.`,
+                'Return only those files, each one complete from its first line to its last. Do not repeat the files that are already written.',
               ]),
               controller,
               undefined,
@@ -690,7 +792,7 @@ export function useProjectGenerator(options: ProjectGeneratorOptions): ProjectGe
         patch({ phase: 'repairing', report });
         try {
           const fixes = await streamProject(
-            repairMessages(request, files, repairHints(report)),
+            repairMessages(request, realFiles(files), repairHints(report)),
             controller,
             undefined,
             true,
@@ -718,7 +820,7 @@ export function useProjectGenerator(options: ProjectGeneratorOptions): ProjectGe
         report,
         repaired,
         notice: notices.join(' ') || null,
-        progress: { files: files.length, path: null, bytes: stateRef.current.progress.bytes },
+        progress: { ...stateRef.current.progress, files: files.length, path: null },
       });
     } catch (error) {
       fail(controller, error);
@@ -742,7 +844,7 @@ export function useProjectGenerator(options: ProjectGeneratorOptions): ProjectGe
 
     try {
       const fixes = await streamProject(
-        repairMessages(request, files, repairHints(report)),
+        repairMessages(request, realFiles(files), repairHints(report)),
         controller,
         undefined,
         true,

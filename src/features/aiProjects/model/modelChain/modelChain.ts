@@ -24,53 +24,72 @@ export interface ChainModel {
  * The ranked chain, measured against the live catalogue and by asking each
  * model for a project.
  *
- * Order is "gets valid JSON back soonest", not raw size: the two 262k/235k
- * strict-JSON models that answered first come before the 512k one, whose long
- * reasoning phase costs a minute before the first file appears, and every
- * strict-JSON model comes before the one that can only be *asked* for JSON.
+ * Order is measured, not guessed. The same real generate request, sent to
+ * every candidate at the same moment, then run through validateProject:
+ *
+ *   nex-n2.5-mini        9s   5 files, clean
+ *   nemotron-3-super    22s   4 files, INVALID (unterminated string, bad json)
+ *   dots-3-note         32s   5 files, clean
+ *   north-mini-code     79s   5 files, clean
+ *   nex-n2.5-pro       230s   5 files, clean
+ *   qwen3.8-27b, gemma-4-31b    429, rate-limited upstream
+ *
+ * So the fastest clean answer leads, and the 27B model the user picked keeps
+ * its place behind it because it is genuinely good whenever it is free.
+ * Nemotron is last of the strict-JSON group: speed is worth nothing when the
+ * code does not parse. The two that can only be *asked* for JSON come after
+ * all of them, which is also the invariant `nextModel` relies on.
  */
 export const FREE_MODEL_CHAIN: ChainModel[] = [
-  {
-    id: 'qwen/qwen3.8-27b:free',
-    label: 'Qwen3.8 27B',
-    structured: true,
-    maxOutput: 235_929,
-    contextLength: 262_144,
-    note: 'Default. Best code, but busiest — often rate-limited.',
-  },
-  {
-    id: 'nex-agi/nex-n2.5-pro:free',
-    label: 'Nex-N2.5 Pro',
-    structured: true,
-    maxOutput: 235_929,
-    contextLength: 262_144,
-    note: 'Most reliable stand-in when the default is busy.',
-  },
-  {
-    id: 'nvidia/nemotron-3-super-120b-a12b:free',
-    label: 'Nemotron 3 Super',
-    structured: true,
-    maxOutput: 235_929,
-    contextLength: 262_144,
-    note: 'Answers well; wraps its JSON in chatter, which is parsed off.',
-  },
   {
     id: 'nex-agi/nex-n2.5-mini:free',
     label: 'Nex-N2.5 Mini',
     structured: true,
     maxOutput: 235_929,
     contextLength: 262_144,
-    note: 'Fast and small — good for a plan, thinner on code.',
+    note: 'Fastest clean answer — about 9 seconds for a small project.',
   },
-  {
+{
+    id: 'qwen/qwen3.8-27b:free',
+    label: 'Qwen3.8 27B',
+    structured: true,
+    maxOutput: 235_929,
+    contextLength: 262_144,
+    note: 'Strong code, but the busiest free model — often rate-limited.',
+  },
+{
     id: 'dots-studio/dots-3-note-preview:free',
     label: 'Dots3-Note Preview',
     structured: true,
     maxOutput: 460_800,
     contextLength: 512_000,
-    note: 'Largest context, but thinks for a long time before the first file.',
+    note: 'Largest budget; about half a minute of thinking first.',
   },
-  {
+{
+    id: 'nex-agi/nex-n2.5-pro:free',
+    label: 'Nex-N2.5 Pro',
+    structured: true,
+    maxOutput: 235_929,
+    contextLength: 262_144,
+    note: 'Same family as Mini but spends minutes reasoning; a last resort.',
+  },
+{
+    id: 'nvidia/nemotron-3-super-120b-a12b:free',
+    label: 'Nemotron 3 Super',
+    structured: true,
+    maxOutput: 235_929,
+    contextLength: 262_144,
+    note: 'Quick, but has returned code that does not parse — late for that reason.',
+  },
+{
+    id: 'cohere/north-mini-code:free',
+    label: 'North Mini Code',
+    structured: false,
+    maxOutput: 64_000,
+    contextLength: 256_000,
+    note: 'Code-specialised, prompt-JSON only, and slow (over a minute).',
+  },
+{
     id: 'google/gemma-4-31b-it:free',
     label: 'Gemma 4 31B',
     structured: false,
@@ -78,18 +97,10 @@ export const FREE_MODEL_CHAIN: ChainModel[] = [
     contextLength: 262_144,
     note: 'No strict JSON: the shape is asked for in the prompt instead.',
   },
-  {
-    id: 'cohere/north-mini-code:free',
-    label: 'North Mini Code',
-    structured: false,
-    maxOutput: 64_000,
-    contextLength: 256_000,
-    note: 'Code-specialised last resort; prompt-JSON only.',
-  },
 ];
 
 /** The user's chosen default, and the head of the chain. */
-export const DEFAULT_MODEL = 'qwen/qwen3.8-27b:free';
+export const DEFAULT_MODEL = 'nex-agi/nex-n2.5-mini:free';
 
 /**
  * Models this account may not use.

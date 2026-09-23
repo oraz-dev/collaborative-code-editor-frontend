@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import type { ProjectFile } from '../streamJson/streamJson';
-import { repairHints, usesTailwind, validateProject } from './validateProject';
+import { isStubFile, repairHints, usesTailwind, validateProject } from './validateProject';
 
 /**
  * The shape of a good generation, as observed: a Tailwind CDN page, a
@@ -260,16 +260,58 @@ export const App = () => <BrowserRouter>{mode}{String(fs)}{String(x)}</BrowserRo
     expect(text).not.toMatch(/"path" is imported but not in dependencies/);
   });
 
-  test('a very long file and an empty one are warnings, not errors', async () => {
+  test('a very long file is a warning; an empty one is an error', async () => {
     const long = `${'const a = 1;\n'.repeat(200)}export default a;\n`;
     const report = await validateProject(project(
       { path: 'src/long.ts', content: long },
-      { path: 'src/empty.ts', content: '' },
+      { path: 'src/empty.ts', content: '   \n' },
     ));
 
-    expect(report.errors).toEqual([]);
     expect(messages(report.warnings)).toMatch(/src\/long\.ts\|20\d lines/);
-    expect(messages(report.warnings)).toMatch(/src\/empty\.ts\|This file is empty/);
+    expect(messages(report.errors)).toMatch(/src\/empty\.ts\|This file is empty/);
+    expect(repairHints(report).join('\n')).toMatch(/Write "src\/empty\.ts" in full/);
+  });
+
+  describe('a file too small to be one', () => {
+    /** The real answer that counted as file 1 of 5: 27 bytes, and nothing in it. */
+    const STUB_PAGE = '<!doctype html><html></html>';
+
+    test('the 27-byte index.html is an error that asks for the page in full', async () => {
+      const report = await validateProject(project({ path: 'index.html', content: STUB_PAGE }));
+
+      expect(messages(report.errors)).toMatch(/index\.html\|Only 28 bytes, with nothing to mount into/);
+      expect(repairHints(report).join('\n')).toMatch(/Write "index\.html" in full/);
+    });
+
+    test('a page that is short but complete is left alone', async () => {
+      const small = '<!doctype html><html><body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body></html>';
+      const report = await validateProject(project({ path: 'index.html', content: small }));
+
+      expect(messages(report.errors)).not.toMatch(/stub|Only \d+ bytes/);
+    });
+
+    test('a script left as a placeholder is an error', async () => {
+      const report = await validateProject(project(
+        { path: 'src/App.tsx', content: 'export const App = () => null;\n' },
+        { path: 'src/stub.ts', content: 'export {};\n' },
+      ));
+
+      expect(messages(report.errors)).toMatch(/src\/stub\.ts\|Only 11 bytes, and none of it does anything/);
+      expect(repairHints(report).join('\n')).toMatch(/Write "src\/stub\.ts" in full/);
+    });
+
+    test('isStubFile agrees with the report, for the generator to reuse', () => {
+      expect(isStubFile({ path: 'index.html', content: STUB_PAGE })).toBe(true);
+      expect(isStubFile({ path: 'src/main.tsx', content: 'export {};' })).toBe(true);
+      expect(isStubFile({ path: 'src/main.tsx', content: '  \n ' })).toBe(true);
+      expect(isStubFile({ path: 'src/main.tsx', content: MAIN })).toBe(false);
+      expect(isStubFile({ path: 'index.html', content: INDEX_HTML })).toBe(false);
+      // Short, but a whole module: size alone would call these stubs.
+      expect(isStubFile({ path: 'src/lib.ts', content: 'export const total = 1;\n' })).toBe(false);
+      expect(isStubFile({ path: 'src/lib.ts', content: `export * from './a';\n` })).toBe(false);
+      // Not every tiny file is a stub: only pages and scripts are measured.
+      expect(isStubFile({ path: 'data.json', content: '[]' })).toBe(false);
+    });
   });
 
   test('JSX in a .js file is an error, since nothing compiles that name', async () => {

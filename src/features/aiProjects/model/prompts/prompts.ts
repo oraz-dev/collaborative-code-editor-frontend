@@ -45,14 +45,25 @@ export const RUNTIME_RULES = `HOW PROJECTS RUN HERE
 6. Routing must use MemoryRouter from react-router. The sandbox has no URL bar, so BrowserRouter and HashRouter show a blank page.
 7. Importable files only: .ts .tsx .js .jsx .css (including *.module.css) .json .svg. There are no binary assets — no .png, .jpg, .gif, .ico, no fetch of a local image. Draw with inline SVG, CSS or emoji instead.
 8. TypeScript is type-checked in the editor and type-stripped to run. Code must be strict-clean: every prop and parameter typed, no "any", no unused imports, no non-null "!" guesses.
+
 9. Data comes from inside the project. No backend, no secret keys, no fetch to a service that needs one. Seed arrays in a .ts file are the way to show data.
 
+HOW TO IMPORT
+10. Never name the global "JSX" namespace. React 19 removed it, so "JSX.Element" is a red error in the editor. Annotate a component's return with nothing at all, or import the type: import type { ReactElement } from 'react'.
+11. A type-only import must say so: import type { Task } from './types'. A value and its type in one line is "import { create, type StoreApi } from 'zustand'".
+12. Do not "import React from 'react'". JSX compiles to the automatic runtime, so React itself is only imported when React.something is actually called.
+13. React DOM's root lives at 'react-dom/client': import { createRoot } from 'react-dom/client'.
+14. Import a project file by a relative path with no extension ("./components/Card", "../lib/format"). Import a non-code file WITH its extension ("./styles.css", "./data.json", "./logo.svg") — without it the import fails.
+15. Every file must be reachable from index.html by following imports. A file nothing imports never runs, so do not write one.
+16. Import only what is used, and use everything imported: an unused import is a red error in the editor.
+17. Nothing may be imported that the project does not contain and package.json does not list. No node builtins ("node:fs"), no "@/..." alias unless the project also contains a tsconfig.json that declares it.
+
 HOW TO ANSWER
-10. Return JSON only. No prose outside it, no markdown fences, no comments between files.
-11. Every file must be complete and final. Never write "...", "TODO", "rest of the code here" or an empty placeholder body.
-12. Paths are relative to the project root, forward slashes, no leading "/", no "node_modules", no ".git".
-13. Write each path exactly once. Never repeat a file you have already written. Stop as soon as the last file is written.
-14. Keep it small: the fewest files that make the request work, ideally under twelve, each under ~200 lines.`;
+18. Return JSON only. No prose outside it, no markdown fences, no comments between files.
+19. Every file must be complete and final. Never write "...", "TODO", "rest of the code here", an empty body, or a stub page you intend to fill in later. index.html alone is not an answer.
+20. Paths are relative to the project root, forward slashes, no leading "/", no "node_modules", no ".git".
+21. Write each path exactly once. Never repeat a file you have already written. Stop as soon as the last file is written.
+22. Keep it small: the fewest files that make the request work, ideally under twelve, each under ~200 lines.`;
 
 export const SYSTEM_PROMPT = `You generate small, runnable web projects for a browser-based code editor that runs them in a sandboxed preview.
 

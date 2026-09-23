@@ -84,11 +84,28 @@ export const CONSOLE_BRIDGE = String.raw`
   render = function (value, seen) { return sanitise(renderRaw(value, seen)); };
   window.__spaceRender = render;
 
+  // The one message the editor swallows.
+  //
+  // Tailwind's CDN build warns on every single run that it "should not be used
+  // in production" and to install it as a PostCSS plugin instead. Here the CDN
+  // is the only way Tailwind can work — there is no build step, and the
+  // validator actively tells the model to use it — so the warning describes a
+  // fix nobody can make, once per run, forever. Matched on the opening of that
+  // exact sentence and at warn level only: anything else that mentions the CDN,
+  // and every error, still comes through untouched. The frame's own console
+  // keeps it either way, since the original is still called below.
+  var TAILWIND_CDN_NOTICE = 'cdn.tailwindcss.com should not be used in production';
+
+  function silenced(level, text) {
+    return level === 'warn' && text.indexOf(TAILWIND_CDN_NOTICE) === 0;
+  }
+
   ['log', 'info', 'warn', 'error', 'debug'].forEach(function (level) {
     var original = console[level];
     console[level] = function () {
       var args = Array.prototype.slice.call(arguments);
-      post('console', { level: level, text: args.map(function (a) { return render(a); }).join(' ') });
+      var text = args.map(function (a) { return render(a); }).join(' ');
+      if (!silenced(level, text)) post('console', { level: level, text: text });
       if (original) original.apply(console, args);
     };
   });
