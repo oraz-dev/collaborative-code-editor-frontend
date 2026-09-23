@@ -148,23 +148,30 @@ function dirname(path: string): string {
   return slash === -1 ? '' : path.slice(0, slash);
 }
 
-/** The declaration file a relative import inside a package lands on, if it has one. */
+/** The declaration twin of a source or output extension: `.cjs` -> `.d.cts`, as TypeScript maps them. */
+const DECLARATION_FOR: [RegExp, string][] = [
+  [/\.(?:js|jsx|ts|tsx)$/, '.d.ts'],
+  [/\.(?:mjs|mts)$/, '.d.mts'],
+  [/\.(?:cjs|cts)$/, '.d.cts'],
+];
+
+/**
+ * The declaration file a relative import inside a package lands on, if it
+ * has one. Only ever a declaration: `./external.cjs` beside `external.d.cts`
+ * is the JavaScript itself, and handing that to the type checker as a
+ * library would type the module from its compiled output.
+ */
 export function resolveDeclaration(from: string, specifier: string, files: Set<string>): string | null {
   const base = normalise(`${dirname(from)}/${specifier}`);
-  const candidates = DECLARATION.test(base)
-    ? [base]
-    : [
-      base.replace(/\.m?jsx?$/, '.d.ts'),
-      // Declarations may name their siblings by source extension: `./add.ts`.
-      base.replace(/\.([cm]?)tsx?$/, '.d.$1ts'),
-      base.replace(/\.mjs$/, '.d.mts'),
-      base.replace(/\.cjs$/, '.d.cts'),
-      `${base}.d.ts`,
-      `${base}.d.mts`,
-      `${base}/index.d.ts`,
-      `${base}/index.d.mts`,
-    ];
-  return candidates.find((candidate) => files.has(candidate)) ?? null;
+  if (DECLARATION.test(base)) return files.has(base) ? base : null;
+
+  const candidates: string[] = [];
+  for (const [extension, declaration] of DECLARATION_FOR) {
+    if (extension.test(base)) candidates.push(base.replace(extension, declaration));
+  }
+  candidates.push(`${base}.d.ts`, `${base}.d.mts`, `${base}.d.cts`, `${base}/index.d.ts`, `${base}/index.d.mts`);
+
+  return candidates.find((candidate) => DECLARATION.test(candidate) && files.has(candidate)) ?? null;
 }
 
 type ExportsValue = string | null | ExportsValue[] | { [condition: string]: ExportsValue };
