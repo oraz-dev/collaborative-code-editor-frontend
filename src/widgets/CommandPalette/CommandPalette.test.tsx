@@ -1,6 +1,7 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/shared/lib/tests/renderWithProviders';
+import { Icons } from '@/shared/ui/Icon/Icons';
 import { CommandPalette } from './CommandPalette';
 
 const ROOTS = [
@@ -83,6 +84,25 @@ describe('CommandPalette', () => {
 
     await user.type(screen.getByTestId('command-palette-input'), 'index{Enter}');
 
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  test('runs a command a page handed in', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const run = vi.fn();
+    mockDocuments();
+    renderWithProviders(
+      <CommandPalette
+        open
+        onClose={onClose}
+        commands={[{ id: 'ai', label: 'Generate project with AI', icon: Icons.Sparkle, run }]}
+      />,
+    );
+
+    await user.click(await screen.findByText('Generate project with AI'));
+
+    expect(run).toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();
   });
 

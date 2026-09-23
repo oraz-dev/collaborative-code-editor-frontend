@@ -17,10 +17,11 @@ import {
   type WorkspaceDocument,
 } from '@/entities/Document';
 import { useSharedDocumentAlerts } from '@/features/notifications';
+import { GenerateProjectFlow } from '@/features/aiProjects';
 import { FileTypeIcon } from '@/shared/ui/FileTypeIcon/FileTypeIcon';
 import { useCommandPaletteHotkey } from '@/shared/lib/hotkey/useCommandPaletteHotkey';
 import { AppBar } from '@/widgets/AppBar/AppBar';
-import { CommandPalette } from '@/widgets/CommandPalette/CommandPalette';
+import { CommandPalette, type PaletteCommand } from '@/widgets/CommandPalette/CommandPalette';
 import { DocumentCard } from '@/widgets/DocumentCard/DocumentCard';
 import cls from './DashboardPage.module.scss';
 
@@ -42,6 +43,25 @@ export const DashboardPage = memo(() => {
 
   const [creatingKind, setCreatingKind] = useState<DocumentKind | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [generatorOpen, setGeneratorOpen] = useState(false);
+
+  const onOpenGenerator = useCallback(() => {
+    setGeneratorOpen(true);
+  }, []);
+
+  const onCloseGenerator = useCallback(() => {
+    setGeneratorOpen(false);
+  }, []);
+
+  /** The same entry point as the button, for people who live in the palette. */
+  const paletteCommands = useMemo<PaletteCommand[]>(() => [
+    {
+      id: 'generate-project',
+      label: 'Generate project with AI',
+      icon: Icons.Sparkle,
+      run: onOpenGenerator,
+    },
+  ], [onOpenGenerator]);
 
   const onOpenPalette = useCallback(() => {
     setPaletteOpen(true);
@@ -121,6 +141,15 @@ export const DashboardPage = memo(() => {
                 <span className={cls.secTitle}>Projects</span>
                 {!rootsQuery.isPending && <span className={cls.secCt}>{documents.length}</span>}
                 <span className={cls.secSp} />
+                <Button
+                  size="small"
+                  variant="secondary"
+                  onClick={onOpenGenerator}
+                  aria-label="Generate a project with AI"
+                  data-testid="generate-with-ai"
+                >
+                  <Icons.Sparkle size={14} /> Generate with AI
+                </Button>
                 <Button size="small" variant="secondary" onClick={onStartFile} aria-label="New file">
                   New file
                 </Button>
@@ -259,7 +288,9 @@ export const DashboardPage = memo(() => {
         </div>
       </div>
 
-      <CommandPalette open={paletteOpen} onClose={onClosePalette} />
+      <CommandPalette open={paletteOpen} onClose={onClosePalette} commands={paletteCommands} />
+
+      <GenerateProjectFlow open={generatorOpen} onClose={onCloseGenerator} />
     </div>
   );
 });

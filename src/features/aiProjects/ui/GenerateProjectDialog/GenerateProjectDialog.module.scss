@@ -1,0 +1,319 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  color: var(--color-text);
+
+  &:focus {
+    /* The panel is only a focus target for the screen reader's benefit; a ring
+       around the whole dialog would read as an editable region. */
+    outline: none;
+  }
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.confirm {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+}
+
+.confirmText {
+  flex: 1;
+  color: var(--color-text);
+  font-size: var(--text-xs);
+}
+
+.confirmActions {
+  display: flex;
+  flex: none;
+  gap: var(--space-2);
+}
+
+.retry {
+  margin-top: var(--space-2);
+}
+
+.attempts {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--space-2);
+}
+
+.attempt {
+  color: var(--color-text-faint);
+  font-size: var(--text-2xs);
+}
+
+.notice {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.preset {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: var(--weight-medium) var(--text-2xs) / 1 var(--font-body);
+  cursor: pointer;
+  transition: var(--transition-control);
+
+  &:hover {
+    border-color: var(--color-border-strong);
+    background: var(--color-surface-2);
+    color: var(--color-text);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 1px;
+  }
+}
+
+.modelRow {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.modelSelect {
+  width: 220px;
+  flex: none;
+}
+
+.hint {
+  margin: 0;
+  color: var(--color-text-faint);
+  font-size: var(--text-2xs);
+  line-height: 1.5;
+}
+
+.summary {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+
+.working {
+  display: flex;
+  margin: 0;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.listHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  color: var(--color-text-secondary);
+  font: var(--weight-medium) var(--text-xs) / 1.3 var(--font-body);
+}
+
+.by {
+  color: var(--color-text-faint);
+  font-weight: var(--weight-regular);
+  font-variant-numeric: tabular-nums;
+}
+
+.bar {
+  /* The bar keeps its own place in the column, so the rows below it never
+     shift when it appears or changes tone. */
+  flex: none;
+}
+
+.planList,
+.fileList {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  flex-direction: column;
+  /* Three rows tall from the start: the list fills in rather than pushing the
+     dialog's buttons down as each file lands. */
+  min-height: 84px;
+  max-height: 210px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  list-style: none;
+}
+
+.planRow,
+.fileRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px 10px;
+  font-size: var(--text-xs);
+
+  & + & {
+    border-top: 1px solid var(--color-border-subtle);
+  }
+}
+
+/* Only the arriving row animates, and only its opacity and offset — the row
+   box is already the right size, so nothing reflows. */
+.fileRow {
+  animation: row-in var(--duration-base) var(--ease-out);
+}
+
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+}
+
+.path {
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.purpose,
+.size {
+  flex: none;
+  max-width: 55%;
+  overflow: hidden;
+  color: var(--color-text-faint);
+  font-size: var(--text-2xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.size {
+  font-variant-numeric: tabular-nums;
+}
+
+.pending .path {
+  color: var(--color-text-muted);
+}
+
+.rowSpinner {
+  height: 12px;
+  color: var(--color-primary);
+}
+
+.ok {
+  flex: none;
+  color: var(--color-success);
+}
+
+.groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.groupHead {
+  color: var(--color-text-secondary);
+  font: var(--weight-medium) var(--text-2xs) / 1.3 var(--font-mono);
+}
+
+.problem {
+  display: flex;
+  margin: 0;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+
+  svg {
+    flex: none;
+    margin-top: 2px;
+    color: var(--color-text-faint);
+  }
+}
+
+.isError {
+  color: var(--color-text);
+
+  svg {
+    color: var(--color-warning);
+  }
+}
+
+.clean {
+  margin: 0;
+  color: var(--color-success);
+  font-size: var(--text-xs);
+}
+
+.doneHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fileRow {
+    animation: none;
+  }
+}
+
+/* What a failed or cancelled create left behind, and the way back to it. */
+.partial {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+}
+
+.partialText {
+  flex: 1;
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
