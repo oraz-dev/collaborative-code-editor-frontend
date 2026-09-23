@@ -418,6 +418,106 @@ describe('chat streaming', () => {
   });
 });
 
+describe('liveness while a model thinks', () => {
+  function reasoningEvent(reasoning: string): string {
+    return `data: ${JSON.stringify({ model: 'a/model:free', choices: [{ delta: { reasoning } }] })}\n\n`;
+  }
+
+  async function watch(response: Response, withDelta = true) {
+    const onActivity = vi.fn();
+    const onDelta = vi.fn();
+    const result = await client(vi.fn(async () => response) as unknown as typeof globalThis.fetch).chat({
+      model: 'a/model:free',
+      messages: [],
+      maxTokens: 100,
+      onActivity,
+      onDelta: withDelta ? onDelta : undefined,
+    });
+    return {
+      result,
+      onDelta,
+      activity: onActivity.mock.calls.map(([item]) => item as { kind: string; bytes: number }),
+    };
+  }
+
+  test('reports the keep-alives that arrive before any data line', async () => {
+    const { result, activity } = await watch(byteStream([
+      ': OPENROUTER PROCESSING\n\n',
+      ': OPENROUTER PROCESSING\n\n',
+      ': OPENROUTER PROCESSING\n\n',
+      deltaEvent('{"files":'),
+      'data: [DONE]\n\n',
+    ].join(''), 9));
+
+    expect(activity.map((item) => item.kind)).toEqual(['keepalive', 'keepalive', 'keepalive', 'content']);
+    // The line itself, comment marker included — there is nothing else to size.
+    expect(activity[0].bytes).toBe(': OPENROUTER PROCESSING'.length);
+    expect(activity[3].bytes).toBe('{"files":'.length);
+    expect(result.content).toBe('{"files":');
+  });
+
+  test.each([1, 5, 64])('counts each keep-alive once when split every %i bytes', async (size) => {
+    const { activity } = await watch(byteStream(
+      `: OPENROUTER PROCESSING\n\n: OPENROUTER PROCESSING\n\n${deltaEvent('a')}data: [DONE]\n\n`,
+      size,
+    ));
+
+    expect(activity.filter((item) => item.kind === 'keepalive')).toHaveLength(2);
+  });
+
+  test('reports reasoning without letting it near the content', async () => {
+    const { result, onDelta, activity } = await watch(byteStream(
+      `${reasoningEvent('Let me think about the plan')}${deltaEvent('{"name":"x"}')}data: [DONE]\n\n`,
+      13,
+    ));
+
+    expect(activity).toEqual([
+      { kind: 'reasoning', bytes: 'Let me think about the plan'.length },
+      { kind: 'content', bytes: '{"name":"x"}'.length },
+    ]);
+    // The scanner downstream depends on this: deltas are content and nothing else.
+    expect(onDelta.mock.calls.map(([delta]) => delta)).toEqual(['{"name":"x"}']);
+    expect(result.content).toBe('{"name":"x"}');
+  });
+
+  test('reads reasoning_content too, which is the same field renamed', async () => {
+    const event = `data: ${JSON.stringify({ choices: [{ delta: { reasoning_content: 'hmm' } }] })}\n\n`;
+    const { result, activity } = await watch(byteStream(`${event}data: [DONE]\n\n`, 32));
+
+    expect(activity).toEqual([{ kind: 'reasoning', bytes: 3 }]);
+    expect(result.content).toBe('');
+  });
+
+  test('is enough on its own to stream, with no delta handler at all', async () => {
+    const fetchImpl = vi.fn(async () => byteStream(
+      `: OPENROUTER PROCESSING\n\n${deltaEvent('hello')}data: [DONE]\n\n`,
+      7,
+    ));
+    const onActivity = vi.fn();
+    const result = await client(fetchImpl as unknown as typeof globalThis.fetch).chat({
+      model: 'a/model:free',
+      messages: [],
+      maxTokens: 10,
+      onActivity,
+    });
+
+    const [, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(String(init.body)).stream).toBe(true);
+    expect(onActivity.mock.calls.map(([item]) => (item as { kind: string }).kind))
+      .toEqual(['keepalive', 'content']);
+    expect(result.content).toBe('hello');
+  });
+
+  test('says nothing after an error, which still carries the partial answer', async () => {
+    const failure = await watch(byteStream(
+      `: OPENROUTER PROCESSING\n\n${deltaEvent('{"files":[')}data: ${JSON.stringify({ error: { code: 429, message: 'upstream' } })}\n\n`,
+      16,
+    )).catch((error: unknown) => error as OpenRouterError);
+
+    expect(failure).toMatchObject({ kind: 'rateLimited', partial: '{"files":[' });
+  });
+});
+
 describe('with no key of its own', () => {
   test('sets no Authorization header — the proxy attaches the server\'s', async () => {
     const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ data: [] })));

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ChainModel } from '../../model/modelChain/modelChain';
 import type { GeneratorState, ProjectGenerator } from '../../model/useProjectGenerator/useProjectGenerator';
@@ -18,7 +18,15 @@ const BASE: GeneratorState = {
   name: null,
   summary: null,
   report: null,
-  progress: { files: 0, path: null, bytes: 0 },
+  progress: {
+    files: 0,
+    path: null,
+    bytes: 0,
+    contentStarted: false,
+    startedAt: null,
+    lastActivityAt: null,
+    contentBytes: 0,
+  },
   creation: null,
   attempts: [],
   model: null,
@@ -168,7 +176,15 @@ describe('GenerateProjectDialog', () => {
       plan: PLAN,
       files: FILES,
       model: 'beta:free',
-      progress: { files: 2, path: 'src/App.tsx', bytes: 400 },
+      progress: {
+        files: 2,
+        path: 'src/App.tsx',
+        bytes: 400,
+        contentStarted: true,
+        startedAt: 1_000,
+        lastActivityAt: 4_000,
+        contentBytes: 400,
+      },
       notice: 'Alpha was busy — Beta answered.',
     });
 
@@ -204,6 +220,118 @@ describe('GenerateProjectDialog', () => {
 
       await user.click(screen.getByRole('button', { name: 'Cancel' }));
       expect(generator.cancel).toHaveBeenCalled();
+    });
+
+    test('says how much has arrived, now that there is something to size', () => {
+      renderDialog(generating());
+
+      expect(screen.getByTestId('ai-content-bytes')).toHaveTextContent('400 B written so far');
+    });
+  });
+
+  /**
+   * The four minutes before the first byte: the screen that used to read as a
+   * hang, with a static "0 / 5" and an empty list.
+   */
+  describe('while the model is only thinking', () => {
+    const thinking = (startedAgo = 5_000) => fakeGenerator({
+      phase: 'generating',
+      plan: PLAN,
+      files: [],
+      model: 'beta:free',
+      progress: {
+        ...BASE.progress,
+        startedAt: Date.now() - startedAgo,
+        lastActivityAt: Date.now(),
+      },
+    });
+
+    test('says what is happening, names the model and shows the time', () => {
+      renderDialog(thinking());
+
+      const panel = screen.getByTestId('ai-thinking');
+      expect(panel).toHaveTextContent('Beta');
+      expect(panel).toHaveTextContent(/No files yet/);
+      // The keep-alives are the evidence the connection is alive; say so.
+      expect(panel).toHaveTextContent(/keep-alives/);
+      expect(screen.getByText(/Beta is reading the plan and thinking/)).toBeInTheDocument();
+      expect(screen.getByTestId('ai-working-count')).toHaveTextContent('5s');
+    });
+
+    test('shows no file list and no "0 / 5", which would both be lies', () => {
+      renderDialog(thinking());
+
+      expect(screen.queryByTestId('ai-file-list')).not.toBeInTheDocument();
+      expect(screen.queryByText('0 / 2')).not.toBeInTheDocument();
+      // Indeterminate: there is no share of the work to report yet.
+      expect(screen.getByRole('progressbar', { name: 'Project generation' }))
+        .not.toHaveAttribute('aria-valuenow');
+    });
+
+    test('the elapsed time counts up, and the live region does not', () => {
+      vi.useFakeTimers();
+      try {
+        const generator = fakeGenerator({
+          phase: 'generating',
+          plan: PLAN,
+          files: [],
+          model: 'beta:free',
+          progress: { ...BASE.progress, startedAt: Date.now(), lastActivityAt: Date.now() },
+        });
+        renderDialog(generator);
+
+        expect(screen.getByTestId('ai-working-count')).toHaveTextContent('0s');
+        const announced = screen.getByRole('status').textContent;
+
+        act(() => { vi.advanceTimersByTime(65_000); });
+
+        expect(screen.getByTestId('ai-working-count')).toHaveTextContent('1m 05s');
+        // A tick is not a milestone: the one announced line has not moved.
+        expect(screen.getByRole('status').textContent).toBe(announced);
+        expect(announced).toMatch(/thinking/);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    test('after a long silence it says the model is slow and where to go instead', () => {
+      renderDialog(thinking(95_000));
+
+      const warning = screen.getByTestId('ai-slow-model');
+      expect(warning).toHaveTextContent('Beta is slow to start');
+      expect(warning).toHaveTextContent(/Cancel/);
+      // The faster model by name, with the chain's own note about it.
+      expect(warning).toHaveTextContent(/Alpha is quicker/);
+      expect(warning).toHaveTextContent(/the quick one/);
+    });
+
+    test('a short wait is left alone', () => {
+      renderDialog(thinking(20_000));
+
+      expect(screen.queryByTestId('ai-slow-model')).not.toBeInTheDocument();
+    });
+
+    test('the first file ends it: the list and the real bar come back', () => {
+      renderDialog(fakeGenerator({
+        phase: 'generating',
+        plan: PLAN,
+        files: FILES,
+        model: 'beta:free',
+        progress: {
+          ...BASE.progress,
+          contentStarted: true,
+          contentBytes: 2_048,
+          startedAt: Date.now() - 95_000,
+        },
+      }));
+
+      expect(screen.queryByTestId('ai-thinking')).not.toBeInTheDocument();
+      // The warning is about a silent model, so content ends it too.
+      expect(screen.queryByTestId('ai-slow-model')).not.toBeInTheDocument();
+      expect(screen.getByTestId('ai-file-list')).toBeInTheDocument();
+      expect(screen.getByTestId('ai-content-bytes')).toHaveTextContent('2.0 KB');
+      expect(screen.getByRole('progressbar', { name: 'Project generation' }))
+        .toHaveAttribute('aria-valuenow', '99');
     });
   });
 

@@ -135,6 +135,29 @@
   font-size: var(--text-xs);
 }
 
+/* The thinking panel stands where the file list will, at the list's own
+   minimum height, so the moment the first file lands nothing below it moves. */
+.thinking {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 84px;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.thinkingLine {
+  display: flex;
+  margin: 0;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+
 .listHead {
   display: flex;
   align-items: baseline;
@@ -297,6 +320,10 @@
   .fileRow {
     animation: none;
   }
+
+  /* The thinking panel carries no motion of its own on purpose: the only
+     things moving while a model thinks are the Spinner and the indeterminate
+     Progress, and both already answer this query themselves. */
 }
 
 /* What a failed or cancelled create left behind, and the way back to it. */

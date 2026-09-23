@@ -117,6 +117,27 @@ function formatSize(bytes: number): string {
   return `${(bytes / 1024).toFixed(1)} KB`;
 }
 
+/**
+ * How long a model has been thinking, read at a glance.
+ *
+ * Seconds up to a minute, then minutes and seconds — the run this exists for
+ * spent four of them, and "241s" is a number nobody parses.
+ */
+function formatElapsed(ms: number): string {
+  const seconds = Math.max(0, Math.floor(ms / 1000));
+  if (seconds < 60) return `${seconds}s`;
+  return `${Math.floor(seconds / 60)}m ${String(seconds % 60).padStart(2, '0')}s`;
+}
+
+/**
+ * When a silent model stops being normal and starts being worth mentioning.
+ *
+ * Measured: the slowest chain model takes about four minutes to its first byte,
+ * so 90 seconds is well inside "still working" — early enough to be useful,
+ * late enough that it is not shown on an ordinary run.
+ */
+const SLOW_START_MS = 90_000;
+
 function countLabel(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`;
 }
@@ -363,6 +384,53 @@ export const GenerateProjectDialog = memo((props: GenerateProjectDialogProps) =>
     [report],
   );
 
+  const plannedCount = state.plan?.files.length ?? 0;
+  const writtenCount = state.files.length;
+  const progress = state.progress;
+
+  /**
+   * Nothing has been said yet.
+   *
+   * A reasoning model can spend minutes here — four, in the run this was
+   * written for — and the old screen showed "0 / 5" and an empty list the whole
+   * time, which reads as a hang. It is a different state and it says so.
+   */
+  const thinking = state.phase === 'generating'
+    && !progress.contentStarted
+    && writtenCount === 0
+    && progress.bytes === 0;
+
+  /**
+   * The clock, read once a second and only while it is being shown.
+   *
+   * The elapsed time is the one thing on this screen that has to move, since
+   * during the thinking phase it is the only thing that changes at all.
+   */
+  const [clock, setClock] = useState(() => Date.now());
+  useEffect(() => {
+    if (!thinking) return undefined;
+    setClock(Date.now());
+    const id = window.setInterval(() => setClock(Date.now()), 1_000);
+    return () => window.clearInterval(id);
+  }, [thinking]);
+
+  const startedAt = progress.startedAt;
+  const elapsedMs = thinking && startedAt !== null ? Math.max(0, clock - startedAt) : 0;
+  /** Long enough that the user deserves to hear it is a choice, not a fault. */
+  const slowToStart = thinking && elapsedMs >= SLOW_START_MS;
+
+  /** The model at work: whoever answered, else the one that was asked. */
+  const workingId = state.model ?? modelId;
+  const workingModel = modelLabel(workingId, chain);
+  /** Its own note, which is where "spends minutes reasoning" is written down. */
+  const workingNote = chain.find((model) => model.id === workingId)?.note ?? null;
+  /** Somewhere faster to go: the chain leads with its fastest clean answer. */
+  const faster = chain.find((model) => model.id !== workingId) ?? null;
+  /** What has arrived, when anything has. */
+  const contentSize = progress.contentBytes > 0 || progress.bytes > 0
+    ? formatSize(Math.max(progress.contentBytes, progress.bytes))
+    : null;
+
   /**
    * The one thing announced.
    *
@@ -376,7 +444,9 @@ export const GenerateProjectDialog = memo((props: GenerateProjectDialogProps) =>
       case 'planning':
         return 'Planning the project.';
       case 'generating':
-        return 'Writing the project files.';
+        return thinking
+          ? 'The model is reading the plan and thinking. Nothing written yet.'
+          : 'Writing the project files.';
       case 'validating':
         return 'Checking the project against the sandbox.';
       case 'repairing':
@@ -397,10 +467,8 @@ export const GenerateProjectDialog = memo((props: GenerateProjectDialogProps) =>
       default:
         return '';
     }
-  }, [errorCount, report, state.error, state.phase]);
+  }, [errorCount, report, state.error, state.phase, thinking]);
 
-  const plannedCount = state.plan?.files.length ?? 0;
-  const writtenCount = state.files.length;
   /**
    * Monotonic by construction: files only ever close, and the one case where
    * the count drops — a second model starting from nothing after a busy one —
@@ -658,43 +726,91 @@ export const GenerateProjectDialog = memo((props: GenerateProjectDialogProps) =>
             </div>
           )}
 
+          {/*
+            * Two states, one frame.
+            *
+            * The head row, the bar and the block below them stay mounted from
+            * the first second to the last: thinking becomes writing by changing
+            * what they say, not by swapping one panel for another, so nothing
+            * flashes at the moment the user has been waiting minutes for.
+            */}
           {step === 'working' && (
-            <div className={cls.step}>
+            <div className={cls.step} data-state={thinking ? 'thinking' : 'writing'}>
               <div className={cls.listHead}>
-                {state.phase === 'generating' && `Writing files${answeredBy ? ` with ${answeredBy}` : ''}`}
+                {state.phase === 'generating' && (thinking
+                  ? `${workingModel} is reading the plan and thinking`
+                  : `Writing files${answeredBy ? ` with ${answeredBy}` : ''}`)}
                 {state.phase === 'validating' && 'Checking the project against the sandbox'}
                 {state.phase === 'repairing' && 'Asking the model to fix what it left'}
-                <span className={cls.by}>
-                  {plannedCount > 0 ? `${writtenCount} / ${plannedCount}` : countLabel(writtenCount, 'file', 'files')}
+                <span className={cls.by} data-testid="ai-working-count">
+                  {thinking
+                    // "0 / 5" here would be a lie: nothing is being counted yet.
+                    ? formatElapsed(elapsedMs)
+                    : plannedCount > 0 ? `${writtenCount} / ${plannedCount}` : countLabel(writtenCount, 'file', 'files')}
                 </span>
               </div>
 
               <Progress
-                value={streamPercent}
-                indeterminate={streamPercent === undefined}
+                value={thinking ? undefined : streamPercent}
+                indeterminate={thinking || streamPercent === undefined}
                 size="sm"
                 label="Project generation"
                 className={cls.bar}
               />
 
-              {/* Off, deliberately: the milestone line above speaks for this. */}
-              <ul className={cls.fileList} aria-live="off" data-testid="ai-file-list">
-                {state.files.map((file) => (
-                  <li className={cls.fileRow} key={file.path} data-testid="ai-file-row">
-                    <Icons.Check size={13} className={cls.ok} aria-hidden />
-                    <span className={cls.path}>{file.path}</span>
-                    <span className={cls.size}>{formatSize(file.content.length)}</span>
-                  </li>
-                ))}
+              {thinking ? (
+                <div className={cls.thinking} data-testid="ai-thinking">
+                  <p className={cls.thinkingLine}>
+                    <Spinner size="small" />
+                    No files yet — {workingModel} reasons before it writes, and everything
+                    it has said so far is thinking rather than code.
+                  </p>
+                  <p className={cls.hint}>
+                    The connection is alive: OpenRouter keeps sending keep-alives while the
+                    model works, and the first file will appear here the moment one arrives.
+                  </p>
+                </div>
+              ) : (
+                /* Off, deliberately: the milestone line above speaks for this. */
+                <ul className={cls.fileList} aria-live="off" data-testid="ai-file-list">
+                  {state.files.map((file) => (
+                    <li className={cls.fileRow} key={file.path} data-testid="ai-file-row">
+                      <Icons.Check size={13} className={cls.ok} aria-hidden />
+                      <span className={cls.path}>{file.path}</span>
+                      <span className={cls.size}>{formatSize(file.content.length)}</span>
+                    </li>
+                  ))}
 
-                {showPendingRow && (
-                  <li className={classNames(cls.fileRow, { [cls.pending]: true })} data-testid="ai-file-pending">
-                    <Spinner size="small" className={cls.rowSpinner} />
-                    <span className={cls.path}>{pendingPath}</span>
-                    <span className={cls.size}>writing…</span>
-                  </li>
-                )}
-              </ul>
+                  {showPendingRow && (
+                    <li className={classNames(cls.fileRow, { [cls.pending]: true })} data-testid="ai-file-pending">
+                      <Spinner size="small" className={cls.rowSpinner} />
+                      <span className={cls.path}>{pendingPath}</span>
+                      <span className={cls.size}>writing…</span>
+                    </li>
+                  )}
+                </ul>
+              )}
+
+              {!thinking && state.phase === 'generating' && contentSize && (
+                <p className={cls.hint} data-testid="ai-content-bytes">{contentSize} written so far.</p>
+              )}
+
+              {slowToStart && (
+                <div data-testid="ai-slow-model">
+                  <Alert
+                    variant="warning"
+                    title={`${workingModel} is slow to start`}
+                    description={(
+                      <span>
+                        {`Nothing has been written in ${formatElapsed(elapsedMs)}. `}
+                        {workingNote ? `${workingNote} ` : ''}
+                        It may still finish — but Cancel is a fair choice, and
+                        {faster ? ` ${faster.label} is quicker${faster.note ? `: ${faster.note.toLowerCase()}` : '.'}` : ' a faster model is quicker.'}
+                      </span>
+                    )}
+                  />
+                </div>
+              )}
             </div>
           )}
 

@@ -1,7 +1,12 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { CreateDocumentInput, WorkspaceDocument } from '@/entities/Document';
-import { OpenRouterError, type ChatRequest, type OpenRouterClient } from '../openrouter/openrouter';
+import {
+  OpenRouterError,
+  type ChatRequest,
+  type OpenRouterClient,
+  type StreamActivity,
+} from '../openrouter/openrouter';
 import type { ChainModel } from '../modelChain/modelChain';
 import type { StreamLimits } from '../streamJson/streamJson';
 import type { ProjectPlan } from '../prompts/prompts';
@@ -53,6 +58,11 @@ interface Reply {
   error?: OpenRouterError;
   /** Stream the chunks, then wait to be cancelled. */
   holdUntilAbort?: boolean;
+  /**
+   * What the connection reports before the first byte of content: the
+   * keep-alives and reasoning a slow model spends minutes on.
+   */
+  activity?: StreamActivity[];
 }
 
 function busy(): OpenRouterError {
@@ -77,9 +87,17 @@ function fakeClient(replies: Reply[]) {
       let content = '';
       const cancelled = () => new OpenRouterError({ kind: 'aborted', message: 'cancelled', partial: content });
 
+      for (const item of reply.activity ?? []) {
+        if (request.signal?.aborted) throw cancelled();
+        request.onActivity?.(item);
+        await Promise.resolve();
+      }
+
       for (const chunk of chunks) {
         if (request.signal?.aborted) throw cancelled();
         content += chunk;
+        // The real client reports content as activity too, before the delta.
+        request.onActivity?.({ kind: 'content', bytes: chunk.length });
         request.onDelta?.(chunk);
         await Promise.resolve();
       }
@@ -107,6 +125,8 @@ interface SetupOptions {
   limits?: StreamLimits;
   /** A model the caller saved, which the chain may or may not list. */
   modelId?: string;
+  /** The clock the hook reads; a test that asserts on time has to own it. */
+  now?: () => number;
 }
 
 function setup(replies: Reply[], overrides: SetupOptions = {}) {
@@ -143,6 +163,7 @@ function setup(replies: Reply[], overrides: SetupOptions = {}) {
     createDocument,
     fallbackEnabled: overrides.fallbackEnabled,
     limits: overrides.limits,
+    now: overrides.now,
   }));
 
   return { ...view, calls, documents, release: () => release() };
@@ -639,5 +660,115 @@ describe('useProjectGenerator', () => {
 
     act(() => { result.current.reset(); });
     expect(result.current.state).toMatchObject({ phase: 'idle', plan: null, files: [], request: '' });
+  });
+
+  describe('a model that thinks before it writes', () => {
+    /** A second per reading, so every progress tick clears the throttle. */
+    function tickingClock(start = 1_000) {
+      let at = start - 1_000;
+      return () => {
+        at += 1_000;
+        return at;
+      };
+    }
+
+    const KEEPALIVE: StreamActivity = { kind: 'keepalive', bytes: 23 };
+
+    test('says the connection is alive while there is nothing to show', async () => {
+      const { result } = setup(
+        [{ chunks: [], activity: [KEEPALIVE, KEEPALIVE, { kind: 'reasoning', bytes: 64 }], holdUntilAbort: true }],
+        { now: tickingClock() },
+      );
+
+      act(() => { void result.current.generate(PLAN); });
+      await waitFor(() => expect(result.current.state.progress.lastActivityAt).toBeGreaterThan(1_000));
+
+      const { progress } = result.current.state;
+      expect(result.current.state.phase).toBe('generating');
+      // The whole point: alive, timed, and honest about having nothing written.
+      expect(progress.contentStarted).toBe(false);
+      expect(progress.contentBytes).toBe(0);
+      expect(progress.files).toBe(0);
+      expect(progress.startedAt).toBe(1_000);
+      expect(progress.lastActivityAt).toBeGreaterThan(progress.startedAt ?? 0);
+
+      act(() => { result.current.cancel(); });
+    });
+
+    test('the first content ends the thinking state and is counted', async () => {
+      const answer = projectJson(FILES);
+      const { result } = setup(
+        [{ chunks: chunksOf(answer), activity: [KEEPALIVE] }],
+        { now: tickingClock() },
+      );
+
+      act(() => { void result.current.generate(PLAN); });
+      await waitFor(() => expect(result.current.state.phase).toBe('ready'));
+
+      expect(result.current.state.progress).toMatchObject({
+        contentStarted: true,
+        contentBytes: answer.length,
+        startedAt: 1_000,
+      });
+    });
+
+    test('a second model starts its own clock', async () => {
+      const { result } = setup(
+        [{ error: busy() }, { chunks: chunksOf(projectJson(FILES)), activity: [KEEPALIVE] }],
+        { now: tickingClock() },
+      );
+
+      act(() => { void result.current.generate(PLAN); });
+      await waitFor(() => expect(result.current.state.phase).toBe('ready'));
+
+      // Not 1000: the elapsed time on screen belongs to the model answering it.
+      expect(result.current.state.progress.startedAt).toBeGreaterThan(1_000);
+    });
+  });
+
+  describe('a file too small to be one', () => {
+    /** The real 27-byte answer that counted as file 1 of 5. */
+    const STUB_PAGE = '<!doctype html><html></html>';
+
+    test('is asked for again by the top-up instead of counting as written', async () => {
+      // Cut off after the stub, the way the real run ended.
+      const cut = `{"name":"Bare App","summary":"A bare React 19 page.","files":[${
+        JSON.stringify({ path: 'index.html', content: STUB_PAGE })},`;
+
+      const { result, calls } = setup([
+        { chunks: chunksOf(cut) },
+        { text: projectJson(FILES) },
+      ]);
+
+      act(() => { void result.current.generate(PLAN); });
+      await waitFor(() => expect(result.current.state.phase).toBe('ready'));
+
+      expect(calls).toHaveLength(2);
+      const topUp = calls[1].messages.at(-1)?.content ?? '';
+      expect(topUp).toContain('index.html');
+      // The stub must not be handed back as "already written", or the model
+      // reads it as done and writes everything except the file that matters.
+      expect(topUp).not.toContain(STUB_PAGE);
+
+      const page = result.current.state.files.find((file) => file.path === 'index.html');
+      expect(page?.content).toBe(HTML);
+      expect(result.current.state.report?.errors).toEqual([]);
+    });
+
+    test('is an error the user sees when nothing can be asked for again', async () => {
+      const { result } = setup([
+        { text: projectJson([{ path: 'index.html', content: STUB_PAGE }, ...FILES.slice(1)]) },
+        // The automatic repair round answers with nothing it can improve.
+        { text: '{"files":[]}' },
+      ]);
+
+      act(() => { void result.current.generate(PLAN); });
+      await waitFor(() => expect(result.current.state.phase).toBe('ready'));
+
+      const problems = result.current.state.report?.errors ?? [];
+      expect(problems.map((item) => `${item.path}|${item.message}`).join('\n'))
+        .toMatch(/index\.html\|Only 28 bytes/);
+      expect(problems.map((item) => item.hint).join('\n')).toMatch(/Write "index\.html" in full/);
+    });
   });
 });

@@ -282,6 +282,25 @@ export interface ChatUsage {
   totalTokens: number;
 }
 
+/**
+ * What a stream did, as opposed to what it said.
+ *
+ * - `keepalive`: a `: OPENROUTER PROCESSING` comment line. It carries nothing,
+ *   which is exactly the point — it is the connection saying it is still there
+ *   while a model queues or reasons.
+ * - `reasoning`: a `delta.reasoning` chunk. Never content (see `onDelta`), but
+ *   a reasoning-heavy model can spend minutes here before its first word.
+ * - `content`: a text delta, reported alongside `onDelta` so one callback can
+ *   answer "is anything happening?" for all three.
+ */
+export type StreamActivityKind = 'keepalive' | 'reasoning' | 'content';
+
+export interface StreamActivity {
+  kind: StreamActivityKind;
+  /** Characters in this chunk; for a keep-alive, the length of the line. */
+  bytes: number;
+}
+
 export interface ChatRequest {
   model: string;
   messages: ChatMessage[];
@@ -290,8 +309,21 @@ export interface ChatRequest {
   maxTokens: number;
   temperature?: number;
   signal?: AbortSignal;
-  /** Present => the response is streamed and each text delta is handed over. */
+  /**
+   * Present => the response is streamed and each text delta is handed over.
+   *
+   * Content only, and deliberately so: the JSON scanner downstream treats what
+   * it is given as the answer, so reasoning must never reach it.
+   */
   onDelta?: (delta: string) => void;
+  /**
+   * Every sign of life, content or not — also enough on its own to stream.
+   *
+   * The four-minute silence before a reasoning model's first byte is not a
+   * hang, but nothing said so: keep-alives and reasoning were both dropped
+   * here. This reports them without widening what `onDelta` means.
+   */
+  onActivity?: (activity: StreamActivity) => void;
 }
 
 export interface ChatResult {
@@ -464,8 +496,10 @@ export function createOpenRouterClient(options: OpenRouterClientOptions): OpenRo
     },
 
     async chat(request) {
-      const { model, messages, schema, maxTokens, temperature, signal, onDelta } = request;
-      const streaming = typeof onDelta === 'function';
+      const { model, messages, schema, maxTokens, temperature, signal, onDelta, onActivity } = request;
+      // Either callback is a reason to stream: a caller that only wants to know
+      // the connection is alive still needs the events that prove it.
+      const streaming = typeof onDelta === 'function' || typeof onActivity === 'function';
 
       const body: Record<string, unknown> = {
         model,
@@ -499,7 +533,7 @@ export function createOpenRouterClient(options: OpenRouterClientOptions): OpenRo
       }
 
       return streaming
-        ? readStream(response, { fallbackModel: model, onDelta, signal, clean, messages: wording })
+        ? readStream(response, { fallbackModel: model, onDelta, onActivity, signal, clean, messages: wording })
         : readWhole(response, model, clean, wording);
     },
   };
@@ -561,7 +595,8 @@ function readUsage(usage: unknown): ChatUsage | null {
 
 interface StreamOptions {
   fallbackModel: string;
-  onDelta: (delta: string) => void;
+  onDelta?: (delta: string) => void;
+  onActivity?: (activity: StreamActivity) => void;
   signal?: AbortSignal;
   clean: (text: string) => string;
   messages: Messages;
@@ -579,9 +614,12 @@ const DONE = '[DONE]';
  * `: OPENROUTER PROCESSING` comment lines as keep-alives while a free model
  * queues; and the stream can carry an `error` object *after* a 200, which is
  * how an upstream rate limit usually shows up mid-generation.
+ *
+ * The keep-alives and the reasoning deltas are still not content — but they are
+ * not nothing either, and `onActivity` is where they go.
  */
 async function readStream(response: Response, options: StreamOptions): Promise<ChatResult> {
-  const { fallbackModel, onDelta, signal, clean, messages } = options;
+  const { fallbackModel, onDelta, onActivity, signal, clean, messages } = options;
 
   let content = '';
   let model = fallbackModel;
@@ -613,7 +651,10 @@ async function readStream(response: Response, options: StreamOptions): Promise<C
     const chunk = payload as {
       model?: unknown;
       usage?: unknown;
-      choices?: Array<{ delta?: { content?: unknown }; finish_reason?: unknown }>;
+      choices?: Array<{
+        delta?: { content?: unknown; reasoning?: unknown; reasoning_content?: unknown };
+        finish_reason?: unknown;
+      }>;
     };
     if (typeof chunk.model === 'string') model = chunk.model;
     const parsedUsage = readUsage(chunk.usage);
@@ -622,12 +663,23 @@ async function readStream(response: Response, options: StreamOptions): Promise<C
     const choice = Array.isArray(chunk.choices) ? chunk.choices[0] : undefined;
     if (typeof choice?.finish_reason === 'string') finishReason = choice.finish_reason;
 
-    // `delta.reasoning` is deliberately ignored: reasoning-heavy free models
-    // emit far more of it than answer, and none of it is part of the JSON.
+    // `delta.reasoning` is still kept out of the content: reasoning-heavy free
+    // models emit far more of it than answer, and none of it is part of the
+    // JSON. It is reported as activity, which is all it is good for.
+    // `reasoning_content` is the same field under the name some OpenAI-
+    // compatible providers use for it.
+    const thought = choice?.delta?.reasoning ?? choice?.delta?.reasoning_content;
+    if (typeof thought === 'string' && thought.length > 0) {
+      onActivity?.({ kind: 'reasoning', bytes: thought.length });
+    }
+
     const delta = choice?.delta?.content;
     if (typeof delta === 'string' && delta.length > 0) {
       content += delta;
-      onDelta(delta);
+      // Before `onDelta`, so a handler that stops the stream has still been
+      // credited with what arrived.
+      onActivity?.({ kind: 'content', bytes: delta.length });
+      onDelta?.(delta);
     }
     return false;
   };
@@ -638,7 +690,11 @@ async function readStream(response: Response, options: StreamOptions): Promise<C
     while (newline !== -1) {
       const line = buffer.slice(0, newline).replace(/\r$/, '');
       buffer = buffer.slice(newline + 1);
-      if (line && !line.startsWith(':')) {
+      if (line.startsWith(':')) {
+        // The whole point of a keep-alive: nothing to parse, everything to
+        // report. This is the only proof of life a queued model gives.
+        onActivity?.({ kind: 'keepalive', bytes: line.length });
+      } else if (line) {
         const trimmed = line.startsWith(DATA_PREFIX) ? line.slice(DATA_PREFIX.length).trim() : '';
         if (trimmed && handleEvent(trimmed)) return true;
       }
