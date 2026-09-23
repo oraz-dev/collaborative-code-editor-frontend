@@ -16,6 +16,14 @@ import svgr from 'vite-plugin-svgr';
  */
 const AUTH_TARGET = process.env.VITE_AUTH_TARGET ?? 'http://31.57.26.155:8080';
 const DOCS_TARGET = process.env.VITE_DOCS_TARGET ?? 'http://31.57.26.155';
+/*
+ * The assistant is the one path that does not go to a backend service: the
+ * OpenRouter key lives in the deployed site's proxy, and a dev server has
+ * none of its own, so `pnpm dev` borrows the deployed one. The session token
+ * is issued by the same auth service either way, which is what that proxy
+ * checks before it adds the key.
+ */
+const AI_TARGET = process.env.VITE_AI_TARGET ?? 'https://space.31.57.26.155.nip.io';
 
 /**
  * Both services allowlist the `Origin` header and reject anything unrecognised
@@ -60,6 +68,11 @@ export default defineConfig({
         target: AUTH_TARGET,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/auth/, ''),
+        configure: stripOrigin,
+      },
+      '/api/ai': {
+        target: AI_TARGET,
+        changeOrigin: true,
         configure: stripOrigin,
       },
       '/api/v1': {

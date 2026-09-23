@@ -5,10 +5,17 @@ const TYPESCRIPT = /\.tsx?$/i;
 const JSX_SOURCE = /\.(tsx|jsx)$/i;
 /** Everything the compiler has to see before a browser can run it. */
 const COMPILED = /\.(tsx?|jsx)$/i;
+/** Modules published exactly as written, straight to the browser. */
+const PLAIN_SCRIPT = /\.[cm]?js$/i;
 
 export interface TranspileFailure {
   path: string;
   message: string;
+}
+
+export interface ScriptParseFailure extends TranspileFailure {
+  /** It parses only as JSX — which nothing compiles for a `.js` name. */
+  jsx: boolean;
 }
 
 export interface TranspileResult {
@@ -142,4 +149,48 @@ export async function transpileWorkspace(files: PreviewFile[]): Promise<Transpil
   }
 
   return { files: output, failures };
+}
+
+/**
+ * Parses the scripts `transpileWorkspace` publishes untouched.
+ *
+ * `.js`, `.mjs` and `.cjs` never reach the compiler — they go to the browser as
+ * written — so nothing else in the pipeline finds out whether they parse. Two
+ * failures hide there: an ordinary syntax error, and JSX in a `.js` file, which
+ * every other check calls fine and which the browser then refuses to evaluate.
+ *
+ * Read-only: it reports, it never rewrites. Renaming the file is the fix, and
+ * that belongs to whoever wrote it.
+ */
+export async function parsePlainScripts(files: PreviewFile[]): Promise<ScriptParseFailure[]> {
+  const plain = files.filter((file) => PLAIN_SCRIPT.test(file.path));
+  if (plain.length === 0) return [];
+
+  const { transform } = await import('sucrase');
+  const failures: ScriptParseFailure[] = [];
+
+  for (const file of plain) {
+    try {
+      transform(file.content, { transforms: [], disableESTransforms: true, filePath: file.path });
+    } catch (error) {
+      let jsx = false;
+      try {
+        // Parses with the JSX transform on: the code is fine, the extension is
+        // not, and saying so is far more useful than the parser's offset.
+        transform(file.content, {
+          transforms: ['jsx'],
+          jsxRuntime: 'automatic',
+          production: true,
+          disableESTransforms: true,
+          filePath: file.path,
+        });
+        jsx = true;
+      } catch {
+        // Not JSX either: it is simply broken.
+      }
+      failures.push({ path: file.path, message: describeError(error, file.content), jsx });
+    }
+  }
+
+  return failures;
 }

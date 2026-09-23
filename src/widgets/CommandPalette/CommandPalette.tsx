@@ -7,18 +7,25 @@ import { RoutePaths, toEditorPath } from '@/shared/config/routeConfig/routeConfi
 import { useDocumentSearch, type WorkspaceDocument } from '@/entities/Document';
 import cls from './CommandPalette.module.scss';
 
+/**
+ * Something the palette can run. Navigation is expressed this way too, so a
+ * page can hand in an action of its own — "Generate project with AI" — without
+ * the palette knowing what it does.
+ */
+export interface PaletteCommand {
+  id: string;
+  label: string;
+  hint?: string;
+  icon: typeof Icons.Grid;
+  run: () => void;
+}
+
 interface CommandPaletteProps {
   className?: string;
   open: boolean;
   onClose: () => void;
-}
-
-interface PaletteAction {
-  id: string;
-  label: string;
-  hint: string;
-  icon: typeof Icons.Grid;
-  path: string;
+  /** Page-specific commands, listed before the navigation ones. */
+  commands?: PaletteCommand[];
 }
 
 /**
@@ -26,15 +33,15 @@ interface PaletteAction {
  * which import this widget, so reading RoutePaths eagerly would land on a
  * half-initialised module.
  */
-function buildActions(): PaletteAction[] {
+function buildActions(navigate: (path: string) => void): PaletteCommand[] {
   return [
-    { id: 'dashboard', label: 'Go to dashboard', hint: '', icon: Icons.Grid, path: RoutePaths.main },
-    { id: 'profile', label: 'Open profile', hint: '', icon: Icons.User, path: RoutePaths.profile },
-    { id: 'settings', label: 'Open settings', hint: '⌘,', icon: Icons.Settings, path: RoutePaths.settings },
+    { id: 'dashboard', label: 'Go to dashboard', icon: Icons.Grid, run: () => navigate(RoutePaths.main) },
+    { id: 'profile', label: 'Open profile', icon: Icons.User, run: () => navigate(RoutePaths.profile) },
+    { id: 'settings', label: 'Open settings', hint: '⌘,', icon: Icons.Settings, run: () => navigate(RoutePaths.settings) },
   ];
 }
 
-function matchesAction(action: PaletteAction, query: string): boolean {
+function matchesAction(action: PaletteCommand, query: string): boolean {
   if (!query.trim()) return true;
   return action.label.toLowerCase().includes(query.trim().toLowerCase());
 }
@@ -44,7 +51,7 @@ function matchesAction(action: PaletteAction, query: string): boolean {
  * search endpoint, so results are instant and widen as the user browses.
  */
 export const CommandPalette = memo((props: CommandPaletteProps) => {
-  const { open, onClose } = props;
+  const { open, onClose, commands } = props;
   const navigate = useNavigate();
 
   const [query, setQuery] = useState('');
@@ -53,8 +60,9 @@ export const CommandPalette = memo((props: CommandPaletteProps) => {
 
   const documents = useDocumentSearch(query);
   const actions = useMemo(
-    () => buildActions().filter((action) => matchesAction(action, query)),
-    [query],
+    () => [...(commands ?? []), ...buildActions(navigate)]
+      .filter((action) => matchesAction(action, query)),
+    [commands, navigate, query],
   );
 
   // Both groups share one selection cursor so the arrow keys run straight through.
@@ -81,7 +89,7 @@ export const CommandPalette = memo((props: CommandPaletteProps) => {
 
     const action = actions[index - documents.length];
     if (!action) return;
-    navigate(action.path);
+    action.run();
     onClose();
   }, [actions, documents, navigate, onClose]);
 

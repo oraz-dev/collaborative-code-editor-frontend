@@ -5,15 +5,17 @@ import { Button } from '@/shared/ui/Button/Button';
 import { AppBar } from '@/widgets/AppBar/AppBar';
 import { CommandPalette } from '@/widgets/CommandPalette/CommandPalette';
 import { useCommandPaletteHotkey } from '@/shared/lib/hotkey/useCommandPaletteHotkey';
+import { AiSettingsSection } from '@/features/aiProjects';
 import { GeneralSection } from './ui/GeneralSection';
 import { EditorSection } from './ui/EditorSection';
 import cls from './SettingsPage.module.scss';
 
-type Section = 'general' | 'editor';
+type Section = 'general' | 'editor' | 'assistant';
 
 const NAV: { value: Section; label: string; icon: typeof Icons.Settings }[] = [
   { value: 'general', label: 'General', icon: Icons.Settings },
   { value: 'editor', label: 'Editor', icon: Icons.Files },
+  { value: 'assistant', label: 'Assistant', icon: Icons.Sparkle },
 ];
 
 export const SettingsPage = memo(() => {
@@ -68,6 +70,7 @@ export const SettingsPage = memo(() => {
           <div className={cls.content}>
             {section === 'general' && <GeneralSection />}
             {section === 'editor' && <EditorSection />}
+            {section === 'assistant' && <AiSettingsSection />}
           </div>
         </div>
       </div>
