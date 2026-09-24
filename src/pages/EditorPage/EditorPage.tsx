@@ -40,7 +40,6 @@ import {
   type EditorCursor,
   type EditorProject,
 } from '@/features/collaboration';
-import { AiCompleteStatus } from '@/features/aiComplete';
 import {
   EditorBreadcrumbs,
   EditorStatusBar,
@@ -621,12 +620,7 @@ export const EditorPage = memo((props: EditorPageProps) => {
               tabSize={editorPreferences.tabSize}
               readOnly={!canEdit}
               peerCount={others.length}
-              addonLeft={(
-                <>
-                  {typeCheckable && <TypeLoadingStatus />}
-                  <AiCompleteStatus />
-                </>
-              )}
+              addonLeft={typeCheckable ? <TypeLoadingStatus /> : null}
             />
           )}
         </div>

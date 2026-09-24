@@ -14,7 +14,6 @@ import {
   useEditorPreferences,
   useResolvedTheme,
 } from '@/features/preferences';
-import { useAiComplete } from '@/features/aiComplete';
 import { RemoteCursorStyles } from '../RemoteCursorStyles/RemoteCursorStyles';
 import { projectUri } from '../../model/typeSupport/editorLibs/editorLibs';
 import {
@@ -96,12 +95,6 @@ export const CollaborativeEditor = memo((props: CollaborativeEditorProps) => {
 
   useTypeSupport(monacoApi, project, model);
 
-  // Registered alongside the type support and disposed with it: the inline
-  // provider and the Cmd+I action both live on Monaco, not on this component.
-  // The model's uri is the project path, but the prompt wants the file's real
-  // path, which is what the project carries.
-  useAiComplete(monacoApi, editorInstance, project?.path ?? fileName);
-
   // The model changes when the file does, and again when its project path
   // becomes known; the binding below has to follow it each time.
   useEffect(() => {
@@ -155,8 +148,6 @@ export const CollaborativeEditor = memo((props: CollaborativeEditorProps) => {
     cursorBlinking: 'smooth',
     cursorSmoothCaretAnimation: 'on',
     bracketPairColorization: { enabled: true },
-    /* Ghost text from the AI completion provider; Monaco owns it and Tab. */
-    inlineSuggest: { enabled: true },
     guides: { indentation: true, bracketPairs: 'active' },
     /* Sticky scroll costs two or three lines of a very short viewport. */
     stickyScroll: { enabled: !isCompact },
