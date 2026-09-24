@@ -6,6 +6,7 @@ import { AppBar } from '@/widgets/AppBar/AppBar';
 import { CommandPalette } from '@/widgets/CommandPalette/CommandPalette';
 import { useCommandPaletteHotkey } from '@/shared/lib/hotkey/useCommandPaletteHotkey';
 import { AiSettingsSection } from '@/features/aiProjects';
+import { AiCompleteSettingsSection } from '@/features/aiComplete';
 import { GeneralSection } from './ui/GeneralSection';
 import { EditorSection } from './ui/EditorSection';
 import cls from './SettingsPage.module.scss';
@@ -70,7 +71,12 @@ export const SettingsPage = memo(() => {
           <div className={cls.content}>
             {section === 'general' && <GeneralSection />}
             {section === 'editor' && <EditorSection />}
-            {section === 'assistant' && <AiSettingsSection />}
+            {section === 'assistant' && (
+              <div className={cls.stack}>
+                <AiSettingsSection />
+                <AiCompleteSettingsSection />
+              </div>
+            )}
           </div>
         </div>
       </div>
