@@ -98,8 +98,29 @@
 }
 
 .lbl {
+  display: flex;
+  min-width: 0;
   flex: 1;
+  align-items: baseline;
+  gap: var(--space-2);
   font-size: var(--text-base);
+}
+
+/*
+ * Where a result lives, beside its name. Four projects can each hold a `src`,
+ * and without this the rows are indistinguishable. The name keeps its width
+ * and this yields, because the name is what was matched.
+ */
+.where {
+  overflow: hidden;
+  color: var(--color-text-faint);
+  font-size: var(--text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.name {
+  flex: none;
 }
 
 .meta {

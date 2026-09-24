@@ -4,7 +4,7 @@ import { Icons } from '@/shared/ui/Icon/Icons';
 import { Kbd } from '@/shared/ui/Kbd/Kbd';
 import { FileTypeIcon } from '@/shared/ui/FileTypeIcon/FileTypeIcon';
 import { RoutePaths, toEditorPath } from '@/shared/config/routeConfig/routeConfig';
-import { useDocumentSearch, type WorkspaceDocument } from '@/entities/Document';
+import { useDocumentSearch, type DocumentHit } from '@/entities/Document';
 import cls from './CommandPalette.module.scss';
 
 /**
@@ -81,7 +81,7 @@ export const CommandPalette = memo((props: CommandPaletteProps) => {
 
   const runItem = useCallback((index: number) => {
     if (index < documents.length) {
-      const document = documents[index];
+      const { document } = documents[index];
       navigate(toEditorPath(document.id));
       onClose();
       return;
@@ -121,31 +121,42 @@ export const CommandPalette = memo((props: CommandPaletteProps) => {
 
   if (!open) return null;
 
-  const renderDocument = (document: WorkspaceDocument, index: number) => (
-    <div
-      className={cls.row}
-      key={document.id}
-      data-active={index === activeIndex}
-      onClick={() => runItem(index)}
-      onMouseEnter={() => setActiveIndex(index)}
-      role="option"
-      aria-selected={index === activeIndex}
-      tabIndex={-1}
-      data-testid={`palette-doc-${document.name}`}
-    >
-      <span className={cls.ico}>
-        {/* Same icon system as the tree — Icons.Files draws a folder, which
-            made every file in here look like one. */}
-        <FileTypeIcon
-          name={document.name}
-          variant={document.kind === 'folder' ? 'folder' : 'file'}
-          size={16}
-        />
-      </span>
-      <span className={cls.lbl}>{document.name}</span>
-      <span className={cls.meta}>{document.kind === 'folder' ? 'Folder' : 'File'}</span>
-    </div>
-  );
+  const renderDocument = (hit: DocumentHit, index: number) => {
+    const { document, location } = hit;
+    const where = location.join(' / ');
+
+    return (
+      <div
+        className={cls.row}
+        key={document.id}
+        data-active={index === activeIndex}
+        onClick={() => runItem(index)}
+        onMouseEnter={() => setActiveIndex(index)}
+        role="option"
+        aria-selected={index === activeIndex}
+        // Four folders called `src` read identically to a screen reader too,
+        // so the location is part of the name, not decoration beside it.
+        aria-label={where ? `${document.name}, in ${where}` : document.name}
+        tabIndex={-1}
+        data-testid={`palette-doc-${document.name}`}
+      >
+        <span className={cls.ico}>
+          {/* Same icon system as the tree — Icons.Files draws a folder, which
+              made every file in here look like one. */}
+          <FileTypeIcon
+            name={document.name}
+            variant={document.kind === 'folder' ? 'folder' : 'file'}
+            size={16}
+          />
+        </span>
+        <span className={cls.lbl}>
+          <span className={cls.name}>{document.name}</span>
+          {where && <span className={cls.where} title={where}>{where}</span>}
+        </span>
+        <span className={cls.meta}>{document.kind === 'folder' ? 'Folder' : 'File'}</span>
+      </div>
+    );
+  };
 
   return (
     <div className={cls.scrim} onClick={onClose}>
