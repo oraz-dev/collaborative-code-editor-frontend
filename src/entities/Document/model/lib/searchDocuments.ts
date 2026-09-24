@@ -68,3 +68,37 @@ export function dedupeDocuments(documents: WorkspaceDocument[]): WorkspaceDocume
 
   return unique;
 }
+
+/** A parent chain longer than this is bad data, not a real tree. */
+const MAX_DEPTH = 24;
+
+/**
+ * Where a document sits, as the names of its folders from the top down.
+ *
+ * Four projects can each hold a `src`, and a list of four rows reading "src"
+ * tells the searcher nothing. The chain is walked through the documents that
+ * are already loaded — the same cached lists the search itself reads — so it
+ * costs no requests. A parent that has not been loaded ends the walk, and the
+ * caller gets the part that is known rather than nothing at all.
+ */
+export function documentLocation(
+  document: WorkspaceDocument,
+  byId: Map<string, WorkspaceDocument>,
+): string[] {
+  const names: string[] = [];
+  let parentId = document.parentId;
+
+  for (let depth = 0; parentId && depth < MAX_DEPTH; depth += 1) {
+    const parent = byId.get(parentId);
+    if (!parent) break;
+    names.unshift(parent.name);
+    parentId = parent.parentId;
+  }
+
+  return names;
+}
+
+/** The documents by id, for `documentLocation` to walk. */
+export function indexDocuments(documents: WorkspaceDocument[]): Map<string, WorkspaceDocument> {
+  return new Map(documents.filter((document) => document.id).map((document) => [document.id, document]));
+}
