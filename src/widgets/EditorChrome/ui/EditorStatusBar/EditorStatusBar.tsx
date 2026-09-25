@@ -20,6 +20,11 @@ interface EditorStatusBarProps {
   /** Number of other people in the document right now. */
   peerCount?: number;
   encoding?: string;
+  /**
+   * False for a file that is being looked at rather than edited — a picture
+   * has no indentation and no cursor, and claiming otherwise is just noise.
+   */
+  showsText?: boolean;
   /** Extra items at the start of the bar, e.g. background work in progress. */
   addonLeft?: ReactNode;
 }
@@ -34,6 +39,7 @@ export const EditorStatusBar = memo((props: EditorStatusBarProps) => {
     readOnly = false,
     peerCount = 0,
     encoding = 'UTF-8',
+    showsText = true,
     addonLeft,
   } = props;
 
@@ -69,8 +75,8 @@ export const EditorStatusBar = memo((props: EditorStatusBarProps) => {
             {cursor.selected > 0 && ` (${cursor.selected} selected)`}
           </span>
         )}
-        <span className={cls.item}>Spaces: {tabSize}</span>
-        <span className={cls.item}>{encoding}</span>
+        {showsText && <span className={cls.item}>Spaces: {tabSize}</span>}
+        {showsText && <span className={cls.item}>{encoding}</span>}
         <span className={cls.item} data-testid="status-language">{language}</span>
       </span>
     </div>

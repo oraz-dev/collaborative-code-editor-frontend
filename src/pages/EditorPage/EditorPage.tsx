@@ -11,6 +11,7 @@ import { logger } from '@/shared/lib/logger/logger';
 import { toEditorPath, RoutePaths } from '@/shared/config/routeConfig/routeConfig';
 import { useCommandPaletteHotkey } from '@/shared/lib/hotkey/useCommandPaletteHotkey';
 import { useIsCompact, useIsPhone } from '@/shared/lib/media/useMediaQuery';
+import { isTextMedia, mediaKindFor } from '@/shared/lib/mediaFile/mediaFile';
 import { ResizeHandle } from '@/shared/ui/ResizeHandle/ResizeHandle';
 import {
   DEFAULT_PREFERENCES,
@@ -37,9 +38,11 @@ import {
   presenceColorFor,
   TypeLoadingStatus,
   useCollaborativeDocument,
+  useLiveText,
   type EditorCursor,
   type EditorProject,
 } from '@/features/collaboration';
+import { MediaViewer } from '@/features/mediaViewer';
 import {
   EditorBreadcrumbs,
   EditorStatusBar,
@@ -230,6 +233,17 @@ export const EditorPage = memo((props: EditorPageProps) => {
   const fileName = activeDocument?.name ?? '';
   const isFile = Boolean(activeDocument) && !isFolder;
 
+  /**
+   * A picture, a clip or a track is shown rather than read — the file is still
+   * text underneath (see `mediaSourceFor`), and a screen of base64 is nobody's
+   * idea of opening an image.
+   */
+  const mediaKind = isFile ? mediaKindFor(fileName) : null;
+
+  // Reading the buffer out as a string costs a copy per keystroke, so only a
+  // file whose preview has to follow the typing pays for it.
+  const mediaText = useLiveText(mediaKind && isReady ? text : null, activeDocument?.content ?? '');
+
   // Only asked for once an editor is open — the answer is per deployment, not
   // per document, and a stalled sandbox must not delay the dashboard.
   const languagesQuery = useLanguages(isFile);
@@ -396,6 +410,18 @@ export const EditorPage = memo((props: EditorPageProps) => {
     navigate(RoutePaths.settings);
   }, [navigate]);
 
+  const renderEditor = () => (
+    <CollaborativeEditor
+      text={text}
+      awareness={awareness}
+      fileName={activeDocument?.name ?? 'untitled'}
+      project={editorProject}
+      readOnly={!canEdit}
+      peers={peers}
+      onCursorChange={setCursor}
+    />
+  );
+
   const renderEditorArea = () => {
     if (!documentId) {
       return (
@@ -438,6 +464,24 @@ export const EditorPage = memo((props: EditorPageProps) => {
       );
     }
 
+    /*
+     * Before the sync gates below: a picture is drawn from the file's saved
+     * content, so it is on screen while the CRDT session is still connecting —
+     * and still there if that session never arrives.
+     */
+    if (mediaKind) {
+      return (
+        <MediaViewer
+          // Remounted per file: a zoom level and a chosen view belong to the
+          // picture they were chosen for, not to the pane.
+          key={documentId}
+          fileName={fileName}
+          content={mediaText}
+          sourceView={isTextMedia(fileName) && !error && isReady ? renderEditor() : null}
+        />
+      );
+    }
+
     if (error) {
       return (
         <div className={cls.placeholder} data-animated data-testid="editor-sync-error">
@@ -453,17 +497,7 @@ export const EditorPage = memo((props: EditorPageProps) => {
       return <div className={cls.placeholder}><Spinner size="large" label="Preparing the editor" /></div>;
     }
 
-    return (
-      <CollaborativeEditor
-        text={text}
-        awareness={awareness}
-        fileName={activeDocument?.name ?? 'untitled'}
-        project={editorProject}
-        readOnly={!canEdit}
-        peers={peers}
-        onCursorChange={setCursor}
-      />
-    );
+    return renderEditor();
   };
 
   const showsEditorChrome = Boolean(activeDocument) && !isFolder;
@@ -620,6 +654,7 @@ export const EditorPage = memo((props: EditorPageProps) => {
               tabSize={editorPreferences.tabSize}
               readOnly={!canEdit}
               peerCount={others.length}
+              showsText={!mediaKind}
               addonLeft={typeCheckable ? <TypeLoadingStatus /> : null}
             />
           )}

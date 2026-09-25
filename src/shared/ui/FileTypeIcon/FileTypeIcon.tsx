@@ -39,6 +39,13 @@ const GLYPH_PATHS: Record<FileGlyph, string[]> = {
     'M8.5 10.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z',
     'm4 16 4.5-4 4 3.5L16 12l4 4',
   ],
+  film: [
+    'M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5z',
+    'M8 4v16',
+    'M16 4v16',
+    'M4 12h16',
+  ],
+  wave: ['M4 11v2', 'M8 8v8', 'M12 4v16', 'M16 7v10', 'M20 11v2'],
   binary: ['m21 8-9-5-9 5 9 5 9-5z', 'M3 8v8l9 5 9-5V8', 'M12 13v8'],
   // Drawn as text, not paths — see the `mark` branch below.
   mark: [],
