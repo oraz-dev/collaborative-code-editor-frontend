@@ -18,6 +18,8 @@ export type FileGlyph =
   | 'sliders'
   | 'database'
   | 'image'
+  | 'film'
+  | 'wave'
   | 'binary';
 
 export interface FileTypeDescriptor {
@@ -99,6 +101,23 @@ const BY_EXTENSION: Record<string, FileTypeDescriptor> = {
   gif: { glyph: 'image', color: '#9d7cff', label: 'Image' },
   webp: { glyph: 'image', color: '#9d7cff', label: 'Image' },
   ico: { glyph: 'image', color: '#9d7cff', label: 'Image' },
+  avif: { glyph: 'image', color: '#9d7cff', label: 'Image' },
+  bmp: { glyph: 'image', color: '#9d7cff', label: 'Image' },
+
+  mp4: { glyph: 'film', color: '#f06ca6', label: 'Video' },
+  m4v: { glyph: 'film', color: '#f06ca6', label: 'Video' },
+  webm: { glyph: 'film', color: '#f06ca6', label: 'Video' },
+  ogv: { glyph: 'film', color: '#f06ca6', label: 'Video' },
+  mov: { glyph: 'film', color: '#f06ca6', label: 'Video' },
+
+  mp3: { glyph: 'wave', color: '#36c5cf', label: 'Audio' },
+  wav: { glyph: 'wave', color: '#36c5cf', label: 'Audio' },
+  ogg: { glyph: 'wave', color: '#36c5cf', label: 'Audio' },
+  oga: { glyph: 'wave', color: '#36c5cf', label: 'Audio' },
+  opus: { glyph: 'wave', color: '#36c5cf', label: 'Audio' },
+  m4a: { glyph: 'wave', color: '#36c5cf', label: 'Audio' },
+  aac: { glyph: 'wave', color: '#36c5cf', label: 'Audio' },
+  flac: { glyph: 'wave', color: '#36c5cf', label: 'Audio' },
 };
 
 /** Whole-name matches win over the extension, the way real icon themes work. */

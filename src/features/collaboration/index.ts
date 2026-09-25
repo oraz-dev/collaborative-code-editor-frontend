@@ -24,3 +24,4 @@ export { RemoteCursorStyles } from './ui/RemoteCursorStyles/RemoteCursorStyles';
 export { ConnectionBadge } from './ui/ConnectionBadge/ConnectionBadge';
 export { TypeLoadingStatus } from './ui/TypeLoadingStatus/TypeLoadingStatus';
 export type { EditorProject } from './model/typeSupport/useTypeSupport/useTypeSupport';
+export { useLiveText } from './model/useLiveText/useLiveText';

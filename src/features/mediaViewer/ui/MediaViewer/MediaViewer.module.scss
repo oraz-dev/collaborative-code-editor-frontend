@@ -1,0 +1,176 @@
+.viewer {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  flex: 1;
+  flex-direction: column;
+  background: var(--color-bg);
+}
+
+.bar {
+  display: flex;
+  height: 34px;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 6px 0 var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-sunken);
+}
+
+.title {
+  color: var(--color-text-faint);
+  font: var(--weight-semibold) var(--text-2xs) / 1 var(--font-body);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+
+.meta {
+  color: var(--color-text-secondary);
+  font: var(--text-xs) / 1 var(--font-mono);
+  white-space: nowrap;
+}
+
+.spacer { flex: 1; }
+
+.zoom {
+  min-width: 44px;
+  height: var(--control-sm);
+  padding: 0 var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font: var(--text-xs) / 1 var(--font-mono);
+}
+
+.zoom:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+}
+
+/* Matches the icon buttons beside it — it is one, with a link's behaviour. */
+.download {
+  display: inline-flex;
+  width: var(--control-sm);
+  height: var(--control-sm);
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+}
+
+.download:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+}
+
+.bar .sourceToggle {
+  height: var(--control-sm);
+  flex: none;
+  padding: 0 var(--space-2);
+  font-size: var(--text-xs);
+}
+
+.bar .sourceToggleOn {
+  background: var(--fill-primary);
+  color: var(--color-primary-hover);
+}
+
+/* The chequerboard is load-bearing: it is how a transparent PNG reads as
+   transparent rather than as white, in either theme. */
+.stage {
+  display: flex;
+  overflow: auto;
+  min-height: 0;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  background-color: var(--color-bg-sunken);
+  background-image:
+    linear-gradient(45deg, var(--color-inset) 25%, transparent 25%, transparent 75%, var(--color-inset) 75%),
+    linear-gradient(45deg, var(--color-inset) 25%, transparent 25%, transparent 75%, var(--color-inset) 75%);
+  background-position: 0 0, 9px 9px;
+  background-size: 18px 18px;
+}
+
+.image {
+  display: block;
+  flex: none;
+}
+
+.fitted {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.video {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: var(--radius-md);
+  background: #000;
+  box-shadow: var(--shadow-md);
+}
+
+.audio {
+  display: flex;
+  width: min(100%, 420px);
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.audioName {
+  overflow: hidden;
+  max-width: 100%;
+  color: var(--color-text-secondary);
+  font: var(--text-xs) / 1 var(--font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player {
+  width: 100%;
+}
+
+.blocked {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  color: var(--color-text-faint);
+  text-align: center;
+}
+
+.blocked p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+}
+
+.hint {
+  max-width: 320px;
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+}
+
+/* The editor arrives as a child and has to fill what is left of the pane. */
+.source {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}

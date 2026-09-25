@@ -20,6 +20,11 @@ describe('fileTypeFor', () => {
     expect(fileTypeFor('App.tsx')).toMatchObject({ glyph: 'mark', text: 'TSX', label: 'TypeScript JSX' });
   });
 
+  test('gives video and audio their own shapes, not the generic document', () => {
+    expect(fileTypeFor('demo.mp4')).toMatchObject({ glyph: 'film', label: 'Video' });
+    expect(fileTypeFor('theme.MP3')).toMatchObject({ glyph: 'wave', label: 'Audio' });
+  });
+
   test('languages that would share a shape are told apart by more than hue', () => {
     // The whole point: at 15px a colour change alone does not separate these.
     const ts = fileTypeFor('a.ts');
