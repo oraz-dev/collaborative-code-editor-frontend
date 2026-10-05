@@ -149,6 +149,7 @@ export const EditorPage = memo((props: EditorPageProps) => {
 
   const {
     text, awareness, status, peers, isReady, error, canEdit, role, runState, run,
+    hasUnsyncedChanges,
   } = useCollaborativeDocument({
     documentId: isFolder ? null : documentId,
     user: collaborator,
@@ -528,7 +529,11 @@ export const EditorPage = memo((props: EditorPageProps) => {
         <div className={cls.right}>
           {activeDocument && !isFolder && (
             <>
-              <ConnectionBadge status={status} peerCount={others.length} />
+              <ConnectionBadge
+                status={status}
+                peerCount={others.length}
+                unsynced={hasUnsyncedChanges}
+              />
               {!canEdit && (
                 <span className={cls.viewOnly} title="You have view-only access to this document">
                   View only

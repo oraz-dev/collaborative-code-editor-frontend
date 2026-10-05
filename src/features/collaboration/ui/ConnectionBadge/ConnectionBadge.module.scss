@@ -21,7 +21,8 @@
 }
 
 .connected .dot { background: var(--mint-500); }
-.connecting .dot { background: var(--amber-500); }
+.connecting .dot,
+.unsynced .dot { background: var(--amber-500); }
 .offline .dot,
 .error .dot { background: var(--coral-500); }
 

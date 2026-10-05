@@ -26,6 +26,19 @@ describe('ConnectionBadge', () => {
     expect(badge).toHaveAttribute('aria-label', expect.stringContaining('edits are kept'));
   });
 
+  test('does not claim to be live over edits the server has not taken', () => {
+    render(<ConnectionBadge status="connected" unsynced />);
+    const badge = screen.getByTestId('connection-badge');
+    expect(badge).toHaveTextContent('Unsynced changes');
+    expect(badge).not.toHaveTextContent('Live');
+    expect(badge).toHaveAttribute('aria-label', expect.stringContaining('retry automatically'));
+  });
+
+  test('leaves the reconnecting copy alone while the link is down', () => {
+    render(<ConnectionBadge status="offline" unsynced />);
+    expect(screen.getByTestId('connection-badge')).toHaveTextContent('Reconnecting…');
+  });
+
   test('announces status changes to assistive tech', () => {
     render(<ConnectionBadge status="connecting" />);
     expect(screen.getByTestId('connection-badge')).toHaveAttribute('aria-live', 'polite');
