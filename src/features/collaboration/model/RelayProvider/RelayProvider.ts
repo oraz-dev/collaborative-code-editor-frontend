@@ -9,8 +9,11 @@ import {
 } from 'y-protocols/awareness';
 import { messageYjsSyncStep1, readSyncMessage, writeSyncStep1, writeUpdate } from 'y-protocols/sync';
 import {
+  CHAT_MESSAGE,
+  CHAT_SEND,
   RUN,
   asControlFrame,
+  type ChatSendFrame,
   type ControlFrame,
   type RunRequestFrame,
 } from '../types/controlFrames';
@@ -43,6 +46,12 @@ export interface RelayProviderOptions {
   onAccessChange?: (access: { role: WsTicket['role']; canEdit: boolean }) => void;
   /** Fires for every server control frame — run lifecycle and errors. */
   onControlFrame?: (frame: ControlFrame) => void;
+  /**
+   * Fires for every inbound chat frame, with the raw parsed object. The
+   * domain mapping lives in the chat feature, so the socket stays unaware of
+   * the message shape — it only tells a chat frame apart by its `type`.
+   */
+  onChatMessage?: (raw: Record<string, unknown>) => void;
 }
 
 /**
@@ -73,6 +82,7 @@ export class RelayProvider {
   private readonly onStatusChange?: (status: ConnectionStatus) => void;
   private readonly onAccessChange?: (access: { role: WsTicket['role']; canEdit: boolean }) => void;
   private readonly onControlFrame?: (frame: ControlFrame) => void;
+  private readonly onChatMessage?: (raw: Record<string, unknown>) => void;
 
   /**
    * A viewer's socket is receive-only — the relay drops anything it sends — so
@@ -97,6 +107,7 @@ export class RelayProvider {
     this.onStatusChange = options.onStatusChange;
     this.onAccessChange = options.onAccessChange;
     this.onControlFrame = options.onControlFrame;
+    this.onChatMessage = options.onChatMessage;
 
     this.doc.on('update', this.handleDocUpdate);
     this.awareness.on('update', this.handleAwarenessUpdate);
@@ -340,6 +351,19 @@ export class RelayProvider {
       return;
     }
 
+    // Chat rides the same control plane but is a separate concern from the run
+    // lifecycle, so it is routed on its own rather than folded into the run
+    // state reducer. Only the discriminant is checked here; the shape of the
+    // message is the chat feature's to interpret.
+    if (
+      typeof parsed === 'object' &&
+      parsed !== null &&
+      (parsed as { type?: unknown }).type === CHAT_MESSAGE
+    ) {
+      this.onChatMessage?.(parsed as Record<string, unknown>);
+      return;
+    }
+
     const frame = asControlFrame(parsed);
     if (!frame) {
       logger.warn('Ignored an unrecognised control frame');
@@ -347,6 +371,31 @@ export class RelayProvider {
     }
 
     this.onControlFrame?.(frame);
+  }
+
+  /**
+   * Posts a chat message to the room.
+   *
+   * Sent as a text frame straight to the server, like {@link sendRun} — not
+   * through `send`, which the viewer guard would drop. A viewer may chat even
+   * though their edits are refused, so the socket must let this through.
+   *
+   * Returns false when the socket is not open, so the caller can fall back to
+   * the REST route rather than lose the message.
+   */
+  sendChat(body: string, clientMsgId: string): boolean {
+    const socket = this.ws;
+    if (!socket || socket.readyState !== WebSocket.OPEN) return false;
+
+    try {
+      socket.send(
+        JSON.stringify({ type: CHAT_SEND, body, client_msg_id: clientMsgId } satisfies ChatSendFrame),
+      );
+      return true;
+    } catch (error) {
+      logger.warn('Could not send the chat message', error);
+      return false;
+    }
   }
 
   /**

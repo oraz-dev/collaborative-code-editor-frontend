@@ -97,6 +97,17 @@ export interface CollaborativeDocument {
    * sent and `runState` reports it.
    */
   run: (request: { languageId: number; sourceCode: string; stdin?: string }) => boolean;
+  /**
+   * Posts a chat message over the collaboration socket. Any collaborator may,
+   * viewers included. Returns false when the socket is not open, so the caller
+   * can fall back to the REST route.
+   */
+  sendChat: (body: string, clientMsgId: string) => boolean;
+  /**
+   * Subscribes to inbound chat frames. The listener receives the raw parsed
+   * object; the chat feature owns the mapping. Returns an unsubscribe.
+   */
+  subscribeChat: (listener: (raw: Record<string, unknown>) => void) => () => void;
 }
 
 export function useCollaborativeDocument(
@@ -122,6 +133,10 @@ export function useCollaborativeDocument(
   // but `run` has to reach the live one, so it is held in a ref rather than
   // threaded through `session`.
   const providerRef = useRef<RelayProvider | null>(null);
+
+  // Chat listeners live above the per-document effect so a subscription set up
+  // by a consumer survives the provider being rebuilt on a document change.
+  const chatListenersRef = useRef(new Set<(raw: Record<string, unknown>) => void>());
 
   // Read once during bootstrap; kept in refs so a changing identity or a
   // late-arriving content string never tears the live document down.
@@ -382,6 +397,17 @@ export function useCollaborativeDocument(
       onControlFrame: (frame: ControlFrame) => {
         if (!disposed) setRunState((current) => reduceRunState(current, frame));
       },
+      onChatMessage: (raw) => {
+        if (disposed) return;
+        // Fan out to every consumer; one throwing must not starve the rest.
+        chatListenersRef.current.forEach((listener) => {
+          try {
+            listener(raw);
+          } catch (listenerError) {
+            logger.warn('A chat listener threw', listenerError);
+          }
+        });
+      },
     });
 
     const localUser = userRef.current;
@@ -572,6 +598,19 @@ export function useCollaborativeDocument(
     return sent;
   }, []);
 
+  const sendChat = useCallback(
+    (body: string, clientMsgId: string) => providerRef.current?.sendChat(body, clientMsgId) ?? false,
+    [],
+  );
+
+  const subscribeChat = useCallback((listener: (raw: Record<string, unknown>) => void) => {
+    const listeners = chatListenersRef.current;
+    listeners.add(listener);
+    return () => {
+      listeners.delete(listener);
+    };
+  }, []);
+
   // While inactive the stale session is simply not surfaced, which avoids
   // resetting state from inside an effect.
   return {
@@ -587,5 +626,7 @@ export function useCollaborativeDocument(
     hasUnsyncedChanges: isActive && hasUnsyncedChanges,
     runState: isActive ? runState : IDLE_RUN_STATE,
     run,
+    sendChat,
+    subscribeChat,
   };
 }

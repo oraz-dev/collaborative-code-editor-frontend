@@ -61,6 +61,21 @@
 .sp { flex: 1; }
 .right { display: flex; align-items: center; gap: 10px; }
 
+.chatToggle { position: relative; display: inline-flex; }
+
+/* Unread marker on the chat toggle — someone wrote while the panel was shut. */
+.unreadDot {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 7px;
+  height: 7px;
+  border: 1.5px solid var(--color-bg);
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  pointer-events: none;
+}
+
 .here {
   display: flex;
   align-items: center;
