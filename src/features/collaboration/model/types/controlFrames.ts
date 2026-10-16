@@ -27,6 +27,25 @@ export const RUN_RESULT = 'run:result';
 export const ERROR = 'error';
 
 /**
+ * Outbound: post a message to the document's chat. Accepted from any
+ * collaborator, viewers included — unlike {@link RUN}, which is host-only.
+ */
+export const CHAT_SEND = 'chat:send';
+
+/**
+ * Inbound: a chat message, broadcast to the whole room (the sender included,
+ * so a message a client sent comes back to it as the authoritative record).
+ */
+export const CHAT_MESSAGE = 'chat:message';
+
+export interface ChatSendFrame {
+  type: typeof CHAT_SEND;
+  body: string;
+  /** Idempotency key, so a resend after a timeout does not duplicate. */
+  client_msg_id: string;
+}
+
+/**
  * Error codes the server switches on. Stable wire strings, not prose — the
  * human-readable `message` beside them is for logs, not for branching.
  */

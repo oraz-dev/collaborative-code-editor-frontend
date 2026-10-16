@@ -43,6 +43,7 @@ import {
   type EditorProject,
 } from '@/features/collaboration';
 import { MediaViewer } from '@/features/mediaViewer';
+import { ChatPanel, useDocumentChat, type ChatTransport } from '@/features/chat';
 import {
   EditorBreadcrumbs,
   EditorStatusBar,
@@ -85,6 +86,9 @@ export const EditorPage = memo((props: EditorPageProps) => {
   const [shareOpen, setShareOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [outputOpen, setOutputOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatWidth, setChatWidth] = useState(DEFAULT_PREFERENCES.layout.previewWidth);
+  const [hasUnreadChat, setHasUnreadChat] = useState(false);
 
   const layout = useLayoutPreferences();
 
@@ -149,7 +153,7 @@ export const EditorPage = memo((props: EditorPageProps) => {
 
   const {
     text, awareness, status, peers, isReady, error, canEdit, role, runState, run,
-    hasUnsyncedChanges,
+    hasUnsyncedChanges, sendChat, subscribeChat,
   } = useCollaborativeDocument({
     documentId: isFolder ? null : documentId,
     user: collaborator,
@@ -159,6 +163,59 @@ export const EditorPage = memo((props: EditorPageProps) => {
   });
 
   const others = useMemo(() => peers.filter((peer) => !peer.isSelf), [peers]);
+
+  // Chat rides the same collaboration socket. It is live for any open file so
+  // messages accrue (and the unread dot lights) whether or not the panel is up.
+  const chatTransport = useMemo<ChatTransport>(
+    () => ({ sendChat, subscribeChat }),
+    [sendChat, subscribeChat],
+  );
+  const chat = useDocumentChat({
+    documentId: isFolder ? null : documentId,
+    selfUserId: user?.id ?? null,
+    transport: chatTransport,
+    enabled: Boolean(activeDocument) && !isFolder && Boolean(user),
+  });
+
+  const onToggleChat = useCallback(() => {
+    setChatOpen((open) => !open);
+  }, []);
+
+  const onCloseChat = useCallback(() => {
+    setChatOpen(false);
+  }, []);
+
+  const onResizeChat = useCallback((next: number) => {
+    setChatWidth(next);
+  }, []);
+
+  const onResetChat = useCallback(() => {
+    setChatWidth(DEFAULT_PREFERENCES.layout.previewWidth);
+  }, []);
+
+  // Lights the toggle's dot when someone else writes while the panel is shut.
+  // A per-document baseline keeps already-read history from counting as new.
+  const prevChatCountRef = useRef(0);
+  const readyChatDocRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (chatOpen) setHasUnreadChat(false);
+    if (chat.isLoading) return;
+
+    if (readyChatDocRef.current !== (documentId ?? null)) {
+      readyChatDocRef.current = documentId ?? null;
+      prevChatCountRef.current = chat.messages.length;
+      return;
+    }
+
+    const prev = prevChatCountRef.current;
+    const count = chat.messages.length;
+    prevChatCountRef.current = count;
+
+    if (!chatOpen && count > prev) {
+      const newest = chat.messages[count - 1];
+      if (newest && newest.userId !== user?.id) setHasUnreadChat(true);
+    }
+  }, [chat.messages, chat.isLoading, chatOpen, documentId, user?.id]);
 
   /**
    * Who started the run, when it was not this viewer. The socket carries a
@@ -561,6 +618,21 @@ export const EditorPage = memo((props: EditorPageProps) => {
               {runState.phase === 'running' && runTarget?.engine === 'sandbox' ? 'Running…' : 'Run'}
             </button>
           )}
+          {activeDocument && !isFolder && (
+            <span className={cls.chatToggle}>
+              <IconButton
+                size="sm"
+                active={chatOpen}
+                onClick={onToggleChat}
+                aria-label={chatOpen ? 'Hide chat' : 'Show chat'}
+                aria-pressed={chatOpen}
+                data-testid="chat-toggle"
+              >
+                <Icons.Comment size={16} />
+              </IconButton>
+              {hasUnreadChat && <span className={cls.unreadDot} aria-hidden="true" />}
+            </span>
+          )}
           {activeDocument && (
             <IconButton size="sm" onClick={onOpenShare} aria-label="Share this document">
               <Icons.Share size={16} />
@@ -746,6 +818,56 @@ export const EditorPage = memo((props: EditorPageProps) => {
               notices={loadedProject?.warnings}
               onRerun={onRun}
               onClose={onClosePreview}
+            />
+          </div>
+        )}
+        {chatOpen && activeDocument && !isFolder && !isCompact && (
+          <>
+            <ResizeHandle
+              axis="x"
+              size={chatWidth}
+              min={PREVIEW_WIDTH_RANGE.min}
+              max={PREVIEW_WIDTH_RANGE.max}
+              reversed
+              label="Resize chat"
+              onResize={onResizeChat}
+              onReset={onResetChat}
+            />
+            <ChatPanel
+              style={{ width: chatWidth }}
+              className={cls.preview}
+              messages={chat.messages}
+              selfUserId={user?.id ?? null}
+              peers={peers}
+              status={status}
+              isLoading={chat.isLoading}
+              error={chat.error}
+              hasMore={chat.hasMore}
+              isLoadingMore={chat.isLoadingMore}
+              onLoadMore={chat.loadMore}
+              onSend={chat.send}
+              onRetry={chat.retry}
+              onClose={onCloseChat}
+            />
+          </>
+        )}
+
+        {chatOpen && activeDocument && !isFolder && isCompact && (
+          <div className={cls.previewOverlay} data-testid="chat-overlay">
+            <ChatPanel
+              className={cls.previewSheet}
+              messages={chat.messages}
+              selfUserId={user?.id ?? null}
+              peers={peers}
+              status={status}
+              isLoading={chat.isLoading}
+              error={chat.error}
+              hasMore={chat.hasMore}
+              isLoadingMore={chat.isLoadingMore}
+              onLoadMore={chat.loadMore}
+              onSend={chat.send}
+              onRetry={chat.retry}
+              onClose={onCloseChat}
             />
           </div>
         )}

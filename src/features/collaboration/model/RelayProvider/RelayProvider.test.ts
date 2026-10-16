@@ -43,8 +43,14 @@ class FakeWebSocket {
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-function setup(options: { canEdit?: boolean; onControlFrame?: (frame: ControlFrame) => void } = {}) {
-  const { canEdit = true, onControlFrame } = options;
+function setup(
+  options: {
+    canEdit?: boolean;
+    onControlFrame?: (frame: ControlFrame) => void;
+    onChatMessage?: (raw: Record<string, unknown>) => void;
+  } = {},
+) {
+  const { canEdit = true, onControlFrame, onChatMessage } = options;
   const doc = new Y.Doc();
   const awareness = new Awareness(doc);
   const statuses: ConnectionStatus[] = [];
@@ -61,6 +67,7 @@ function setup(options: { canEdit?: boolean; onControlFrame?: (frame: ControlFra
     })),
     onStatusChange: (status) => statuses.push(status),
     onControlFrame,
+    onChatMessage,
   });
 
   return { doc, awareness, provider, statuses };
@@ -297,6 +304,72 @@ describe('RelayProvider', () => {
     await flush();
 
     expect(socket.sent.length).toBeGreaterThan(0);
+
+    provider.destroy();
+  });
+
+  test('sends a chat message as a text frame', async () => {
+    const { provider } = setup();
+    provider.connect();
+    await flush();
+
+    const socket = FakeWebSocket.instances[0];
+    socket.open();
+
+    expect(provider.sendChat('has anyone run this?', 'cmid-1')).toBe(true);
+
+    const textFrames = socket.sent.filter((frame): frame is string => typeof frame === 'string');
+    expect(textFrames).toHaveLength(1);
+    expect(JSON.parse(textFrames[0])).toEqual({
+      type: 'chat:send',
+      body: 'has anyone run this?',
+      client_msg_id: 'cmid-1',
+    });
+
+    provider.destroy();
+  });
+
+  test('lets a viewer chat even though their edits are dropped', async () => {
+    const { provider } = setup({ canEdit: false });
+    provider.connect();
+    await flush();
+
+    const socket = FakeWebSocket.instances[0];
+    socket.open();
+
+    expect(provider.sendChat('viewers can talk', 'cmid-2')).toBe(true);
+    expect(socket.sent.some((frame) => typeof frame === 'string')).toBe(true);
+
+    provider.destroy();
+  });
+
+  test('sendChat reports false when the socket is not open', async () => {
+    const { provider } = setup();
+    // Never connected.
+    expect(provider.sendChat('into the void', 'cmid-3')).toBe(false);
+    provider.destroy();
+  });
+
+  test('routes an inbound chat frame to onChatMessage, not the run reducer', async () => {
+    const chat: Record<string, unknown>[] = [];
+    const control: ControlFrame[] = [];
+    const { provider } = setup({
+      onChatMessage: (raw) => chat.push(raw),
+      onControlFrame: (frame) => control.push(frame),
+    });
+    provider.connect();
+    await flush();
+
+    const socket = FakeWebSocket.instances[0];
+    socket.open();
+
+    socket.onmessage?.({
+      data: JSON.stringify({ type: 'chat:message', body: 'hi', client_msg_id: 'cmid-4' }),
+    });
+
+    expect(chat).toHaveLength(1);
+    expect(chat[0]).toMatchObject({ type: 'chat:message', body: 'hi' });
+    expect(control).toHaveLength(0);
 
     provider.destroy();
   });

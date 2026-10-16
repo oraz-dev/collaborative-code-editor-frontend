@@ -1,0 +1,232 @@
+@use '../../../../app/styles/breakpoints' as bp;
+
+/* Shaped to match PreviewPane / RunOutputPane — a third pane on the right rail. */
+.pane {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  border-left: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.bar {
+  display: flex;
+  height: 36px;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 6px 0 var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-sunken);
+  color: var(--color-text-secondary);
+}
+
+.title {
+  flex: none;
+  color: var(--color-text-faint);
+  font: var(--weight-semibold) var(--text-2xs) / 1 var(--font-body);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+
+.offline {
+  flex: none;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  background: var(--color-inset);
+  color: var(--color-text-muted);
+  font: var(--text-2xs) / 1.4 var(--font-mono);
+}
+
+.spacer { flex: 1; }
+
+/* Loading / empty / error all centre a short line in the body. */
+.state {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  color: var(--color-text-faint);
+  text-align: center;
+}
+
+.state p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-base);
+}
+
+.hint {
+  max-width: 28ch;
+  color: var(--color-text-faint);
+  font-size: var(--text-sm);
+}
+
+.list {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.older {
+  display: flex;
+  justify-content: center;
+  padding-bottom: var(--space-2);
+}
+
+.olderBtn {
+  padding: 4px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    border-color: var(--color-border-strong);
+    color: var(--color-text);
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+}
+
+.row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+}
+
+/* A follow-on from the same author: no avatar, tucked up under the first. */
+.row.grouped {
+  margin-top: calc(-1 * var(--space-2));
+}
+
+.avatar { flex: none; margin-top: 2px; }
+
+.avatarSpacer {
+  flex: none;
+  width: 24px; /* matches Avatar size="sm" */
+}
+
+.bubbleWrap {
+  display: flex;
+  min-width: 0;
+  max-width: 82%;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.meta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.author {
+  color: var(--color-text);
+  font: var(--weight-semibold) var(--text-sm) / 1.2 var(--font-body);
+}
+
+.time {
+  flex: none;
+  color: var(--color-text-faint);
+  font-size: var(--text-2xs);
+}
+
+.bubble {
+  padding: 6px 10px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.bubble.failed {
+  border-color: var(--color-destructive);
+}
+
+.status {
+  color: var(--color-text-faint);
+  font-size: var(--text-2xs);
+}
+
+.retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-destructive);
+  font-size: var(--text-2xs);
+  cursor: pointer;
+
+  &:hover { text-decoration: underline; }
+}
+
+/* The viewer's own messages mirror to the right, as every chat does. */
+.row.self {
+  flex-direction: row-reverse;
+}
+
+.row.self .bubbleWrap {
+  align-items: flex-end;
+}
+
+.row.self .meta {
+  flex-direction: row-reverse;
+}
+
+.row.self .bubble {
+  border-color: transparent;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.composer {
+  display: flex;
+  flex: none;
+  gap: var(--space-2);
+  align-items: flex-end;
+  padding: var(--space-3);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg-sunken);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  max-height: 120px;
+  padding: 7px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: var(--text-sm) / var(--leading-snug) var(--font-body);
+  resize: none;
+
+  &::placeholder { color: var(--color-text-faint); }
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-border-focus);
+  }
+}
