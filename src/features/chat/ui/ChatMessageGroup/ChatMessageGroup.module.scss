@@ -1,0 +1,169 @@
+@use 'skins/clean';
+@use 'skins/fun';
+@use 'skins/retro';
+@use 'skins/vibes';
+@use 'skins/seasonal';
+
+/*
+ * A run of chat bubbles, and every chat theme ("skin") that restyles it.
+ *
+ * Skins hang off a `data-skin` attribute on an ancestor — the chat pane, or a
+ * theme preview — so one set of classes serves both. Each bubble carries three
+ * empty `.deco` spans that a skin can dress up (a cat's ears, a snow cap, a
+ * Windows title bar); the default leaves them hidden.
+ */
+
+.group {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.mine { justify-content: flex-end; }
+
+.avatar { flex: none; }
+
+.bubbles {
+  display: flex;
+  min-width: 0;
+  max-width: 78%;
+  flex-direction: column;
+  gap: var(--run-gap, 2px);
+}
+
+.mine .bubbles { align-items: flex-end; }
+.theirs .bubbles { align-items: flex-start; }
+
+.bubble {
+  position: relative;
+  max-width: 100%;
+  padding: 6px 10px 7px 11px;
+  border-radius: 18px;
+  font: 14px/1.38 var(--font-body);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.name {
+  display: block;
+  margin-bottom: 1px;
+  color: var(--chat-author, currentcolor);
+  font: var(--weight-semibold) 13px/1.3 var(--font-body);
+}
+
+/* Time and status tuck into the last line of the bubble, Telegram style. */
+.meta {
+  display: inline-flex;
+  align-items: center;
+  float: right;
+  gap: 3px;
+  margin: 7px -2px -4px 10px;
+  font: 11px/1 var(--font-body);
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+  user-select: none;
+}
+
+.deco {
+  position: absolute;
+  display: none;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  pointer-events: none;
+}
+
+.retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-destructive);
+  cursor: pointer;
+  font: var(--weight-medium) 12px var(--font-body);
+
+  &:hover { text-decoration: underline; }
+}
+
+.srOnly {
+  position: absolute;
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.day {
+  position: sticky;
+  z-index: 2;
+  top: 8px;
+  align-self: center;
+  margin: 12px 0 8px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  backdrop-filter: blur(8px);
+  background: rgb(35 40 56 / 85%);
+  color: #b0b8cc;
+  font: var(--weight-medium) 12px var(--font-body);
+}
+
+/* Faces some skins set their text in, bundled via @fontsource in the component. */
+[data-skin] {
+  --chat-font-comic: 'Bangers', 'Impact', 'Arial Black', sans-serif;
+  --chat-font-hand: 'Caveat', 'Segoe Print', 'Comic Sans MS', cursive;
+  --chat-font-pixel: 'VT323', ui-monospace, monospace;
+  --chat-font-type: 'Special Elite', 'Courier New', courier, monospace;
+  --chat-font-win: tahoma, 'MS Sans Serif', 'Segoe UI', system-ui, sans-serif;
+}
+
+
+/* Emoji-only and failed messages read the same in every skin, so these outrank them. */
+[data-skin] .group .bubbles .bubble.jumbo {
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: inherit;
+  font: 40px/1.1 var(--font-body);
+  text-shadow: none;
+  transform: none;
+
+  &::before,
+  &::after,
+  .deco { display: none; }
+
+  .meta {
+    display: flex;
+    width: max-content;
+    margin: 2px 0 0 auto;
+    padding: 2px 6px;
+    float: none;
+    border-radius: var(--radius-full);
+    background: rgb(35 40 56 / 85%);
+    color: #b0b8cc;
+    opacity: 1;
+  }
+}
+
+[data-skin] .group .bubbles .bubble.failed {
+  outline: 2px dashed var(--color-destructive);
+  outline-offset: 2px;
+}
+
+/* Arrival: a new message rises from the composer and settles. */
+@keyframes rise {
+  from { opacity: 0; scale: 0.94; translate: 0 18px; }
+  to { opacity: 1; scale: 1; translate: 0 0; }
+}
+
+.enter { animation: rise 0.34s cubic-bezier(0.2, 0.9, 0.25, 1.15) both; }
+.mine .bubble { transform-origin: 100% 100%; }
+.theirs .bubble { transform-origin: 0 100%; }
+
+@media (prefers-reduced-motion: reduce) {
+  .enter { animation: none; }
+}

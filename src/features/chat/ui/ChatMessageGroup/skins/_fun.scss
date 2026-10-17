@@ -1,0 +1,180 @@
+@use 'mixins' as *;
+
+/* Doodle — paper scrolls for you, the blue croc for everyone else. */
+@include wall('doodle') { background: #000; }
+
+@include skin('doodle') {
+  .bubbles { --run-gap: 20px; }
+  .group { margin-top: 26px; }
+
+  .mine .bubble {
+    padding: 10px 16px;
+    border: 2px solid #16181d;
+    border-radius: 4px 12px 10px 14px;
+    background: #fbfaf4;
+    color: #16181d;
+    box-shadow: 0 0 0 1px #fbfaf4, 3px 4px 0 rgb(255 255 255 / 12%);
+  }
+
+  .mine .deco { display: block; }
+  .mine .d1 { top: -13px; left: -8px; width: 18px; height: 26px; background-image: art('curl'); }
+  .mine .d2 { top: -18px; right: -10px; width: 30px; height: 24px; background-image: art('cat'); }
+  .mine .d3 { right: 12px; bottom: -9px; width: 26px; height: 11px; background-image: art('paws'); }
+
+  .theirs .bubble {
+    margin-top: 10px;
+    padding: 10px 14px;
+    border-radius: 16px;
+    background: #5b63d3;
+    color: #fff;
+    box-shadow: inset 0 -5px 0 #4249b0;
+  }
+
+  .theirs .name { color: #fff; }
+  .theirs .deco { display: block; }
+  .theirs .d1 { top: -27px; left: -6px; width: 48px; height: 32px; background-image: art('eyes'); }
+  .theirs .d2 { top: -12px; right: 10px; width: 24px; height: 14px; background-image: art('nostrils'); }
+
+  .theirs .d3 {
+    right: 12px;
+    bottom: -7px;
+    left: 12px;
+    height: 8px;
+    background:
+      art('feet') left center / 22px 8px no-repeat,
+      art('feet') right center / 22px 8px no-repeat;
+  }
+}
+
+/* Pets — a cat for you, dogs for everyone else. */
+@include wall('pets') { background: art('paw-tile') 0 0 / 54px 54px, #1b1520; }
+
+@include skin('pets') {
+  .bubbles { --run-gap: 18px; }
+  .group { margin-top: 22px; }
+  .group.mine { padding-right: 16px; }
+  .bubble { padding: 8px 13px; }
+  .mine .bubble { background: #f5a65b; color: #2b1600; }
+  .theirs .bubble { background: #c9935f; color: #241405; }
+  .theirs .name { color: #3a1f08; }
+  .mine .d1 { display: block; top: -12px; left: 12px; width: 36px; height: 14px; background-image: art('cat-ears'); }
+  .mine .bubble:last-of-type .d3 { display: block; right: -20px; bottom: 4px; width: 24px; height: 22px; background-image: art('cat-tail'); }
+
+  .theirs .d1,
+  .theirs .d2 { display: block; top: -3px; width: 13px; height: 22px; background-image: art('dog-ear'); }
+
+  .theirs .d1 { left: -7px; }
+  .theirs .d2 { right: -7px; transform: scaleX(-1); }
+}
+
+/* Comic — speech balloons and a POW. */
+@include wall('comic') { background: radial-gradient(#e94f37 1.6px, transparent 1.8px) 0 0 / 10px 10px, #ffd23f; }
+
+@include skin('comic') {
+  .day { border: 2px solid #111; background: #fff; color: #111; font-family: var(--chat-font-comic); letter-spacing: 0.06em; }
+  .bubbles { --run-gap: 16px; }
+
+  .bubble {
+    padding: 8px 14px;
+    border: 3px solid #111;
+    border-radius: 22px;
+    background: #fff;
+    color: #111;
+    box-shadow: 4px 4px 0 #111;
+    font: 19px/1.1 var(--chat-font-comic);
+    letter-spacing: 0.04em;
+  }
+
+  .mine .bubble { background: #7fd8ff; }
+  .name { color: #e94f37; font: 16px var(--chat-font-comic); letter-spacing: 0.06em; }
+  .meta { font: 12px var(--font-body); opacity: 0.6; }
+  .bubble:last-of-type .d3 { display: block; bottom: -17px; width: 20px; height: 17px; background-image: art('balloon-tail'); }
+  .theirs .bubble:last-of-type .d3 { left: 16px; }
+  .mine .bubble:last-of-type .d3 { right: 16px; background-image: art('balloon-tail-blue'); transform: scaleX(-1); }
+  .mine .bubble:first-child .d2 { display: block; top: -22px; right: -16px; width: 44px; height: 36px; background-image: art('pow'); transform: rotate(12deg); }
+}
+
+/* Candy — sprinkles and cherries. */
+@include wall('candy') {
+  background:
+    radial-gradient(rgb(255 255 255 / 50%) 2px, transparent 2.4px) 0 0 / 22px 22px,
+    linear-gradient(160deg, #ffd6e8, #d9ccff);
+}
+
+@include skin('candy') {
+  .day { background: rgb(255 255 255 / 70%); color: #8a3d6b; }
+  .bubbles { --run-gap: 8px; }
+  .group { margin-top: 16px; }
+  .bubble { border-radius: 22px; font-weight: 500; }
+
+  .mine .bubble {
+    background:
+      radial-gradient(circle at 20% 30%, rgb(255 255 255 / 70%) 1.4px, transparent 1.8px) 0 0 / 17px 13px,
+      radial-gradient(circle at 70% 60%, rgb(255 240 120 / 90%) 1.4px, transparent 1.8px) 0 0 / 21px 15px,
+      linear-gradient(135deg, #ff7ab8, #ff9f6b);
+    color: #fff;
+    text-shadow: 0 1px 0 rgb(150 30 80 / 35%);
+  }
+
+  .theirs .bubble {
+    background:
+      radial-gradient(circle at 30% 40%, rgb(255 255 255 / 75%) 1.4px, transparent 1.8px) 0 0 / 15px 14px,
+      linear-gradient(135deg, #8ff0cf, #9cc7ff);
+    color: #12324a;
+  }
+
+  .theirs .name { color: #7a2a8a; }
+  .bubble:last-of-type .d2 { display: block; top: -16px; width: 22px; height: 22px; background-image: art('cherry'); }
+  .mine .bubble:last-of-type .d2 { left: -6px; }
+  .theirs .bubble:last-of-type .d2 { right: -6px; }
+}
+
+/* Sticky notes — post-its taped to a corkboard. */
+@include wall('sticky') {
+  background:
+    radial-gradient(rgb(255 220 170 / 6%) 1.2px, transparent 1.4px) 0 0 / 11px 13px,
+    radial-gradient(rgb(0 0 0 / 25%) 1px, transparent 1.2px) 5px 6px / 9px 9px,
+    #2a2119;
+}
+
+@include skin('sticky') {
+  .bubbles { --run-gap: 16px; }
+  .group { margin-top: 20px; }
+
+  .bubble {
+    padding: 13px 14px 9px;
+    border-radius: 2px 2px 14px;
+    box-shadow: 0 8px 14px -6px rgb(0 0 0 / 55%);
+    font: 600 20px/1.12 var(--chat-font-hand);
+  }
+
+  .mine .bubble { background: #ffe680; color: #2b2410; transform: rotate(-1.4deg); }
+  .mine .bubble:nth-child(even) { background: #fff0a8; transform: rotate(1deg); }
+  .theirs .bubble { background: #ffb7ca; color: #3a1220; transform: rotate(1.3deg); }
+  .theirs .bubble:nth-child(even) { background: #b8e6ff; color: #0d2633; transform: rotate(-0.8deg); }
+  .name { color: inherit; font: 600 15px var(--font-body); opacity: 0.7; }
+  .meta { font: 12px var(--font-body); opacity: 0.55; }
+
+  .d1 {
+    display: block;
+    top: -9px;
+    left: 50%;
+    width: 48px;
+    height: 17px;
+    background: rgb(255 255 255 / 42%);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 15%);
+    transform: translateX(-50%) rotate(-4deg);
+  }
+}
+
+/* Hearts. */
+@include wall('hearts') { background: art('heart-tile') 0 0 / 46px 46px, linear-gradient(180deg, #2e0d1e, #1a0712); }
+
+@include skin('hearts') {
+  .bubble { border-radius: 20px; }
+  .mine .bubble { background: #ff4f7b; color: #fff; }
+  .theirs .bubble { background: #3f1729; color: #ffd3e1; }
+  .theirs .name { color: #ff9ab6; }
+  .mine .bubble:last-of-type .d2 { display: block; top: -9px; right: -7px; width: 18px; height: 16px; background-image: art('heart-outline'); transform: rotate(14deg); }
+  .theirs .bubble:last-of-type .d2 { display: block; top: -9px; right: -7px; width: 16px; height: 14px; background-image: art('heart-solid'); transform: rotate(-12deg); }
+}

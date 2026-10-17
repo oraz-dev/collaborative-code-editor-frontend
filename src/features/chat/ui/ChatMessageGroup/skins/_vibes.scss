@@ -1,0 +1,95 @@
+@use 'mixins' as *;
+
+/* Neon — synthwave glow. */
+@include wall('neon') {
+  background:
+    linear-gradient(180deg, transparent 55%, rgb(255 43 214 / 18%)),
+    repeating-linear-gradient(90deg, rgb(255 43 214 / 10%) 0 1px, transparent 1px 28px),
+    repeating-linear-gradient(0deg, rgb(0 229 255 / 7%) 0 1px, transparent 1px 28px),
+    #0a0014;
+}
+
+@include skin('neon') {
+  .bubble { border-radius: 14px; background: rgb(10 0 20 / 75%); }
+
+  .mine .bubble {
+    border: 1.5px solid #ff2bd6;
+    box-shadow: 0 0 10px rgb(255 43 214 / 60%), inset 0 0 10px rgb(255 43 214 / 25%);
+    color: #ffd6f7;
+    text-shadow: 0 0 6px rgb(255 43 214 / 80%);
+  }
+
+  .theirs .bubble {
+    border: 1.5px solid #00e5ff;
+    box-shadow: 0 0 10px rgb(0 229 255 / 55%), inset 0 0 10px rgb(0 229 255 / 20%);
+    color: #d4fbff;
+    text-shadow: 0 0 6px rgb(0 229 255 / 70%);
+  }
+
+  .avatar { box-shadow: 0 0 0 2px #00e5ff, 0 0 10px #00e5ff; }
+}
+
+/* Space — rockets out, UFOs in. */
+@include wall('space') {
+  background:
+    radial-gradient(1px 1px at 20px 30px, #fff, transparent),
+    radial-gradient(1px 1px at 80px 120px, rgb(255 255 255 / 80%), transparent),
+    radial-gradient(1.5px 1.5px at 140px 60px, #fff, transparent),
+    radial-gradient(1px 1px at 190px 170px, rgb(255 255 255 / 70%), transparent),
+    radial-gradient(1px 1px at 50px 190px, rgb(255 255 255 / 60%), transparent) 0 0 / 220px 220px,
+    radial-gradient(ellipse at 80% 20%, rgb(140 60 255 / 35%), transparent 50%),
+    radial-gradient(ellipse at 10% 80%, rgb(0 140 255 / 25%), transparent 50%),
+    #04030c;
+}
+
+@include skin('space') {
+  .bubbles { --run-gap: 10px; }
+  .group { margin-top: 18px; }
+  .group.mine { padding-right: 8px; }
+  .mine .bubble { background: linear-gradient(135deg, #6a4cff, #b14cff); box-shadow: 0 0 18px rgb(140 76 255 / 45%); color: #fff; }
+  .theirs .bubble { border: 1px solid #34407a; background: #151a33; color: #dfe6ff; }
+  .mine .bubble:last-of-type .d2 { display: block; top: -16px; right: -14px; width: 20px; height: 28px; background-image: art('rocket'); transform: rotate(30deg); }
+  .theirs .bubble:first-of-type .d1 { display: block; top: -14px; right: -10px; width: 32px; height: 18px; background-image: art('ufo'); transform: rotate(-8deg); }
+}
+
+/* Ocean — fish and air bubbles. */
+@include wall('ocean') {
+  background:
+    radial-gradient(circle at 30% 40%, transparent 4px, rgb(255 255 255 / 7%) 4.5px, transparent 5.5px) 0 0 / 70px 90px,
+    radial-gradient(circle at 70% 80%, transparent 2px, rgb(255 255 255 / 6%) 2.5px, transparent 3.5px) 0 0 / 50px 60px,
+    linear-gradient(180deg, #035b7e, #01243b 70%, #011522);
+  background-attachment: local;
+}
+
+@include skin('ocean') {
+  .bubbles { --run-gap: 8px; }
+  .group { margin-top: 16px; }
+  .bubble { border-radius: 22px; }
+  .mine .bubble { background: #2bc0e4; color: #023; }
+  .theirs .bubble { border: 1px solid rgb(255 255 255 / 25%); background: rgb(255 255 255 / 12%); color: #e9fbff; }
+  .mine .bubble:last-of-type .d2 { display: block; top: -11px; right: 14px; width: 28px; height: 16px; background-image: art('fish'); }
+  .theirs .bubble:last-of-type .d1 { display: block; top: -16px; right: -6px; width: 16px; height: 22px; background-image: art('air-bubbles'); }
+}
+
+/* Forest — leaves, mushrooms and wood. */
+@include wall('forest') {
+  background:
+    radial-gradient(ellipse 6px 3px at 50% 50%, rgb(140 200 120 / 10%), transparent) 0 0 / 34px 26px,
+    linear-gradient(180deg, #13261a, #0b1710);
+}
+
+@include skin('forest') {
+  .bubbles { --run-gap: 8px; }
+  .group { margin-top: 18px; }
+  .mine .bubble { border-radius: 18px 18px 4px; background: #c9e4a5; color: #1d2e12; }
+
+  .theirs .bubble {
+    border-radius: 18px 18px 18px 4px;
+    background: repeating-linear-gradient(90deg, rgb(0 0 0 / 6%) 0 2px, transparent 2px 9px), #7a5536;
+    color: #f6ead3;
+  }
+
+  .theirs .name { color: #ffd38a; }
+  .mine .bubble:first-child .d1 { display: block; top: -12px; left: -10px; width: 26px; height: 24px; background-image: art('leaf'); }
+  .theirs .bubble:last-of-type .d3 { display: block; right: -12px; bottom: -6px; width: 24px; height: 20px; background-image: art('mushroom'); }
+}

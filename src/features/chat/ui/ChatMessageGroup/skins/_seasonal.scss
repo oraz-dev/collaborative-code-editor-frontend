@@ -1,0 +1,37 @@
+@use 'mixins' as *;
+
+/* Spooky — ghosts and pumpkins. */
+@include wall('spooky') {
+  background:
+    art('bat-tile') 0 0 / 80px 80px,
+    radial-gradient(circle at 80% 10%, rgb(255 220 140 / 18%), transparent 25%),
+    #140b1f;
+}
+
+@include skin('spooky') {
+  .bubbles { --run-gap: 12px; }
+  .group { margin-top: 18px; }
+  .mine .bubble { border-radius: 16px; background: #f28c28; color: #1e0f00; }
+  .theirs .bubble { margin-bottom: 6px; border-radius: 20px 20px 0 0; background: #efeaff; color: #2a1f3d; }
+  .theirs .name { color: #6b3fa0; }
+  .theirs .d3 { display: block; right: 0; bottom: -6px; left: 0; height: 6px; background: art('ghost-hem') 0 0 / 16px 6px repeat-x; }
+  .mine .bubble:last-of-type .d2 { display: block; top: -13px; right: -9px; width: 24px; height: 21px; background-image: art('pumpkin'); }
+}
+
+/* Snow — snow piled on every bubble. */
+@include wall('snow') {
+  background:
+    radial-gradient(circle, rgb(255 255 255 / 55%) 1.2px, transparent 1.6px) 0 0 / 37px 41px,
+    radial-gradient(circle, rgb(255 255 255 / 30%) 1px, transparent 1.4px) 13px 19px / 23px 29px,
+    linear-gradient(180deg, #13294a, #0a1628);
+}
+
+@include skin('snow') {
+  .bubbles { --run-gap: 12px; }
+  .group { margin-top: 18px; }
+  .bubble { padding-top: 9px; border-radius: 14px; }
+  .mine .bubble { background: #3a7bd5; color: #fff; }
+  .theirs .bubble { background: #dcebfa; color: #10243a; }
+  .theirs .name { color: #2c5d99; }
+  .d1 { display: block; top: -6px; right: -2px; left: -2px; height: 12px; background-image: art('snowcap'); }
+}
