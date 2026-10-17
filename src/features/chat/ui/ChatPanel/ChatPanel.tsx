@@ -405,7 +405,6 @@ export const ChatPanel = memo((props: ChatPanelProps) => {
     <section
       className={classNames(cls.pane, {}, [className])}
       style={paneStyle}
-      data-skin={appearance.skin}
       aria-label="Document chat"
     >
       <header className={cls.bar}>
@@ -451,7 +450,11 @@ export const ChatPanel = memo((props: ChatPanelProps) => {
         </div>
       )}
 
-      {renderBody()}
+      {/* The theme covers the conversation only, never the pickers: a preview
+          nested under the active skin would inherit its styles. */}
+      <div className={cls.body} data-skin={appearance.skin} data-testid="chat-body">
+        {renderBody()}
+      </div>
 
       <div className={cls.composer}>
         {emojiOpen && (
