@@ -95,7 +95,9 @@ describe('ChatPanel', () => {
     renderPanel();
     await user.click(screen.getByTestId('chat-theme-toggle'));
     await user.click(screen.getByRole('button', { name: 'Doodle theme' }));
-    expect(screen.getByRole('region', { name: 'Document chat' })).toHaveAttribute('data-skin', 'doodle');
+    expect(screen.getByTestId('chat-body')).toHaveAttribute('data-skin', 'doodle');
+    // The picker sits outside the themed area, so its previews keep their own skins.
+    expect(screen.getByTestId('chat-body')).not.toContainElement(screen.getByTestId('chat-theme-picker'));
     expect(chatAppearanceStore.get().skin).toBe('doodle');
   });
 

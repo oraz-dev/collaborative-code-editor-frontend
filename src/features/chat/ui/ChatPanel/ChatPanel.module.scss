@@ -86,6 +86,14 @@
   > * { pointer-events: auto; }
 }
 
+.body {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
 /* Loading / empty / error centre a short line on the theme's wallpaper. */
 .state {
   display: flex;
