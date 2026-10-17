@@ -17,7 +17,6 @@ import { Spinner } from '@/shared/ui/Spinner/Spinner';
 import { presenceColorFor, type ConnectionStatus, type PresencePeer } from '@/features/collaboration';
 import { useUsersByIds } from '@/entities/User';
 import { accentById } from '../../model/consts/chatSkins';
-import { QUICK_REACTIONS } from '../../model/consts/emojiCategories';
 import { chatAppearanceStore } from '../../model/chatAppearance/chatAppearanceStore';
 import { useChatAppearance } from '../../model/chatAppearance/useChatAppearance';
 import { buildChatTimeline } from '../../model/lib/buildChatTimeline/buildChatTimeline';
@@ -460,25 +459,6 @@ export const ChatPanel = memo((props: ChatPanelProps) => {
             <EmojiPicker ref={emojiPickerRef} recent={appearance.recentEmojis} onPick={onPickEmoji} />
           </div>
         )}
-
-        <div className={classNames(cls.quickWrap, { [cls.quickHidden]: draft.length > 0 })}>
-          <div className={cls.quickInner}>
-            <div className={cls.quick} role="group" aria-label="Quick reactions">
-              {QUICK_REACTIONS.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  className={cls.chip}
-                  onClick={() => onSend(emoji)}
-                  aria-label={`Send ${emoji}`}
-                  tabIndex={draft.length > 0 ? -1 : 0}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
 
         <div className={cls.row}>
           <div className={cls.field}>

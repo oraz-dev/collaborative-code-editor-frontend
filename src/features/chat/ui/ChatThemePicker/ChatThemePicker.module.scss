@@ -17,6 +17,7 @@
 }
 
 .head {
+  flex: none;
   display: flex;
   align-items: flex-start;
   gap: 10px;
@@ -55,10 +56,11 @@
 }
 
 .filters {
+  flex: none;
   display: flex;
   overflow-x: auto;
   gap: 6px;
-  padding: 0 14px 10px;
+  padding: 2px 14px 10px;
   border-bottom: 1px solid var(--color-border-subtle);
   scrollbar-width: none;
 }
@@ -136,6 +138,7 @@
 .cardLabel { padding-left: 2px; }
 
 .swatches {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 8px;

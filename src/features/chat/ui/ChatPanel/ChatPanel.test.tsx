@@ -78,13 +78,6 @@ describe('ChatPanel', () => {
     expect(screen.getByRole('separator', { name: 'Today' })).toBeInTheDocument();
   });
 
-  test('a quick reaction sends that emoji straight away', async () => {
-    const user = userEvent.setup();
-    const props = renderPanel();
-    await user.click(screen.getByRole('button', { name: 'Send 👍' }));
-    expect(props.onSend).toHaveBeenCalledWith('👍');
-  });
-
   test('the emoji button inserts into the draft', async () => {
     const user = userEvent.setup();
     const props = renderPanel();

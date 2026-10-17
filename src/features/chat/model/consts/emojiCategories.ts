@@ -13,8 +13,6 @@ export interface EmojiCategory {
 
 const list = (source: string): readonly string[] => source.trim().split(/\s+/);
 
-export const QUICK_REACTIONS: readonly string[] = list('❤️ 😂 👍 🔥 👀 🎉 🙏');
-
 /** Seeds "Recently used" before the viewer has picked anything. */
 export const DEFAULT_RECENT_EMOJIS: readonly string[] = list('👍 🔥 😄 🙏 👀 ✅ 🎉 ❤️ 😂 🚀');
 
