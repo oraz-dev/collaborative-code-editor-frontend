@@ -1,0 +1,73 @@
+@use 'mixins' as *;
+
+/* Classic and Daylight share the iMessage shape: tight corners inside a run, a tail on the last bubble. */
+@mixin tailed {
+  .theirs .bubble:not(:first-child) { border-top-left-radius: 6px; }
+  .theirs .bubble:not(:last-of-type) { border-bottom-left-radius: 6px; }
+  .mine .bubble:not(:first-child) { border-top-right-radius: 6px; }
+  .mine .bubble:not(:last-of-type) { border-bottom-right-radius: 6px; }
+
+  .bubble:last-of-type::after {
+    position: absolute;
+    bottom: 0;
+    width: 12px;
+    height: 16px;
+    background: inherit;
+    content: '';
+    mask: art('tail') no-repeat 0 0 / 100% 100%;
+  }
+
+  .theirs .bubble:last-of-type { border-bottom-left-radius: 4px; }
+  .theirs .bubble:last-of-type::after { left: -6px; transform: scaleX(-1); }
+  .mine .bubble:last-of-type { border-bottom-right-radius: 4px; }
+  .mine .bubble:last-of-type::after { right: -6px; }
+}
+
+@include wall('classic') {
+  background:
+    radial-gradient(rgb(255 255 255 / 3.5%) 1px, transparent 1px) 0 0 / 18px 18px,
+    #090a0f;
+}
+
+@include skin('classic') {
+  @include tailed;
+
+  .theirs .bubble { background: #1f2331; color: #eef1f7; }
+  .mine .bubble { background: var(--chat-accent, #2fc88e); color: var(--chat-on-accent, #04170f); }
+}
+
+@include wall('daylight') {
+  background:
+    radial-gradient(rgb(60 90 130 / 8%) 1px, transparent 1.2px) 0 0 / 16px 16px,
+    linear-gradient(160deg, #d9e6d0, #c9dce8);
+}
+
+@include skin('daylight') {
+  @include tailed;
+
+  .day { background: rgb(80 110 90 / 35%); color: #fff; }
+  .mine .bubble { background: #e3fbc9; color: #11240a; box-shadow: 0 1px 1px rgb(0 0 0 / 12%); }
+  .theirs .bubble { background: #fff; color: #10151c; box-shadow: 0 1px 1px rgb(0 0 0 / 12%); }
+  .mine .meta { color: #3d9a3a; opacity: 1; }
+  .theirs .meta { color: #8a96a4; opacity: 1; }
+}
+
+@include wall('glass') {
+  background:
+    radial-gradient(circle at 15% 20%, rgb(123 92 255 / 55%), transparent 40%),
+    radial-gradient(circle at 85% 45%, rgb(255 111 181 / 45%), transparent 42%),
+    radial-gradient(circle at 30% 85%, rgb(47 200 142 / 45%), transparent 40%),
+    #0b0d12;
+  background-attachment: local;
+}
+
+@include skin('glass') {
+  .bubble {
+    border: 1px solid rgb(255 255 255 / 20%);
+    background: rgb(255 255 255 / 8%);
+    color: #fff;
+    backdrop-filter: blur(14px) saturate(1.4);
+  }
+
+  .mine .bubble { border-color: rgb(255 255 255 / 35%); background: rgb(255 255 255 / 22%); }
+}

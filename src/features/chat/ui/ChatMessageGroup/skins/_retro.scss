@@ -1,0 +1,159 @@
+@use 'mixins' as *;
+
+/* Terminal — every message is a line in a shell. */
+@include wall('terminal') {
+  background: repeating-linear-gradient(0deg, rgb(255 255 255 / 2.5%) 0 1px, transparent 1px 3px), #040806;
+}
+
+@include skin('terminal') {
+  .bubble { padding: 6px 10px; border-radius: 4px; font: 13px/1.5 var(--font-mono); }
+
+  .mine .bubble {
+    border: 1px solid rgb(47 200 142 / 40%);
+    background: rgb(47 200 142 / 7%);
+    color: #7dffc4;
+    text-shadow: 0 0 6px rgb(47 200 142 / 45%);
+  }
+
+  .theirs .bubble {
+    border: 1px solid rgb(255 190 90 / 35%);
+    background: rgb(255 190 90 / 6%);
+    color: #ffd38a;
+    text-shadow: 0 0 6px rgb(255 190 90 / 35%);
+  }
+
+  .mine .bubble::before { content: '$ '; opacity: 0.7; }
+  .theirs .bubble::before { content: '> '; opacity: 0.7; }
+  .name { display: inline; color: #ffb454; font: 600 13px var(--font-mono); }
+  .name::before { content: '['; }
+  .name::after { content: '] '; }
+  .meta { font-family: var(--font-mono); }
+  .avatar { border-radius: 4px; }
+}
+
+/* Pixel — 8-bit message boxes. */
+@include wall('pixel') {
+  background:
+    linear-gradient(rgb(140 120 255 / 6%) 1px, transparent 1px) 0 0 / 16px 16px,
+    linear-gradient(90deg, rgb(140 120 255 / 6%) 1px, transparent 1px) 0 0 / 16px 16px,
+    #0d0b1c;
+}
+
+@include skin('pixel') {
+  .bubbles { --run-gap: 12px; }
+  .group { margin-top: 16px; }
+  .bubble { margin: 4px; padding: 4px 10px 5px; border-radius: 0; font: 21px/1.05 var(--chat-font-pixel); }
+
+  .mine .bubble {
+    background: #7b5cff;
+    color: #fff;
+    box-shadow: 4px 0 #120d2e, -4px 0 #120d2e, 0 4px #120d2e, 0 -4px #120d2e, 8px 8px rgb(0 0 0 / 45%);
+  }
+
+  .theirs .bubble {
+    background: #1fc7a6;
+    color: #062019;
+    box-shadow: 4px 0 #120d2e, -4px 0 #120d2e, 0 4px #120d2e, 0 -4px #120d2e, 8px 8px rgb(0 0 0 / 45%);
+  }
+
+  .name { color: #062019; font: 21px var(--chat-font-pixel); text-decoration: underline; }
+  .meta { font: 16px var(--chat-font-pixel); }
+  .avatar { border-radius: 0; box-shadow: 0 0 0 3px #120d2e; }
+  .mine .d2 { display: block; top: -14px; right: -14px; width: 21px; height: 18px; background-image: art('pixel-heart'); }
+  .theirs .d2 { display: block; top: -14px; left: -14px; width: 21px; height: 18px; background-image: art('pixel-star'); }
+}
+
+/* Windows 95 — grey windows on teal. */
+@include wall('win95') { background: #008080; }
+
+@include skin('win95') {
+  .day { border-radius: 0; background: #c0c0c0; color: #000; box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #fff; font-family: var(--chat-font-win); }
+  .bubbles { --run-gap: 8px; }
+
+  .bubble {
+    min-width: 128px;
+    padding: 26px 10px 8px;
+    border-radius: 0;
+    background: #c0c0c0;
+    color: #000;
+    box-shadow:
+      inset -1px -1px #0a0a0a, inset 1px 1px #dfdfdf,
+      inset -2px -2px #808080, inset 2px 2px #fff,
+      3px 3px 0 rgb(0 0 0 / 35%);
+    font: 13px/1.35 var(--chat-font-win);
+  }
+
+  .name { color: #000080; font: 700 12px var(--chat-font-win); }
+  .meta { color: #222; font-family: var(--chat-font-win); opacity: 1; }
+
+  .d1 {
+    top: 3px;
+    right: 3px;
+    left: 3px;
+    display: flex;
+    height: 18px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2px 0 5px;
+    background: linear-gradient(90deg, #000080, #1084d0);
+    color: #fff;
+    font: 700 11px var(--chat-font-win);
+  }
+
+  .theirs .d1 { background: linear-gradient(90deg, #808080, #b5b5b5); }
+  .mine .d1::before { content: 'You.txt'; }
+  .theirs .d1::before { content: 'Message'; }
+
+  .d1::after {
+    display: grid;
+    width: 14px;
+    height: 12px;
+    place-items: center;
+    background: #c0c0c0;
+    box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #fff;
+    color: #000;
+    content: '×';
+    font: 700 11px/1 var(--chat-font-win);
+  }
+
+  .avatar { border-radius: 0; }
+}
+
+/* Game Boy — four shades of green. */
+@include wall('gameboy') {
+  background: repeating-linear-gradient(0deg, rgb(15 56 15 / 6%) 0 2px, transparent 2px 4px), #9bbc0f;
+}
+
+@include skin('gameboy') {
+  .day { border-radius: 0; background: #306230; color: #9bbc0f; font: 18px var(--chat-font-pixel); }
+  .bubbles { --run-gap: 6px; }
+  .bubble { padding: 3px 9px 4px; border: 3px solid #0f380f; border-radius: 0; font: 21px/1.05 var(--chat-font-pixel); }
+  .mine .bubble { background: #306230; color: #9bbc0f; }
+  .theirs .bubble { background: #8bac0f; color: #0f380f; }
+  .name { color: #0f380f; font: 21px var(--chat-font-pixel); }
+  .meta { font: 16px var(--chat-font-pixel); }
+  .avatar { border-radius: 0; filter: grayscale(1) sepia(1) hue-rotate(40deg) saturate(3) brightness(0.5); }
+}
+
+/* Typewriter — paper notes and paperclips. */
+@include wall('typewriter') {
+  background: repeating-linear-gradient(90deg, rgb(255 255 255 / 2%) 0 3px, transparent 3px 7px), #201c17;
+}
+
+@include skin('typewriter') {
+  .bubbles { --run-gap: 10px; }
+  .group { margin-top: 16px; }
+
+  .bubble {
+    padding: 10px 14px 8px;
+    border-radius: 2px;
+    box-shadow: 0 6px 14px -6px rgb(0 0 0 / 60%);
+    font: 14px/1.45 var(--chat-font-type);
+  }
+
+  .mine .bubble { background: #f4efe2; color: #23201a; }
+  .theirs .bubble { background: #e9dfc4; color: #23201a; }
+  .name { color: #9b2c1f; font: 600 14px var(--chat-font-type); }
+  .meta { font-family: var(--chat-font-type); }
+  .bubble:first-child .d1 { display: block; top: -12px; left: 12px; width: 14px; height: 26px; background-image: art('clip'); }
+}

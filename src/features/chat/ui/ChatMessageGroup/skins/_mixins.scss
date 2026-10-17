@@ -1,0 +1,23 @@
+$art: '@/features/chat/assets/skins/';
+
+/** Rules for one skin, applied under whatever element carries `data-skin`. */
+@mixin skin($id) {
+  [data-skin='#{$id}'] {
+    @content;
+  }
+}
+
+/**
+ * The wallpaper. The wall is either inside the skinned element (the chat
+ * pane's scroller) or is the skinned element itself (a theme preview).
+ */
+@mixin wall($id) {
+  [data-skin='#{$id}'] [data-chat-wall],
+  [data-chat-wall][data-skin='#{$id}'] {
+    @content;
+  }
+}
+
+@function art($name) {
+  @return url('#{$art}#{$name}.svg');
+}
