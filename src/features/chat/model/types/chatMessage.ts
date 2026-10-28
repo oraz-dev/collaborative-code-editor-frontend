@@ -1,3 +1,16 @@
+/** Wire shape of a chat attachment, as upload, history and the socket return it. */
+export interface ChatAttachmentDto {
+  id?: string;
+  kind?: string;
+  content_type?: string;
+  filename?: string;
+  size_bytes?: number;
+  /** Signed, relative to the documents service's origin, usable as an img/video src. */
+  url?: string;
+  url_expires_at?: string;
+  created_at?: string;
+}
+
 /** Wire shape of a chat message (snake_case), from REST and the socket alike. */
 export interface ChatMessageDto {
   id?: string;
@@ -6,6 +19,25 @@ export interface ChatMessageDto {
   body?: string;
   client_msg_id?: string;
   created_at?: string;
+  attachments?: ChatAttachmentDto[] | null;
+}
+
+export type ChatAttachmentKind = 'image' | 'video';
+
+export interface ChatAttachment {
+  id: string;
+  kind: ChatAttachmentKind;
+  contentType: string;
+  filename: string;
+  sizeBytes: number;
+  /**
+   * Signed link — the signature is the authorisation, so it works as an img or
+   * video src with no header. It expires after a few hours; reloading the
+   * message from history returns a fresh one.
+   */
+  url: string;
+  /** ISO timestamp, or `''` if the server did not say. */
+  urlExpiresAt: string;
 }
 
 /** Domain shape used throughout the chat feature. */
@@ -14,6 +46,7 @@ export interface ChatMessage {
   id: string | null;
   documentId: string;
   userId: string;
+  /** May be empty when the message carries attachments. */
   body: string;
   /**
    * The idempotency key the client chose. Every message carries one — the send
@@ -24,6 +57,8 @@ export interface ChatMessage {
   clientMsgId: string;
   /** ISO timestamp, or `''` for a message not yet acknowledged by the server. */
   createdAt: string;
+  /** Photos and videos, in display order. */
+  attachments: ChatAttachment[];
 }
 
 export type ChatMessageStatus = 'sending' | 'sent' | 'failed';
@@ -39,6 +74,23 @@ export interface ChatMessageView extends ChatMessage {
   localSeq: number;
 }
 
+function kindOf(dto: ChatAttachmentDto): ChatAttachmentKind {
+  if (dto.kind === 'video' || dto.kind === 'image') return dto.kind;
+  return (dto.content_type ?? '').startsWith('video/') ? 'video' : 'image';
+}
+
+export function mapChatAttachment(dto: ChatAttachmentDto): ChatAttachment {
+  return {
+    id: dto.id ?? '',
+    kind: kindOf(dto),
+    contentType: dto.content_type ?? '',
+    filename: dto.filename ?? '',
+    sizeBytes: typeof dto.size_bytes === 'number' ? dto.size_bytes : 0,
+    url: dto.url ?? '',
+    urlExpiresAt: dto.url_expires_at ?? '',
+  };
+}
+
 export function mapChatMessage(dto: ChatMessageDto): ChatMessage {
   // Fall back to the server id as the dedupe key for a message that somehow
   // arrived without a client id — a malformed frame rather than the norm.
@@ -51,6 +103,9 @@ export function mapChatMessage(dto: ChatMessageDto): ChatMessage {
     body: dto.body ?? '',
     clientMsgId,
     createdAt: dto.created_at ?? '',
+    attachments: Array.isArray(dto.attachments)
+      ? dto.attachments.map(mapChatAttachment).filter((attachment) => attachment.id)
+      : [],
   };
 }
 
@@ -59,8 +114,9 @@ export function mapChatMessage(dto: ChatMessageDto): ChatMessage {
  *
  * The frame's exact shape is not pinned down by the API, so this is tolerant:
  * the message may be the frame itself (flat, beside the `type`) or nested under
- * a `message`/`msg`/`data` field. A frame without a body, or without any
- * identity to dedupe on, is rejected rather than rendered as an empty line.
+ * a `message`/`msg`/`data` field. A frame with neither a body nor attachments,
+ * or without any identity to dedupe on, is rejected rather than rendered as an
+ * empty line.
  */
 export function chatMessageFromFrame(raw: unknown): ChatMessage | null {
   if (!raw || typeof raw !== 'object') return null;
@@ -69,11 +125,13 @@ export function chatMessageFromFrame(raw: unknown): ChatMessage | null {
   const nested = [obj.message, obj.msg, obj.data].find(
     (value): value is Record<string, unknown> => Boolean(value) && typeof value === 'object',
   );
-  const candidate = nested ?? obj;
+  const candidate = (nested ?? obj) as ChatMessageDto;
 
-  const { body, client_msg_id: clientMsgId, id } = candidate as ChatMessageDto;
-  if (typeof body !== 'string') return null;
+  const { body, client_msg_id: clientMsgId, id, attachments } = candidate;
+  const hasAttachments = Array.isArray(attachments) && attachments.length > 0;
+  if (typeof body !== 'string' && !hasAttachments) return null;
   if (typeof clientMsgId !== 'string' && typeof id !== 'string') return null;
 
-  return mapChatMessage(candidate as ChatMessageDto);
+  const message = mapChatMessage(candidate);
+  return message.body || message.attachments.length > 0 ? message : null;
 }

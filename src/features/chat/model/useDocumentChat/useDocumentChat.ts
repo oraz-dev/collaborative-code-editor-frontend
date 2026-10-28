@@ -1,10 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { isApiError } from '@/shared/api';
 import { logger } from '@/shared/lib/logger/logger';
-import { fetchChatMessages, postChatMessage } from '../api/chatApi';
+import {
+  fetchChatMessages,
+  postChatMessage,
+  uploadChatAttachment,
+  type UploadOptions,
+} from '../api/chatApi';
 import { mergeMessages } from '../lib/mergeMessages/mergeMessages';
 import {
   chatMessageFromFrame,
+  type ChatAttachment,
   type ChatMessage,
   type ChatMessageStatus,
   type ChatMessageView,
@@ -21,9 +27,15 @@ const PAGE_SIZE = 50;
  */
 const WS_CONFIRM_TIMEOUT_MS = 5_000;
 
+/** Renew signed media links this long before the earliest one lapses. */
+const MEDIA_REFRESH_LEAD_MS = 5 * 60_000;
+
+/** At most one media refresh this often, however many images fail at once. */
+const MEDIA_REFRESH_MIN_GAP_MS = 20_000;
+
 /** The slice of the collaboration socket the chat needs. Stable across renders. */
 export interface ChatTransport {
-  sendChat: (body: string, clientMsgId: string) => boolean;
+  sendChat: (body: string, clientMsgId: string, attachmentIds?: readonly string[]) => boolean;
   subscribeChat: (listener: (raw: Record<string, unknown>) => void) => () => void;
 }
 
@@ -45,8 +57,18 @@ export interface DocumentChat {
   hasMore: boolean;
   isLoadingMore: boolean;
   loadMore: () => void;
-  /** Posts a message. A blank or whitespace-only body is ignored. */
-  send: (body: string) => void;
+  /**
+   * Posts a message with any photos or videos already uploaded through
+   * `upload`. Ignored when there is neither text nor an attachment.
+   */
+  send: (body: string, attachments?: readonly ChatAttachment[]) => void;
+  /** Uploads one photo or video for a message about to be sent. */
+  upload: (file: File, options?: UploadOptions) => Promise<ChatAttachment>;
+  /**
+   * Reloads the loaded history for fresh signed media links — they expire
+   * after a few hours. Safe to call often: it runs at most every few seconds.
+   */
+  refreshMedia: () => void;
   /** Resends a message that failed, reusing its id so it cannot duplicate. */
   retry: (clientMsgId: string) => void;
 }
@@ -100,6 +122,14 @@ export function useDocumentChat(options: UseDocumentChatOptions): DocumentChat {
   // client ids whose stored form has been seen (echo or REST), so the socket
   // timeout knows not to resend them.
   const confirmedRef = useRef(new Set<string>());
+  // How many history pages are loaded, so a media refresh reloads all of them.
+  const pagesRef = useRef(0);
+  const refreshingRef = useRef(false);
+  const lastRefreshRef = useRef(0);
+  const docIdRef = useRef(documentId);
+  useEffect(() => {
+    docIdRef.current = documentId;
+  }, [documentId]);
   const timersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
   const clearTimer = useCallback((clientMsgId: string) => {
@@ -132,11 +162,11 @@ export function useDocumentChat(options: UseDocumentChatOptions): DocumentChat {
   // --- delivery ----------------------------------------------------------
 
   const deliverOverRest = useCallback(
-    async (clientMsgId: string, body: string) => {
+    async (clientMsgId: string, body: string, attachmentIds: readonly string[]) => {
       if (!documentId) return;
       clearTimer(clientMsgId);
       try {
-        const stored = await postChatMessage(documentId, { body, clientMsgId });
+        const stored = await postChatMessage(documentId, { body, clientMsgId, attachmentIds });
         confirmedRef.current.add(clientMsgId);
         setMessages((current) => mergeMessages(current, [toView(stored, 'sent')]));
       } catch (sendError) {
@@ -148,12 +178,12 @@ export function useDocumentChat(options: UseDocumentChatOptions): DocumentChat {
   );
 
   const deliver = useCallback(
-    (clientMsgId: string, body: string) => {
-      const sentOverSocket = transport.sendChat(body, clientMsgId);
+    (clientMsgId: string, body: string, attachmentIds: readonly string[]) => {
+      const sentOverSocket = transport.sendChat(body, clientMsgId, attachmentIds);
 
       if (!sentOverSocket) {
         // No open socket — go straight to REST rather than wait out a timeout.
-        void deliverOverRest(clientMsgId, body);
+        void deliverOverRest(clientMsgId, body, attachmentIds);
         return;
       }
 
@@ -164,7 +194,7 @@ export function useDocumentChat(options: UseDocumentChatOptions): DocumentChat {
         clientMsgId,
         setTimeout(() => {
           timersRef.current.delete(clientMsgId);
-          if (!confirmedRef.current.has(clientMsgId)) void deliverOverRest(clientMsgId, body);
+          if (!confirmedRef.current.has(clientMsgId)) void deliverOverRest(clientMsgId, body, attachmentIds);
         }, WS_CONFIRM_TIMEOUT_MS),
       );
     },
@@ -172,9 +202,9 @@ export function useDocumentChat(options: UseDocumentChatOptions): DocumentChat {
   );
 
   const send = useCallback(
-    (body: string) => {
+    (body: string, attachments: readonly ChatAttachment[] = []) => {
       const trimmed = body.trim();
-      if (!trimmed || !documentId) return;
+      if ((!trimmed && attachments.length === 0) || !documentId) return;
 
       const clientMsgId = newClientMsgId();
       const optimistic = toView(
@@ -185,12 +215,13 @@ export function useDocumentChat(options: UseDocumentChatOptions): DocumentChat {
           body: trimmed,
           clientMsgId,
           createdAt: '',
+          attachments: [...attachments],
         },
         'sending',
       );
 
       setMessages((current) => mergeMessages(current, [optimistic]));
-      deliver(clientMsgId, trimmed);
+      deliver(clientMsgId, trimmed, attachments.map((attachment) => attachment.id));
     },
     [deliver, documentId, selfUserId, toView],
   );
@@ -205,10 +236,45 @@ export function useDocumentChat(options: UseDocumentChatOptions): DocumentChat {
           message.clientMsgId === clientMsgId ? { ...message, status: 'sending' } : message,
         ),
       );
-      deliver(clientMsgId, target.body);
+      deliver(clientMsgId, target.body, target.attachments.map((attachment) => attachment.id));
     },
     [deliver],
   );
+
+  const upload = useCallback(
+    (file: File, uploadOptions?: UploadOptions): Promise<ChatAttachment> => {
+      if (!documentId) return Promise.reject(new Error('No document is open'));
+      return uploadChatAttachment(documentId, file, uploadOptions);
+    },
+    [documentId],
+  );
+
+  const refreshMedia = useCallback(() => {
+    if (!documentId || refreshingRef.current) return;
+    if (Date.now() - lastRefreshRef.current < MEDIA_REFRESH_MIN_GAP_MS) return;
+    refreshingRef.current = true;
+    lastRefreshRef.current = Date.now();
+
+    const run = async () => {
+      let before: string | null = null;
+      const pages = Math.max(1, pagesRef.current);
+      for (let index = 0; index < pages; index += 1) {
+        const page = await fetchChatMessages(documentId, { before, limit: PAGE_SIZE });
+        // The reader may have moved to another document while this ran.
+        if (docIdRef.current !== documentId) return;
+        // Fresh copies merge over the loaded ones, carrying new signed links.
+        setMessages((current) => mergeMessages(current, page.messages.map((message) => toView(message, 'sent'))));
+        before = page.nextCursor;
+        if (!before) return;
+      }
+    };
+
+    run()
+      .catch((refreshError) => logger.warn('Could not refresh chat media links', refreshError))
+      .finally(() => {
+        refreshingRef.current = false;
+      });
+  }, [documentId, toView]);
 
   const loadMore = useCallback(() => {
     if (!documentId || !cursor || isLoadingMore) return;
@@ -223,6 +289,7 @@ export function useDocumentChat(options: UseDocumentChatOptions): DocumentChat {
           ),
         );
         setCursor(page.nextCursor);
+        pagesRef.current += 1;
       })
       .catch((loadError) => {
         logger.warn('Could not load older chat messages', loadError);
@@ -245,6 +312,8 @@ export function useDocumentChat(options: UseDocumentChatOptions): DocumentChat {
     let disposed = false;
     const timers = timersRef.current;
     confirmedRef.current = new Set();
+    pagesRef.current = 0;
+    lastRefreshRef.current = 0;
 
     const unsubscribe = transport.subscribeChat((raw) => {
       const message = chatMessageFromFrame(raw);
@@ -268,6 +337,7 @@ export function useDocumentChat(options: UseDocumentChatOptions): DocumentChat {
           mergeMessages(page.messages.map((message) => toView(message, 'sent')), current),
         );
         setCursor(page.nextCursor);
+        pagesRef.current = 1;
         setIsLoading(false);
       })
       .catch((loadError) => {
@@ -291,6 +361,24 @@ export function useDocumentChat(options: UseDocumentChatOptions): DocumentChat {
     };
   }, [documentId, enabled, toView, transport]);
 
+  // Renew signed media links shortly before the earliest one lapses, so a
+  // chat left open all day never shows a broken photo.
+  useEffect(() => {
+    if (!active) return undefined;
+    let earliest = Number.POSITIVE_INFINITY;
+    messages.forEach((message) => {
+      message.attachments.forEach((attachment) => {
+        const expiresAt = Date.parse(attachment.urlExpiresAt);
+        if (!Number.isNaN(expiresAt)) earliest = Math.min(earliest, expiresAt);
+      });
+    });
+    if (!Number.isFinite(earliest)) return undefined;
+
+    const delay = Math.max(MEDIA_REFRESH_MIN_GAP_MS, earliest - Date.now() - MEDIA_REFRESH_LEAD_MS);
+    const timer = setTimeout(refreshMedia, delay);
+    return () => clearTimeout(timer);
+  }, [active, messages, refreshMedia]);
+
   if (!active) {
     return {
       messages: NO_MESSAGES,
@@ -301,6 +389,8 @@ export function useDocumentChat(options: UseDocumentChatOptions): DocumentChat {
       loadMore: () => {},
       send: () => {},
       retry: () => {},
+      upload: () => Promise.reject(new Error('Chat is not available')),
+      refreshMedia: () => {},
     };
   }
 
@@ -313,5 +403,7 @@ export function useDocumentChat(options: UseDocumentChatOptions): DocumentChat {
     loadMore,
     send,
     retry,
+    upload,
+    refreshMedia,
   };
 }

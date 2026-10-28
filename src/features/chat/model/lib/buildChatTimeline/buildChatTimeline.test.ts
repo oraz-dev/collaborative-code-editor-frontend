@@ -5,7 +5,7 @@ import type { ChatMessageView } from '../../types/chatMessage';
 const NOW = new Date('2026-10-17T12:00:00');
 
 function msg(clientMsgId: string, userId: string, createdAt: string): ChatMessageView {
-  return { id: clientMsgId, clientMsgId, documentId: 'd', userId, body: 'x', createdAt, status: 'sent', localSeq: 0 };
+  return { id: clientMsgId, clientMsgId, documentId: 'd', userId, body: 'x', createdAt, status: 'sent', localSeq: 0, attachments: [] };
 }
 
 describe('buildChatTimeline', () => {

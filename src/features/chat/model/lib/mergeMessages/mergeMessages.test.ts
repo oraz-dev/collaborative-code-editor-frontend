@@ -13,6 +13,7 @@ function view(
     createdAt: '',
     status: 'sent' as ChatMessageStatus,
     localSeq: 0,
+    attachments: [],
     ...over,
   };
 }

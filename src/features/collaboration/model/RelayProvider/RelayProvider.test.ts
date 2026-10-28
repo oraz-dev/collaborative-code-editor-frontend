@@ -329,6 +329,21 @@ describe('RelayProvider', () => {
     provider.destroy();
   });
 
+  test('names uploaded attachments in the chat frame', async () => {
+    const { provider } = setup();
+    provider.connect();
+    await flush();
+
+    const socket = FakeWebSocket.instances[0];
+    socket.open();
+
+    expect(provider.sendChat('', 'cmid-5', ['att-1', 'att-2'])).toBe(true);
+    const [frame] = socket.sent.filter((sent): sent is string => typeof sent === 'string');
+    expect(JSON.parse(frame)).toEqual({ type: 'chat:send', body: '', client_msg_id: 'cmid-5', attachment_ids: ['att-1', 'att-2'] });
+
+    provider.destroy();
+  });
+
   test('lets a viewer chat even though their edits are dropped', async () => {
     const { provider } = setup({ canEdit: false });
     provider.connect();

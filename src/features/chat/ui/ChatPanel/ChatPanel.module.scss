@@ -329,3 +329,65 @@
 @include bp.phone {
   .themePopover { bottom: 120px; }
 }
+
+.attachBtn {
+  display: grid;
+  width: 36px;
+  height: 38px;
+  flex: none;
+  place-items: center;
+  margin-right: 2px;
+  border: 0;
+  border-radius: 18px;
+  background: none;
+  color: var(--color-text-faint);
+  cursor: pointer;
+
+  &:hover:not(:disabled) { color: var(--chat-accent); }
+  &:disabled { cursor: default; opacity: 0.4; }
+  &:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+}
+
+.fileInput { display: none; }
+
+/* Covers the pane while files are dragged over it. */
+.dropZone {
+  position: absolute;
+  z-index: 20;
+  inset: 6px;
+  display: grid;
+  place-items: center;
+  border: 2px dashed var(--chat-accent);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(3px);
+  background: color-mix(in srgb, var(--color-surface) 82%, transparent);
+  animation: drop-in 0.15s ease both;
+  pointer-events: none;
+}
+
+@keyframes drop-in {
+  from { opacity: 0; }
+}
+
+.dropCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: var(--chat-accent);
+  text-align: center;
+}
+
+.dropTitle {
+  color: var(--color-text);
+  font: var(--weight-semibold) var(--text-base) / 1.3 var(--font-body);
+}
+
+.dropHint {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dropZone { animation: none; }
+}

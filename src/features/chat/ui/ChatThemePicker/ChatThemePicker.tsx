@@ -26,7 +26,7 @@ type Filter = 'All' | ChatSkinTag;
 const SAMPLE_TIME = '2026-10-17T09:14:00Z';
 
 function sample(clientMsgId: string, userId: string, body: string): ChatMessageView {
-  return { id: clientMsgId, clientMsgId, documentId: '', userId, body, createdAt: SAMPLE_TIME, status: 'sent', localSeq: 0 };
+  return { id: clientMsgId, clientMsgId, documentId: '', userId, body, createdAt: SAMPLE_TIME, status: 'sent', localSeq: 0, attachments: [] };
 }
 
 const THEIRS = [sample('preview-theirs', 'preview-peer', 'did it run?')];

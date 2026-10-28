@@ -834,6 +834,7 @@ export const EditorPage = memo((props: EditorPageProps) => {
               onReset={onResetChat}
             />
             <ChatPanel
+              key={documentId}
               style={{ width: chatWidth }}
               className={cls.preview}
               messages={chat.messages}
@@ -848,6 +849,8 @@ export const EditorPage = memo((props: EditorPageProps) => {
               onSend={chat.send}
               onRetry={chat.retry}
               onClose={onCloseChat}
+              onUpload={chat.upload}
+              onMediaExpired={chat.refreshMedia}
             />
           </>
         )}
@@ -855,6 +858,7 @@ export const EditorPage = memo((props: EditorPageProps) => {
         {chatOpen && activeDocument && !isFolder && isCompact && (
           <div className={cls.previewOverlay} data-testid="chat-overlay">
             <ChatPanel
+              key={documentId}
               className={cls.previewSheet}
               messages={chat.messages}
               selfUserId={user?.id ?? null}
@@ -868,6 +872,8 @@ export const EditorPage = memo((props: EditorPageProps) => {
               onSend={chat.send}
               onRetry={chat.retry}
               onClose={onCloseChat}
+              onUpload={chat.upload}
+              onMediaExpired={chat.refreshMedia}
             />
           </div>
         )}

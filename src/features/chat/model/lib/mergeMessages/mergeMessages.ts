@@ -31,6 +31,8 @@ function combine(a: ChatMessageView, b: ChatMessageView): ChatMessageView {
     ...confirmed,
     id: confirmed.id ?? weaker.id,
     createdAt: confirmed.createdAt || weaker.createdAt,
+    // A frame that omits attachments must not strip the ones already shown.
+    attachments: confirmed.attachments.length > 0 ? confirmed.attachments : weaker.attachments,
     // Keep the earliest localSeq so position in the list stays put.
     localSeq: Math.min(a.localSeq, b.localSeq),
   };

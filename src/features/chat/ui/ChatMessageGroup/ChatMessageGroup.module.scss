@@ -121,6 +121,36 @@
 }
 
 
+/* A photo or video sits inside the bubble's own frame, whatever the skin. */
+.withMedia { padding: 4px; }
+
+.media {
+  position: relative;
+  margin: 0 auto;
+}
+
+.withMedia .name { padding: 2px 6px 0; }
+.name + .media { margin-top: 4px; }
+
+.caption { padding: 5px 6px 2px; }
+
+/* Time over the photo when there is no caption to carry it. */
+.mediaMeta {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  background: rgb(0 0 0 / 55%);
+  color: #fff;
+  font: 11px/1.4 var(--font-body);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
 /* Emoji-only and failed messages read the same in every skin, so these outrank them. */
 [data-skin] .group .bubbles .bubble.jumbo {
   padding: 0 2px;

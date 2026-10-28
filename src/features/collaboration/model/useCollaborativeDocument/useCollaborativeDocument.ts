@@ -102,7 +102,7 @@ export interface CollaborativeDocument {
    * viewers included. Returns false when the socket is not open, so the caller
    * can fall back to the REST route.
    */
-  sendChat: (body: string, clientMsgId: string) => boolean;
+  sendChat: (body: string, clientMsgId: string, attachmentIds?: readonly string[]) => boolean;
   /**
    * Subscribes to inbound chat frames. The listener receives the raw parsed
    * object; the chat feature owns the mapping. Returns an unsubscribe.
@@ -599,7 +599,8 @@ export function useCollaborativeDocument(
   }, []);
 
   const sendChat = useCallback(
-    (body: string, clientMsgId: string) => providerRef.current?.sendChat(body, clientMsgId) ?? false,
+    (body: string, clientMsgId: string, attachmentIds?: readonly string[]) =>
+      providerRef.current?.sendChat(body, clientMsgId, attachmentIds) ?? false,
     [],
   );
 
