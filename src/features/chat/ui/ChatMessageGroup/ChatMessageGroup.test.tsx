@@ -13,6 +13,7 @@ function msg(over: Partial<ChatMessageView> & { clientMsgId: string }): ChatMess
     createdAt: '2026-10-17T09:14:00Z',
     status: 'sent',
     localSeq: 0,
+    attachments: [],
     ...over,
   };
 }

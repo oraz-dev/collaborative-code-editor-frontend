@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { PresencePeer } from '@/features/collaboration';
@@ -25,6 +25,7 @@ function msg(over: Partial<ChatMessageView> & { clientMsgId: string }): ChatMess
     createdAt: '2026-10-16T10:00:00Z',
     status: 'sent',
     localSeq: 1,
+    attachments: [],
     ...over,
   };
 }
@@ -43,6 +44,8 @@ function renderPanel(over: Partial<Parameters<typeof ChatPanel>[0]> = {}) {
     onSend: vi.fn(),
     onRetry: vi.fn(),
     onClose: vi.fn(),
+    onUpload: vi.fn(),
+    onMediaExpired: vi.fn(),
     ...over,
   };
   render(<ChatPanel {...props} />);
@@ -87,7 +90,7 @@ describe('ChatPanel', () => {
     await user.click(screen.getAllByText('🔥')[0]);
     expect(screen.getByTestId('chat-input')).toHaveValue('nice 🔥');
     await user.keyboard('{Enter}');
-    expect(props.onSend).toHaveBeenCalledWith('nice 🔥');
+    expect(props.onSend).toHaveBeenCalledWith('nice 🔥', []);
   });
 
   test('switching theme restyles the panel and is remembered', async () => {
@@ -117,7 +120,7 @@ describe('ChatPanel', () => {
     await user.type(screen.getByTestId('chat-input'), '  hey everyone  ');
     await user.keyboard('{Enter}');
 
-    expect(props.onSend).toHaveBeenCalledWith('hey everyone');
+    expect(props.onSend).toHaveBeenCalledWith('hey everyone', []);
   });
 
   test('Shift+Enter does not send', async () => {
@@ -149,5 +152,57 @@ describe('ChatPanel', () => {
 
     await user.click(screen.getByRole('button', { name: 'Load older messages' }));
     expect(props.onLoadMore).toHaveBeenCalled();
+  });
+
+  test('attaching a photo uploads it and sends it with the caption', async () => {
+    const user = userEvent.setup();
+    const photo = { id: 'att-1', kind: 'image' as const, contentType: 'image/png', filename: 'shot.png', sizeBytes: 10, url: '/a', urlExpiresAt: '' };
+    const onUpload = vi.fn().mockResolvedValue(photo);
+    const props = renderPanel({ onUpload });
+
+    await user.upload(screen.getByTestId('chat-file-input'), new File(['x'], 'shot.png', { type: 'image/png' }));
+    expect(onUpload).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('chat-tray-item')).toBeInTheDocument();
+    expect(screen.getByTestId('chat-input')).toHaveAttribute('placeholder', 'Add a caption');
+
+    await user.type(screen.getByTestId('chat-input'), 'look{Enter}');
+    await waitFor(() => expect(props.onSend).toHaveBeenCalledWith('look', [photo]));
+    expect(screen.queryByTestId('chat-tray-item')).not.toBeInTheDocument();
+  });
+
+  test('a photo can be sent with no caption', async () => {
+    const user = userEvent.setup();
+    const photo = { id: 'att-2', kind: 'image' as const, contentType: 'image/png', filename: 'p.png', sizeBytes: 10, url: '/p', urlExpiresAt: '' };
+    const props = renderPanel({ onUpload: vi.fn().mockResolvedValue(photo) });
+
+    await user.upload(screen.getByTestId('chat-file-input'), new File(['x'], 'p.png', { type: 'image/png' }));
+    await waitFor(() => expect(screen.getByTestId('chat-send')).toBeEnabled());
+    await user.click(screen.getByTestId('chat-send'));
+    await waitFor(() => expect(props.onSend).toHaveBeenCalledWith('', [photo]));
+  });
+
+  test('turns away a file that is not a photo or video', async () => {
+    const user = userEvent.setup({ applyAccept: false });
+    const onUpload = vi.fn();
+    renderPanel({ onUpload });
+    await user.upload(screen.getByTestId('chat-file-input'), new File(['x'], 'notes.pdf', { type: 'application/pdf' }));
+    expect(onUpload).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent('notes.pdf');
+  });
+
+  test('a photo in the chat opens full screen', async () => {
+    const user = userEvent.setup();
+    renderPanel({
+      messages: [msg({
+        clientMsgId: 'm1',
+        body: '',
+        attachments: [{ id: 'a1', kind: 'image', contentType: 'image/png', filename: 'cat.png', sizeBytes: 2048, url: '/api/v1/chat/attachments/a1?sig=1', urlExpiresAt: '' }],
+      })],
+    });
+    await user.click(screen.getByRole('button', { name: 'Open photo cat.png' }));
+    expect(screen.getByTestId('chat-media-viewer')).toBeInTheDocument();
+    expect(screen.getByTestId('chat-viewer-download')).toHaveAttribute('download', 'cat.png');
+    await user.keyboard('{Escape}');
+    expect(screen.queryByTestId('chat-media-viewer')).not.toBeInTheDocument();
   });
 });

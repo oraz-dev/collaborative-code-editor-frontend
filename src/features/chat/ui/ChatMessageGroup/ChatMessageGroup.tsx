@@ -8,7 +8,8 @@ import { Avatar } from '@/shared/ui/Avatar/Avatar';
 import { Icons } from '@/shared/ui/Icon/Icons';
 import { formatMessageTime } from '../../model/lib/buildChatTimeline/buildChatTimeline';
 import { isEmojiOnly } from '../../model/lib/isEmojiOnly/isEmojiOnly';
-import type { ChatMessageView } from '../../model/types/chatMessage';
+import type { ChatAttachment, ChatMessageView } from '../../model/types/chatMessage';
+import { ChatMediaGrid } from '../ChatMediaGrid/ChatMediaGrid';
 import cls from './ChatMessageGroup.module.scss';
 
 interface ChatMessageGroupProps {
@@ -23,11 +24,38 @@ interface ChatMessageGroupProps {
   onRetry?: (clientMsgId: string) => void;
   /** Messages that arrived while the chat was open, which rise in as they mount. */
   freshIds?: ReadonlySet<string>;
+  /** Opens a photo or video full screen. */
+  onOpenMedia?: (attachmentId: string) => void;
+  /** A media link failed to load — most likely expired. */
+  onMediaExpired?: () => void;
 }
+
+/** "Photo", "2 photos and a video" — what a caption-less message says to a screen reader. */
+function describeAttachments(attachments: readonly ChatAttachment[]): string {
+  const photos = attachments.filter((attachment) => attachment.kind === 'image').length;
+  const videos = attachments.length - photos;
+  const part = (count: number, noun: string) => (count === 1 ? `a ${noun}` : `${count} ${noun}s`);
+  const parts = [photos && part(photos, 'photo'), videos && part(videos, 'video')].filter(Boolean) as string[];
+  const text = parts.join(' and ');
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+const NO_OP = () => {};
 
 /** A run of consecutive messages from one person. */
 export const ChatMessageGroup = memo((props: ChatMessageGroupProps) => {
-  const { className, mine, messages, authorName, authorInitials, authorColor, onRetry, freshIds } = props;
+  const {
+    className,
+    mine,
+    messages,
+    authorName,
+    authorInitials,
+    authorColor,
+    onRetry,
+    freshIds,
+    onOpenMedia = NO_OP,
+    onMediaExpired,
+  } = props;
 
   return (
     <div
@@ -39,10 +67,18 @@ export const ChatMessageGroup = memo((props: ChatMessageGroupProps) => {
 
       <div className={cls.bubbles}>
         {messages.map((message, index) => {
-          const jumbo = isEmojiOnly(message.body);
+          const hasMedia = message.attachments.length > 0;
+          const jumbo = !hasMedia && isEmojiOnly(message.body);
           const failed = message.status === 'failed';
           const showName = !mine && index === 0 && !jumbo;
           const time = formatMessageTime(message.createdAt);
+          const meta = (
+            <>
+              {time}
+              {mine && message.status === 'sending' && <Icons.Clock size={12} aria-label="Sending" />}
+              {mine && message.status === 'sent' && <Icons.Check size={12} aria-label="Sent" />}
+            </>
+          );
 
           return (
             <Fragment key={message.clientMsgId}>
@@ -50,6 +86,8 @@ export const ChatMessageGroup = memo((props: ChatMessageGroupProps) => {
                 className={classNames(cls.bubble, {
                   [cls.jumbo]: jumbo,
                   [cls.failed]: failed,
+                  [cls.withMedia]: hasMedia,
+                  [cls.mediaOnly]: hasMedia && !message.body,
                   [cls.enter]: freshIds?.has(message.clientMsgId),
                 })}
                 data-testid="chat-message"
@@ -62,12 +100,29 @@ export const ChatMessageGroup = memo((props: ChatMessageGroupProps) => {
                 ) : (
                   <span className={cls.srOnly}>{authorName}: </span>
                 )}
-                {message.body}
-                <span className={cls.meta}>
-                  {time}
-                  {mine && message.status === 'sending' && <Icons.Clock size={12} aria-label="Sending" />}
-                  {mine && message.status === 'sent' && <Icons.Check size={12} aria-label="Sent" />}
-                </span>
+                {hasMedia ? (
+                  <>
+                    {!message.body && <span className={cls.srOnly}>{describeAttachments(message.attachments)}</span>}
+                    <ChatMediaGrid
+                      className={cls.media}
+                      attachments={message.attachments}
+                      onOpen={onOpenMedia}
+                      onExpired={onMediaExpired}
+                      overlay={message.body ? undefined : <span className={cls.mediaMeta}>{meta}</span>}
+                    />
+                    {message.body && (
+                      <div className={cls.caption}>
+                        {message.body}
+                        <span className={cls.meta}>{meta}</span>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {message.body}
+                    <span className={cls.meta}>{meta}</span>
+                  </>
+                )}
               </div>
               {failed && onRetry && (
                 <button

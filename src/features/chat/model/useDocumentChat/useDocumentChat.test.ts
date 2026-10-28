@@ -5,6 +5,7 @@ import { useDocumentChat, type ChatTransport } from './useDocumentChat';
 const api = vi.hoisted(() => ({
   fetchChatMessages: vi.fn(),
   postChatMessage: vi.fn(),
+  uploadChatAttachment: vi.fn(),
 }));
 
 vi.mock('../api/chatApi', () => api);
@@ -16,6 +17,7 @@ const message = (over: Record<string, unknown> = {}) => ({
   body: 'from history',
   clientMsgId: 'hist-1',
   createdAt: '2026-10-16T09:00:00Z',
+  attachments: [],
   ...over,
 });
 
@@ -72,7 +74,7 @@ describe('useDocumentChat', () => {
     expect(result.current.messages).toHaveLength(1);
     const optimistic = result.current.messages[0];
     expect(optimistic).toMatchObject({ body: 'hello team', userId: 'user-1', status: 'sending' });
-    expect(transport.sendChat).toHaveBeenCalledWith('hello team', optimistic.clientMsgId);
+    expect(transport.sendChat).toHaveBeenCalledWith('hello team', optimistic.clientMsgId, []);
 
     act(() =>
       emit({
@@ -122,6 +124,7 @@ describe('useDocumentChat', () => {
     expect(api.postChatMessage).toHaveBeenLastCalledWith('doc-1', {
       body: 'will fail',
       clientMsgId,
+      attachmentIds: [],
     });
   });
 
@@ -164,5 +167,63 @@ describe('useDocumentChat', () => {
       }),
     );
     expect(result.current.messages).toHaveLength(0);
+  });
+
+  test('sends a photo-only message, naming its attachments', async () => {
+    const { transport } = makeTransport();
+    const { result } = setup(transport);
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const photo = { id: 'att-1', kind: 'image' as const, contentType: 'image/png', filename: 'a.png', sizeBytes: 1, url: '/a', urlExpiresAt: '' };
+    act(() => result.current.send('  ', [photo]));
+
+    const [optimistic] = result.current.messages;
+    expect(optimistic).toMatchObject({ body: '', status: 'sending', attachments: [photo] });
+    expect(transport.sendChat).toHaveBeenCalledWith('', optimistic.clientMsgId, ['att-1']);
+  });
+
+  test('ignores a send with neither text nor attachments', async () => {
+    const { transport } = makeTransport();
+    const { result } = setup(transport);
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    act(() => result.current.send('   ', []));
+    expect(result.current.messages).toHaveLength(0);
+    expect(transport.sendChat).not.toHaveBeenCalled();
+  });
+
+  test('the REST fallback carries attachment ids too', async () => {
+    const { transport } = makeTransport();
+    (transport.sendChat as ReturnType<typeof vi.fn>).mockReturnValue(false);
+    api.postChatMessage.mockResolvedValue(message({ userId: 'user-1' }));
+    const { result } = setup(transport);
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const clip = { id: 'att-2', kind: 'video' as const, contentType: 'video/mp4', filename: 'c.mp4', sizeBytes: 1, url: '/c', urlExpiresAt: '' };
+    act(() => result.current.send('look', [clip]));
+    await waitFor(() => expect(api.postChatMessage).toHaveBeenCalledWith('doc-1', expect.objectContaining({ attachmentIds: ['att-2'] })));
+  });
+
+  test('upload goes to this document', async () => {
+    const { transport } = makeTransport();
+    api.uploadChatAttachment.mockResolvedValue({ id: 'att-3' });
+    const { result } = setup(transport);
+    const file = new File(['x'], 'a.png', { type: 'image/png' });
+    await expect(result.current.upload(file)).resolves.toEqual({ id: 'att-3' });
+    expect(api.uploadChatAttachment).toHaveBeenCalledWith('doc-1', file, undefined);
+  });
+
+  test('refreshMedia reloads history for fresh signed links', async () => {
+    const stale = { id: 'att-4', kind: 'image', contentType: 'image/png', filename: 'p.png', sizeBytes: 1, url: '/old', urlExpiresAt: '' };
+    api.fetchChatMessages.mockResolvedValueOnce({ messages: [message({ clientMsgId: 'p', attachments: [stale] })], nextCursor: null });
+    const { transport } = makeTransport();
+    const { result } = setup(transport);
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    api.fetchChatMessages.mockResolvedValueOnce({
+      messages: [message({ clientMsgId: 'p', attachments: [{ ...stale, url: '/fresh' }] })],
+      nextCursor: null,
+    });
+    act(() => result.current.refreshMedia());
+    await waitFor(() => expect(result.current.messages[0].attachments[0].url).toBe('/fresh'));
   });
 });

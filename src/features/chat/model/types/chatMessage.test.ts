@@ -19,7 +19,24 @@ describe('mapChatMessage', () => {
       body: 'hi',
       clientMsgId: 'cmid-1',
       createdAt: '2026-10-16T10:00:00Z',
+      attachments: [],
     });
+  });
+
+  test('maps attachments, inferring the kind from the content type when absent', () => {
+    const message = mapChatMessage({
+      client_msg_id: 'cmid-2',
+      body: '',
+      attachments: [
+        { id: 'a1', kind: 'image', content_type: 'image/png', filename: 'shot.png', size_bytes: 48213, url: '/api/v1/chat/attachments/a1?exp=1&sig=x', url_expires_at: '2026-10-28T20:00:00Z' },
+        { id: 'a2', content_type: 'video/mp4', url: '/v' },
+        { url: '/no-id' },
+      ],
+    });
+    expect(message.attachments).toEqual([
+      { id: 'a1', kind: 'image', contentType: 'image/png', filename: 'shot.png', sizeBytes: 48213, url: '/api/v1/chat/attachments/a1?exp=1&sig=x', urlExpiresAt: '2026-10-28T20:00:00Z' },
+      { id: 'a2', kind: 'video', contentType: 'video/mp4', filename: '', sizeBytes: 0, url: '/v', urlExpiresAt: '' },
+    ]);
   });
 
   test('falls back to the server id as the dedupe key when no client id is given', () => {
@@ -34,6 +51,16 @@ describe('mapChatMessage', () => {
 });
 
 describe('chatMessageFromFrame', () => {
+  test('accepts a photo-only message with no body', () => {
+    const message = chatMessageFromFrame({
+      type: 'chat:message',
+      client_msg_id: 'cmid-9',
+      attachments: [{ id: 'a1', kind: 'image', url: '/a1' }],
+    });
+    expect(message?.body).toBe('');
+    expect(message?.attachments).toHaveLength(1);
+  });
+
   test('reads a flat frame that carries the message beside the type', () => {
     const message = chatMessageFromFrame({
       type: 'chat:message',

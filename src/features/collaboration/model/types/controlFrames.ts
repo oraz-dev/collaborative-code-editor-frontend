@@ -43,6 +43,8 @@ export interface ChatSendFrame {
   body: string;
   /** Idempotency key, so a resend after a timeout does not duplicate. */
   client_msg_id: string;
+  /** Photos or videos uploaded beforehand, in display order. */
+  attachment_ids?: string[];
 }
 
 /**

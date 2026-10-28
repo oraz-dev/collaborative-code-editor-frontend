@@ -1,0 +1,109 @@
+.grid {
+  display: grid;
+  overflow: hidden;
+  width: min(264px, 62vw);
+  gap: 2px;
+  border-radius: 13px;
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.n1 { grid-template-columns: 1fr; }
+
+/* Three: one wide across the top, two below. */
+.n3 > :first-child { aspect-ratio: 2; grid-column: span 2; }
+
+.many { grid-template-columns: repeat(3, 1fr); }
+
+.tile {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  aspect-ratio: 1;
+  background:
+    linear-gradient(100deg, transparent 30%, rgb(255 255 255 / 8%) 50%, transparent 70%) 0 0 / 200% 100%,
+    rgb(127 127 127 / 18%);
+  animation: shimmer 1.4s linear infinite;
+  cursor: zoom-in;
+
+  &:focus-visible {
+    z-index: 1;
+    outline: 2px solid var(--ring);
+    outline-offset: -2px;
+  }
+}
+
+/* A lone photo or video keeps its own proportions, within limits. */
+.n1 .tile { aspect-ratio: var(--ratio, 4 / 3); }
+
+.loaded,
+.broken { animation: none; }
+
+@keyframes shimmer {
+  to { background-position: -200% 0, 0 0; }
+}
+
+.media {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  user-select: none;
+
+  .loaded & { opacity: 1; }
+}
+
+.tile:hover .media { filter: brightness(0.94); }
+
+.play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  padding-left: 3px;
+  border-radius: 50%;
+  backdrop-filter: blur(6px);
+  background: rgb(0 0 0 / 55%);
+  color: #fff;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+
+  svg { fill: currentcolor; }
+}
+
+.duration {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: rgb(0 0 0 / 55%);
+  color: #fff;
+  font: var(--weight-medium) 11px/1.5 var(--font-body);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: rgb(255 255 255 / 70%);
+  font-size: 11px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile { animation: none; }
+  .media { transition: none; }
+}

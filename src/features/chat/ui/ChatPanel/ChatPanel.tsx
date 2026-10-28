@@ -1,11 +1,14 @@
 import {
   memo,
   useCallback,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type CSSProperties,
+  type ClipboardEvent,
+  type DragEvent,
   type KeyboardEvent,
 } from 'react';
 import { classNames } from '@/shared/lib/classNames/classNames';
@@ -21,7 +24,11 @@ import { chatAppearanceStore } from '../../model/chatAppearance/chatAppearanceSt
 import { useChatAppearance } from '../../model/chatAppearance/useChatAppearance';
 import { buildChatTimeline } from '../../model/lib/buildChatTimeline/buildChatTimeline';
 import { useDismiss } from '../../model/lib/useDismiss/useDismiss';
-import type { ChatMessageView } from '../../model/types/chatMessage';
+import type { ChatAttachment, ChatMessageView } from '../../model/types/chatMessage';
+import { CHAT_MEDIA_ACCEPT } from '../../model/consts/chatMedia';
+import { useChatUploads, type UploadFn } from '../../model/useChatUploads/useChatUploads';
+import { ChatAttachmentTray } from '../ChatAttachmentTray/ChatAttachmentTray';
+import { ChatMediaViewer, type ChatMediaViewerItem } from '../ChatMediaViewer/ChatMediaViewer';
 import { ChatDayDivider, ChatMessageGroup } from '../ChatMessageGroup/ChatMessageGroup';
 import { ChatThemePicker } from '../ChatThemePicker/ChatThemePicker';
 import { EmojiPicker } from '../EmojiPicker/EmojiPicker';
@@ -42,9 +49,13 @@ interface ChatPanelProps {
   hasMore: boolean;
   isLoadingMore: boolean;
   onLoadMore: () => void;
-  onSend: (body: string) => void;
+  onSend: (body: string, attachments?: ChatAttachment[]) => void;
   onRetry: (clientMsgId: string) => void;
   onClose: () => void;
+  /** Uploads a photo or video for the next message. */
+  onUpload: UploadFn;
+  /** Signed media links failed or are about to lapse: fetch fresh ones. */
+  onMediaExpired?: () => void;
 }
 
 /** How close to the bottom still counts as "reading the latest". */
@@ -68,6 +79,7 @@ interface ChatFeedProps {
   isLoadingMore: boolean;
   onLoadMore: () => void;
   onRetry: (clientMsgId: string) => void;
+  onMediaExpired?: () => void;
 }
 
 /**
@@ -77,7 +89,7 @@ interface ChatFeedProps {
  * starts fresh with each document.
  */
 const ChatFeed = memo((props: ChatFeedProps) => {
-  const { messages, selfUserId, nameFor, hasMore, isLoadingMore, onLoadMore, onRetry } = props;
+  const { messages, selfUserId, nameFor, hasMore, isLoadingMore, onLoadMore, onRetry, onMediaExpired } = props;
 
   const scrollerRef = useRef<HTMLDivElement>(null);
   const feedRef = useRef<HTMLDivElement>(null);
@@ -91,6 +103,36 @@ const ChatFeed = memo((props: ChatFeedProps) => {
   const [lastAtMount] = useState(() => messages[messages.length - 1]?.clientMsgId);
   const [atBottom, setAtBottom] = useState(true);
   const [seenLastId, setSeenLastId] = useState(() => messages[messages.length - 1]?.clientMsgId);
+  const [viewerId, setViewerId] = useState<string | null>(null);
+
+  // Everything shared in the conversation, in order, for the viewer to page through.
+  const mediaItems = useMemo<ChatMediaViewerItem[]>(
+    () =>
+      messages.flatMap((message) =>
+        message.attachments.map((attachment) => ({
+          attachment,
+          authorName: nameFor(message.userId),
+          createdAt: message.createdAt,
+        })),
+      ),
+    [messages, nameFor],
+  );
+  const viewerIndex = viewerId ? mediaItems.findIndex((item) => item.attachment.id === viewerId) : -1;
+  const onViewerIndex = useCallback((index: number) => setViewerId(mediaItems[index]?.attachment.id ?? null), [mediaItems]);
+  const onCloseViewer = useCallback(() => setViewerId(null), []);
+
+  // Photos settle their height only once they load. A reader at the bottom
+  // stays at the bottom while they do.
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    const feed = feedRef.current;
+    if (!scroller || !feed || typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(() => {
+      if (atBottomRef.current) scroller.scrollTop = scroller.scrollHeight;
+    });
+    observer.observe(feed);
+    return () => observer.disconnect();
+  }, []);
 
   const timeline = useMemo(() => buildChatTimeline(messages, selfUserId), [messages, selfUserId]);
 
@@ -193,6 +235,8 @@ const ChatFeed = memo((props: ChatFeedProps) => {
                 authorColor={presenceColorFor(item.userId)}
                 onRetry={onRetry}
                 freshIds={freshIds}
+                onOpenMedia={setViewerId}
+                onMediaExpired={onMediaExpired}
               />
             );
           })}
@@ -210,6 +254,16 @@ const ChatFeed = memo((props: ChatFeedProps) => {
         <Icons.ChevD size={18} />
         {missed > 0 && <span className={cls.jumpCount}>{missed}</span>}
       </button>
+
+      {viewerIndex >= 0 && (
+        <ChatMediaViewer
+          items={mediaItems}
+          index={viewerIndex}
+          onIndexChange={onViewerIndex}
+          onClose={onCloseViewer}
+          onExpired={onMediaExpired}
+        />
+      )}
     </div>
   );
 });
@@ -238,6 +292,8 @@ export const ChatPanel = memo((props: ChatPanelProps) => {
     onSend,
     onRetry,
     onClose,
+    onUpload,
+    onMediaExpired,
   } = props;
 
   const appearance = useChatAppearance();
@@ -251,6 +307,10 @@ export const ChatPanel = memo((props: ChatPanelProps) => {
   const themePickerRef = useRef<HTMLDivElement>(null);
   // Where the caret goes once an inserted emoji has rendered.
   const caretRef = useRef<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const dragDepthRef = useRef(0);
+  const [dragging, setDragging] = useState(false);
+  const uploads = useChatUploads(onUpload);
 
   const emojiRefs = useMemo(() => [emojiButtonRef, emojiPickerRef], []);
   const themeRefs = useMemo(() => [themeButtonRef, themePickerRef], []);
@@ -316,12 +376,81 @@ export const ChatPanel = memo((props: ChatPanelProps) => {
     }
   }, [draft]);
 
-  const submit = useCallback(() => {
-    const body = draft.trim();
-    if (!body) return;
-    onSend(body);
+  // Sends what is in the composer right now. Read through a ref, because a
+  // send queued behind uploads runs later, after more may have been typed.
+  const draftRef = useRef(draft);
+  useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
+
+  const sendNow = useCallback(() => {
+    const body = draftRef.current.trim();
+    const attachments = uploads.take();
+    if (!body && attachments.length === 0) return;
+    onSend(body, attachments);
+    draftRef.current = '';
     setDraft('');
-  }, [draft, onSend]);
+  }, [onSend, uploads]);
+
+  const hasContent = draft.trim().length > 0 || uploads.items.length > 0;
+
+  const submit = useCallback(() => {
+    if (!hasContent || uploads.hasErrors) return;
+    // Uploads still running: send the moment they land.
+    uploads.sendWhenReady(sendNow);
+  }, [hasContent, sendNow, uploads]);
+
+  const addFiles = useCallback(
+    (files: FileList | readonly File[] | null | undefined) => {
+      const list = files ? Array.from(files) : [];
+      if (list.length > 0) uploads.add(list);
+      composerRef.current?.focus();
+    },
+    [uploads],
+  );
+
+  const onPaste = useCallback(
+    (event: ClipboardEvent<HTMLTextAreaElement>) => {
+      const files = Array.from(event.clipboardData.files);
+      if (files.length === 0) return;
+      // A screenshot pastes as a file; keep any text that came with it.
+      if (!event.clipboardData.getData('text')) event.preventDefault();
+      addFiles(files);
+    },
+    [addFiles],
+  );
+
+  const hasFiles = (event: DragEvent) => Array.from(event.dataTransfer.types).includes('Files');
+
+  const onDragEnter = useCallback((event: DragEvent) => {
+    if (!hasFiles(event)) return;
+    event.preventDefault();
+    dragDepthRef.current += 1;
+    setDragging(true);
+  }, []);
+
+  const onDragOver = useCallback((event: DragEvent) => {
+    if (!hasFiles(event)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+  }, []);
+
+  const onDragLeave = useCallback((event: DragEvent) => {
+    if (!hasFiles(event)) return;
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    if (dragDepthRef.current === 0) setDragging(false);
+  }, []);
+
+  const onDrop = useCallback(
+    (event: DragEvent) => {
+      if (!hasFiles(event)) return;
+      event.preventDefault();
+      dragDepthRef.current = 0;
+      setDragging(false);
+      addFiles(event.dataTransfer.files);
+    },
+    [addFiles],
+  );
 
   const onKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -397,6 +526,7 @@ export const ChatPanel = memo((props: ChatPanelProps) => {
         isLoadingMore={isLoadingMore}
         onLoadMore={onLoadMore}
         onRetry={onRetry}
+        onMediaExpired={onMediaExpired}
       />
     );
   };
@@ -406,7 +536,21 @@ export const ChatPanel = memo((props: ChatPanelProps) => {
       className={classNames(cls.pane, {}, [className])}
       style={paneStyle}
       aria-label="Document chat"
+      onDragEnter={onDragEnter}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
     >
+      {dragging && (
+        <div className={cls.dropZone} data-testid="chat-drop-zone">
+          <div className={cls.dropCard}>
+            <Icons.Image size={28} />
+            <span className={cls.dropTitle}>Drop to share</span>
+            <span className={cls.dropHint}>Photos up to 20 MB, videos up to 100 MB</span>
+          </div>
+        </div>
+      )}
+
       <header className={cls.bar}>
         {online.length > 0 && <AvatarStack people={online} max={3} size="sm" className={cls.people} />}
         <div className={cls.heading}>
@@ -463,6 +607,30 @@ export const ChatPanel = memo((props: ChatPanelProps) => {
           </div>
         )}
 
+        <ChatAttachmentTray
+          items={uploads.items}
+          notice={uploads.notice}
+          queued={uploads.isQueued}
+          onRemove={uploads.remove}
+          onRetry={uploads.retry}
+          onDismissNotice={uploads.dismissNotice}
+        />
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={CHAT_MEDIA_ACCEPT}
+          multiple
+          className={cls.fileInput}
+          tabIndex={-1}
+          aria-hidden="true"
+          onChange={(event) => {
+            addFiles(event.target.files);
+            event.target.value = '';
+          }}
+          data-testid="chat-file-input"
+        />
+
         <div className={cls.row}>
           <div className={cls.field}>
             <button
@@ -482,21 +650,34 @@ export const ChatPanel = memo((props: ChatPanelProps) => {
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
               onKeyDown={onKeyDown}
-              placeholder="Message"
+              onPaste={onPaste}
+              placeholder={uploads.items.length > 0 ? 'Add a caption' : 'Message'}
               rows={1}
               aria-label="Write a message"
               data-testid="chat-input"
             />
+            <button
+              type="button"
+              className={cls.attachBtn}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploads.room <= 0}
+              aria-label="Attach photos or videos"
+              title="Attach photos or videos"
+              data-testid="chat-attach"
+            >
+              <Icons.Paperclip size={19} />
+            </button>
           </div>
           <button
             type="button"
             className={cls.send}
             onClick={submit}
-            disabled={!draft.trim()}
-            aria-label="Send message"
+            disabled={!hasContent || uploads.hasErrors}
+            aria-busy={uploads.isQueued}
+            aria-label={uploads.isQueued ? 'Sending when uploads finish' : 'Send message'}
             data-testid="chat-send"
           >
-            <Icons.Send size={17} />
+            {uploads.isQueued ? <Spinner size="small" label="Waiting for uploads" /> : <Icons.Send size={17} />}
           </button>
         </div>
       </div>

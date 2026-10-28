@@ -383,13 +383,18 @@ export class RelayProvider {
    * Returns false when the socket is not open, so the caller can fall back to
    * the REST route rather than lose the message.
    */
-  sendChat(body: string, clientMsgId: string): boolean {
+  sendChat(body: string, clientMsgId: string, attachmentIds: readonly string[] = []): boolean {
     const socket = this.ws;
     if (!socket || socket.readyState !== WebSocket.OPEN) return false;
 
     try {
       socket.send(
-        JSON.stringify({ type: CHAT_SEND, body, client_msg_id: clientMsgId } satisfies ChatSendFrame),
+        JSON.stringify({
+          type: CHAT_SEND,
+          body,
+          client_msg_id: clientMsgId,
+          ...(attachmentIds.length > 0 ? { attachment_ids: [...attachmentIds] } : {}),
+        } satisfies ChatSendFrame),
       );
       return true;
     } catch (error) {
